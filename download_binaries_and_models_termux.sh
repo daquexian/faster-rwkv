@@ -11,9 +11,9 @@ ARG=${1:-2}
 
 if (( $ARG == 0 )); then
     echo "Downloading binaries only"
-if (( $ARG == 1 )); then
+elif (( $ARG == 1 )); then
     echo "Downloading binaries and 0.1b models"
-if (( $ARG == 2 )); then
+elif (( $ARG == 2 )); then
     echo "Downloading binaries and 1.5b and 0.1b models"
 else
     echo "Invalid argument"
@@ -45,4 +45,3 @@ elif (( $ARG == 1 )); then
 elif (( $ARG == 2 )); then
     echo "Done! Now you can run the chatbot by entering into directory 'rwkv' directory and running './run_1.5b.sh' or './run_0.1b.sh'"
 fi
-
