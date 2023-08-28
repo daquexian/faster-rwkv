@@ -82,6 +82,10 @@ Executables only:
 curl -L -s https://github.com/daquexian/faster-rwkv/blob/master/download_binaries_and_models_termux.sh | bash -s 0
 ```
 
+The performance of 1.5B model on Snapdragon 865:
+
+![](https://i.ibb.co/r290HyG/2023-08-28-10-56-25.gif)
+
 ### TODO
 
 - [ ] seq mode
