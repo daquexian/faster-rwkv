@@ -64,13 +64,13 @@ ninja
 
 Run one of the following commands in Termux to download prebuilt executables and models automatically. The download script supports continuely downloading partially downloaded files, so feel free to ctrl-C and restart it if the speed is too slow.
 
-1.5B CHNtuned model and 0.1B world model:
+Executables, 1.5B CHNtuned model and 0.1B world model:
 
 ```
 curl -L -s https://github.com/daquexian/faster-rwkv/blob/master/download_binaries_and_models_termux.sh | bash -s 2
 ```
 
-0.1B world model only:
+Executables and 0.1B world model:
 
 ```
 curl -L -s https://github.com/daquexian/faster-rwkv/blob/master/download_binaries_and_models_termux.sh | bash -s 1

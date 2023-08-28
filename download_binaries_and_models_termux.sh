@@ -23,7 +23,7 @@ sleep 1
 aria2c -c -x16 -s16 https://github.com/daquexian/faster-rwkv/releases/download/v0.0.1/faster-rwkv-android.zip -o faster-rwkv-android.zip
 unzip -o faster-rwkv-android.zip
 rm faster-rwkv-android.zip
-aria2c -c -x16 -s16 https://github.com/daquexian/faster-rwkv/raw/master/tokenizer_model -o tokenizer_model
+aria2c -c -x16 -s16 https://github.com/daquexian/faster-rwkv/raw/v0.0.1/tokenizer_model -o tokenizer_model
 
 if (( $ARG >= 1 )); then
     aria2c -c -x16 -s16 https://huggingface.co/daquexian/fr-models/resolve/main/rwkv-4-0.1b.bin -o rwkv-4-0.1b.bin
