@@ -43,5 +43,5 @@ if (( $ARG == 0 )); then
 elif (( $ARG == 1 )); then
     echo "Done! Now you can run the chatbot by entering into directory 'rwkv' and running './run_0.1b.sh'"
 elif (( $ARG == 2 )); then
-    echo "Done! Now you can run the chatbot by entering into directory 'rwkv' directory and running './run_1.5b.sh' or './run_0.1b.sh'"
+    echo "Done! Now you can run the chatbot by entering into directory 'rwkv' and running './run_1.5b.sh' or './run_0.1b.sh'"
 fi
