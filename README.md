@@ -35,6 +35,8 @@ ninja
 
 * RAM >= 4GB (for 1.5B model)
 
+* No hard requirement for CPU. More powerful = faster.
+
 ### TODO
 
 - [ ] seq mode
