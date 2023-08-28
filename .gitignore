@@ -1,0 +1,7 @@
+build/
+.cache/
+compile_commands.json
+__pycache__/
+build-*/
+models/
+*.fr

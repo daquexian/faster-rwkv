@@ -1,0 +1,22 @@
+namespace rwkv_fbs;
+
+enum DType : byte { kInt8, kFloat16, kFloat32 }
+
+table Tensor {
+  shape: [int64];
+  dtype: DType;
+  raw_data: [byte];
+}
+table KeyValue {
+  k: string (key);
+  v: Tensor;
+}
+
+table Model {
+  weights: [KeyValue];
+  embd_weights: [Tensor];
+  n_layers: int64;
+  n_embd: int64;
+}
+
+root_type Model;
