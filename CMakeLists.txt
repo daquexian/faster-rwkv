@@ -4,9 +4,9 @@ project(faster-rwkv CXX)
 set(CMAKE_CXX_STANDARD 17)
 include(FetchContent)
 
-option(FR_ENABLE_CUDA "Enable CUDA" ON)
-option(FR_ENABLE_NCNN "Enable NCNN" ON)
-option(FR_ENABLE_ONNX "Enable ONNX" ON)
+option(FR_ENABLE_CUDA "Enable CUDA" OFF)
+option(FR_ENABLE_NCNN "Enable NCNN" OFF)
+option(FR_ENABLE_ONNX "Enable ONNX" OFF)
 
 if (FR_ENABLE_CUDA)
     enable_language(CUDA)

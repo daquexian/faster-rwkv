@@ -1,3 +1,5 @@
+## Faster RWKV
+
 ### Android
 
 #### Convert Model
@@ -26,3 +28,11 @@ ninja
 2. Copy the `tokenizer_model` (in this repo) and the generated ncnn models (.param and .bin) into the Android phone (by using adb or Termux).
 
 3. Run ``LD_LIBRARY_PATH=`pwd` ./chat tokenizer_model ncnn_models_basename "ncnn fp16"``, for example, if the ncnn models are named `rwkv-4-chntuned-1.5b.param` and `rwkv-4-chntuned-1.5b.bin`, the command should be ``LD_LIBRARY_PATH=`pwd` ./chat tokenizer_model rwkv-4-chntuned-1.5b "ncnn fp16"``.
+
+### TODO
+
+- [ ] seq mode
+- [ ] v5 models support
+- [ ] export ONNX
+- [ ] more backends..
+- [ ] simplify model convertion
