@@ -21,7 +21,7 @@ else
 fi
 sleep 1
 aria2c -c -x16 -s16 https://github.com/daquexian/faster-rwkv/releases/download/v0.0.1/faster-rwkv-android.zip -o faster-rwkv-android.zip
-unzip faster-rwkv-android.zip
+unzip -o faster-rwkv-android.zip
 rm faster-rwkv-android.zip
 aria2c -c -x16 -s16 https://github.com/daquexian/faster-rwkv/raw/master/tokenizer_model -o tokenizer_model
 
