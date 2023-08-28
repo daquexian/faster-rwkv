@@ -45,6 +45,8 @@ Executables only:
 curl -L -s https://github.com/daquexian/faster-rwkv/blob/master/download_binaries_and_models_termux.sh | bash -s 0
 ```
 
+**If you want to build and run the models by yourself, follow the following steps.**
+
 #### Convert Model
 
 1. Generate a ChatRWKV weight file by `v2/convert_model.py` (in ChatRWKV repo) and strategy `cuda fp32` or `cpu fp32`. Note that though we use fp32 here, the real dtype is determined is the following step.
