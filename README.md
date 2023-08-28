@@ -25,7 +25,27 @@ For example, `./chat ../tokenizer_model ../rwkv-4-1.5b-chntuned-fp16.fr "cuda fp
 
 ### Android
 
-#### Convert Model (Skip it if you are not a devloper)
+Run one of the following commands in Termux to download prebuilt executables and models automatically. The download script supports continuely downloading partially downloaded files, so feel free to ctrl-C and restart it if the speed is too slow.
+
+1.5B CHNtuned model and 0.1B world model:
+
+```
+curl -L -s https://github.com/daquexian/faster-rwkv/blob/master/download_binaries_and_models_termux.sh | bash -s 2
+```
+
+0.1B world model only:
+
+```
+curl -L -s https://github.com/daquexian/faster-rwkv/blob/master/download_binaries_and_models_termux.sh | bash -s 1
+```
+
+Executables only:
+
+```
+curl -L -s https://github.com/daquexian/faster-rwkv/blob/master/download_binaries_and_models_termux.sh | bash -s 0
+```
+
+#### Convert Model
 
 1. Generate a ChatRWKV weight file by `v2/convert_model.py` (in ChatRWKV repo) and strategy `cuda fp32` or `cpu fp32`. Note that though we use fp32 here, the real dtype is determined is the following step.
 
@@ -33,7 +53,7 @@ For example, `./chat ../tokenizer_model ../rwkv-4-1.5b-chntuned-fp16.fr "cuda fp
 
 3. Export ncnn model by `export_ncnn.cpp`.
 
-#### Build (Skip it if you are not a devloper)
+#### Build
 
 For the path of Android NDK and toolchain file, please refer to Android NDK docs.
 
@@ -46,9 +66,9 @@ ninja
 
 #### Run
 
-1. Copy `chat`, `libfaster_rwkv.so` (download from [releases](https://github.com/daquexian/faster-rwkv/releases) or build by yourself) into the Android phone (by using adb or Termux).
+1. Copy `chat`, `libfaster_rwkv.so` into the Android phone (by using adb or Termux).
 
-2. Copy the [tokenizer_model](https://github.com/daquexian/faster-rwkv/blob/master/tokenizer_model) and the ncnn models (.param and .bin, download from [huggingface](https://huggingface.co/daquexian/fr-models/tree/main) or convert by yourself) into the Android phone (by using adb or Termux).
+2. Copy the [tokenizer_model](https://github.com/daquexian/faster-rwkv/blob/master/tokenizer_model) and the ncnn models (.param and .bin) into the Android phone (by using adb or Termux).
 
 3. Run ``LD_LIBRARY_PATH=`pwd` ./chat tokenizer_model ncnn_models_basename "ncnn fp16"`` in adb shell or Termux, for example, if the ncnn models are named `rwkv-4-chntuned-1.5b.param` and `rwkv-4-chntuned-1.5b.bin`, the command should be ``LD_LIBRARY_PATH=`pwd` ./chat tokenizer_model rwkv-4-chntuned-1.5b "ncnn fp16"``.
 
