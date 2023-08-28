@@ -25,28 +25,6 @@ For example, `./chat ../tokenizer_model ../rwkv-4-1.5b-chntuned-fp16.fr "cuda fp
 
 ### Android
 
-Run one of the following commands in Termux to download prebuilt executables and models automatically. The download script supports continuely downloading partially downloaded files, so feel free to ctrl-C and restart it if the speed is too slow.
-
-1.5B CHNtuned model and 0.1B world model:
-
-```
-curl -L -s https://github.com/daquexian/faster-rwkv/blob/master/download_binaries_and_models_termux.sh | bash -s 2
-```
-
-0.1B world model only:
-
-```
-curl -L -s https://github.com/daquexian/faster-rwkv/blob/master/download_binaries_and_models_termux.sh | bash -s 1
-```
-
-Executables only:
-
-```
-curl -L -s https://github.com/daquexian/faster-rwkv/blob/master/download_binaries_and_models_termux.sh | bash -s 0
-```
-
-**If you want to build and run the models by yourself, follow the following steps.**
-
 #### Convert Model
 
 1. Generate a ChatRWKV weight file by `v2/convert_model.py` (in ChatRWKV repo) and strategy `cuda fp32` or `cpu fp32`. Note that though we use fp32 here, the real dtype is determined is the following step.
@@ -81,6 +59,28 @@ ninja
 * RAM >= 4GB (for 1.5B model)
 
 * No hard requirement for CPU. More powerful = faster.
+
+### Android Demo
+
+Run one of the following commands in Termux to download prebuilt executables and models automatically. The download script supports continuely downloading partially downloaded files, so feel free to ctrl-C and restart it if the speed is too slow.
+
+1.5B CHNtuned model and 0.1B world model:
+
+```
+curl -L -s https://github.com/daquexian/faster-rwkv/blob/master/download_binaries_and_models_termux.sh | bash -s 2
+```
+
+0.1B world model only:
+
+```
+curl -L -s https://github.com/daquexian/faster-rwkv/blob/master/download_binaries_and_models_termux.sh | bash -s 1
+```
+
+Executables only:
+
+```
+curl -L -s https://github.com/daquexian/faster-rwkv/blob/master/download_binaries_and_models_termux.sh | bash -s 0
+```
 
 ### TODO
 
