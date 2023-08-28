@@ -1,6 +1,6 @@
 #!$PREFIX/bin/bash
 
-set -uex
+set -ue
 
 pkg install -y aria2
 
