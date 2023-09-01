@@ -51,7 +51,6 @@ if (FR_ENABLE_NCNN)
         kernels/ncnn/model_forward.cpp
         kernels/ncnn/cast_dtype.cpp
         kernels/ncnn/element_wise.cpp
-        kernels/ncnn-meta/kernels.cpp
     )
 endif()
 
@@ -86,6 +85,7 @@ add_library(faster_rwkv SHARED
         kernels/default/ffn.cpp
         kernels/default/init_model.cpp
         kernels/default/model_forward.cpp
+        kernels/ncnn-meta/kernels.cpp
         ${cuda_kernel_srcs}
         ${ncnn_kernel_srcs}
         )
@@ -120,16 +120,15 @@ if (NOT CMAKE_SYSTEM_NAME STREQUAL "Android")
 endif()
 
 if (FR_ENABLE_NCNN)
-add_executable(test_ops test_ops.cpp)
-target_link_libraries(test_ops gtest_main faster_rwkv)
-if (NOT CMAKE_SYSTEM_NAME STREQUAL "Android")
-    gtest_discover_tests(test_ops)
+    add_executable(test_ops test_ops.cpp)
+    target_link_libraries(test_ops gtest_main faster_rwkv)
+    if (NOT CMAKE_SYSTEM_NAME STREQUAL "Android")
+        gtest_discover_tests(test_ops)
+    endif()
 endif()
 
 add_executable(export_ncnn export_ncnn.cpp)
 target_link_libraries(export_ncnn faster_rwkv)
-
-endif()
 
 option(BENCHMARK_ENABLE_GTEST_TESTS "Enable building the unit tests which depend on gtest" OFF)
 FetchContent_Declare(
