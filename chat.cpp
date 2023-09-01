@@ -29,7 +29,6 @@ int main(int argc, char **argv) {
   rwkv::GreedySampler sampler;
   rwkv::Model model(argv[2], argv[3]);
   std::map<int, float> occurences;
-  auto states = model.CreateInitialStates();
   while (true) {
     std::cout << kUserPrefix;
     std::string input;
@@ -50,7 +49,7 @@ int main(int argc, char **argv) {
       }
       std::cout << "]" << std::endl;
     }
-    auto output = Copy(model.Run(prompt_ids, states), rwkv::Device::kCPU);
+    auto output = Copy(model.Run(prompt_ids), rwkv::Device::kCPU);
     std::string response;
     int num_new_tokens = 0;
     for (; num_new_tokens < kMaxOutputLength; num_new_tokens++) {
@@ -96,7 +95,7 @@ int main(int argc, char **argv) {
       // response.substr(response.size() - 7) == "\nUser: ") {
       //   break;
       // }
-      output = Copy(model.Run(output_id, states), rwkv::Device::kCPU);
+      output = Copy(model.Run(output_id), rwkv::Device::kCPU);
     }
     auto model_time = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::system_clock::now() - tmp);

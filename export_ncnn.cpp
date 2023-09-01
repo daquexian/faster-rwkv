@@ -15,7 +15,6 @@ int main(int argc, char **argv) {
   // NOTE: fp32 here is just a placeholder. The dtype used by ncnn is determined
   // when the model is loaded.
   rwkv::Model model(argv[2], "ncnn-meta fp32");
-  auto states = model.CreateInitialStates();
-  model.Run(0, states);
+  model.Run(0);
   rwkv::ncnnmeta::destroy();
 }

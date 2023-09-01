@@ -4,9 +4,8 @@
 
 static void BM_0p1BV4Model(benchmark::State &state) {
   rwkv::Model model("../rwkv-4-0.1b-fp16.fr", "cuda fp16");
-  auto states = model.CreateInitialStates();
   for (auto _ : state)
-    auto output = rwkv::Copy(model.Run(0, states), rwkv::Device::kCPU);
+    auto output = rwkv::Copy(model.Run(0), rwkv::Device::kCPU);
 }
 BENCHMARK(BM_0p1BV4Model);
 

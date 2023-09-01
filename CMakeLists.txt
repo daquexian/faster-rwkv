@@ -5,8 +5,14 @@ set(CMAKE_CXX_STANDARD 17)
 include(FetchContent)
 
 option(FR_ENABLE_CUDA "Enable CUDA" OFF)
-option(FR_ENABLE_NCNN "Enable NCNN" OFF)
 option(FR_ENABLE_ONNX "Enable ONNX" OFF)
+if (CMAKE_SYSTEM_NAME STREQUAL "Android")
+    option(FR_BUILD_JNI "" ON)
+    option(FR_ENABLE_NCNN "Enable NCNN" ON)
+else()
+    option(FR_BUILD_JNI "" OFF)
+    option(FR_ENABLE_NCNN "Enable NCNN" OFF)
+endif()
 
 if (FR_ENABLE_CUDA)
     enable_language(CUDA)
@@ -73,7 +79,7 @@ FetchContent_Declare(
 option(MSGPACK_USE_BOOST "" OFF)
 FetchContent_MakeAvailable(msgpack)
 
-add_library(faster_rwkv SHARED
+add_library(faster_rwkv_internal
         model.cpp 
         tensor.cpp
         tokenizer.cpp
@@ -89,15 +95,17 @@ add_library(faster_rwkv SHARED
         ${cuda_kernel_srcs}
         ${ncnn_kernel_srcs}
         )
-target_link_libraries(faster_rwkv PRIVATE msgpack-cxx ${ncnn_deps})
-target_include_directories(faster_rwkv PUBLIC ${PROJECT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
+target_link_libraries(faster_rwkv_internal PRIVATE msgpack-cxx ${ncnn_deps})
+target_include_directories(faster_rwkv_internal PUBLIC ${PROJECT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
 
 if (FR_ENABLE_CUDA)
     find_package(CUDAToolkit REQUIRED)
-    target_link_libraries(faster_rwkv PUBLIC CUDA::cudart CUDA::cublas)
-    target_compile_definitions(faster_rwkv PUBLIC FR_ENABLE_CUDA)
+    target_link_libraries(faster_rwkv_internal PUBLIC CUDA::cudart CUDA::cublas)
+    target_compile_definitions(faster_rwkv_internal PUBLIC FR_ENABLE_CUDA)
 endif()
 
+add_library(faster_rwkv INTERFACE)
+target_link_libraries(faster_rwkv INTERFACE "$<LINK_LIBRARY:WHOLE_ARCHIVE,faster_rwkv_internal>")
 FetchContent_Declare(
         gtest
         GIT_REPOSITORY https://github.com/google/googletest.git
@@ -143,3 +151,7 @@ target_link_libraries(bench_model benchmark::benchmark faster_rwkv)
 
 add_executable(chat chat.cpp)
 target_link_libraries(chat faster_rwkv)
+
+if (FR_BUILD_JNI)
+    add_subdirectory(aar)
+endif()

@@ -46,31 +46,31 @@ Model::Model(const std::string &path, const std::string &strategy) {
   init_model(this, act_device, path, strategy);
   RV_CHECK(_n_layer > 0);
   RV_CHECK(_n_embd > 0);
+  ResetStates();
 }
 
-std::vector<std::vector<Tensor>> Model::CreateInitialStates() const {
+void Model::ResetStates() {
+  _states.clear();
   auto device = _act_device == Device::kNCNN ? Device::kCPU : _act_device;
-  std::vector<std::vector<Tensor>> states;
   for (int i = 0; i < _n_layer; i++) {
-    states.push_back({});
+    _states.push_back({});
     auto s1 = Tensor::Empty(Shape{_n_embd}, _act_dtype, Device::kCPU);
-    states.back().push_back(Copy(fill_(s1, 0), device));
+    _states.back().push_back(Copy(fill_(s1, 0), device));
     auto s2 = Tensor::Empty(Shape{_n_embd}, DType::kFloat32, Device::kCPU);
-    states.back().push_back(Copy(fill_(s2, 0), device));
+    _states.back().push_back(Copy(fill_(s2, 0), device));
     auto s3 = Tensor::Empty(Shape{_n_embd}, DType::kFloat32, Device::kCPU);
-    states.back().push_back(Copy(fill_(s3, 0), device));
+    _states.back().push_back(Copy(fill_(s3, 0), device));
     auto s4 = Tensor::Empty(Shape{_n_embd}, DType::kFloat32, Device::kCPU);
-    states.back().push_back(Copy(fill_(s4, -1e30), device));
+    _states.back().push_back(Copy(fill_(s4, -1e30), device));
     auto s5 = Tensor::Empty(Shape{_n_embd}, _act_dtype, Device::kCPU);
-    states.back().push_back(Copy(fill_(s5, 0), device));
+    _states.back().push_back(Copy(fill_(s5, 0), device));
   }
-  return states;
 }
 
-Tensor Model::Run(const std::vector<int>& ids, std::vector<std::vector<Tensor>>& states) const {
+Tensor Model::Run(const std::vector<int>& ids) {
   for (int i = 0; i < ids.size(); ++i) {
     auto id = ids[i];
-    auto out = Run(id, states);
+    auto out = Run(id);
     if (i == ids.size() - 1) {
       return out;
     }
@@ -78,8 +78,8 @@ Tensor Model::Run(const std::vector<int>& ids, std::vector<std::vector<Tensor>>&
   RV_UNIMPLEMENTED();
 }
 
-Tensor Model::Run(int id, std::vector<std::vector<Tensor>>& states) const {
-  return ModelForward(this, this->_act_device, id, states);
+Tensor Model::Run(int id) {
+  return ModelForward(this, this->_act_device, id, _states);
 }
 
 } // namespace rwkv
