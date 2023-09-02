@@ -84,7 +84,7 @@ curl -L -s https://raw.githubusercontent.com/daquexian/faster-rwkv/master/downlo
 
 ### TODO
 
-- [ ] JNI
+- [x] JNI
 - [ ] Music/Raven models support
 - [ ] CI
 - [ ] seq mode
