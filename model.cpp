@@ -13,6 +13,8 @@
 
 namespace rwkv {
 
+static const bool kDebug = std::getenv("FR_DEBUG") != nullptr;
+
 Model::Model(const std::string &path, const std::string &strategy) {
   auto dev_str = strategy.substr(0, strategy.find(" "));
   Device act_device = [&]() {
@@ -68,9 +70,16 @@ void Model::ResetStates() {
 }
 
 Tensor Model::Run(const std::vector<int>& ids) {
+  if (kDebug) {
+    std::cout << "Model::Run([";
+    for (auto id : ids) {
+      std::cout << id << ", ";
+    }
+    std::cout << "])" << std::endl;
+  }
   for (int i = 0; i < ids.size(); ++i) {
     auto id = ids[i];
-    auto out = Run(id);
+    auto out = _Run(id);
     if (i == ids.size() - 1) {
       return out;
     }
@@ -79,6 +88,13 @@ Tensor Model::Run(const std::vector<int>& ids) {
 }
 
 Tensor Model::Run(int id) {
+  if (kDebug) {
+    std::cout << "Model::Run(" << id << ")" << std::endl;
+  }
+  return _Run(id);
+}
+
+Tensor Model::_Run(int id) {
   return ModelForward(this, this->_act_device, id, _states);
 }
 

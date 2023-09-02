@@ -21,6 +21,8 @@ jint throwException(JNIEnv *env, std::string message);
 
 using rwkv::Model;
 using rwkv::Tokenizer;
+using rwkv::WorldTokenizer;
+using rwkv::ABCTokenizer;
 using rwkv::Sampler;
 
 std::string to_cpp_string(JNIEnv *env, jstring jstr) {
@@ -60,17 +62,17 @@ extern "C" JNIEXPORT jfloatArray JNICALL Java_com_rwkv_faster_Model_runSeq(
   return result;
 }
 
-extern "C" JNIEXPORT void JNICALL Java_com_rwkv_faster_Tokenizer_init(
+extern "C" JNIEXPORT void JNICALL Java_com_rwkv_faster_WorldTokenizer_init(
     JNIEnv *env, jobject obj /* this */, jstring jPath) {
   std::string path(to_cpp_string(env, jPath));
   auto *tokenizer =
-      new std::shared_ptr<Tokenizer>(new Tokenizer(path));
+      new std::shared_ptr<WorldTokenizer>(new WorldTokenizer(path));
   setHandle(env, obj, tokenizer);
 }
 
-extern "C" JNIEXPORT jintArray JNICALL Java_com_rwkv_faster_Tokenizer_encode(
+extern "C" JNIEXPORT jintArray JNICALL Java_com_rwkv_faster_WorldTokenizer_encode(
     JNIEnv *env, jobject obj /* this */, jstring jStr) {
-  auto tokenizer = getHandle<Tokenizer>(env, obj);
+  auto tokenizer = getHandle<WorldTokenizer>(env, obj);
   std::string str(to_cpp_string(env, jStr));
   auto output = tokenizer->encode(str);
   jintArray result = env->NewIntArray(output.size());
@@ -78,17 +80,52 @@ extern "C" JNIEXPORT jintArray JNICALL Java_com_rwkv_faster_Tokenizer_encode(
   return result;
 }
 
-extern "C" JNIEXPORT jstring JNICALL Java_com_rwkv_faster_Tokenizer_decodeSingle(
+extern "C" JNIEXPORT jstring JNICALL Java_com_rwkv_faster_WorldTokenizer_decodeSingle(
     JNIEnv *env, jobject obj /* this */, jint jId) {
-  auto tokenizer = getHandle<Tokenizer>(env, obj);
+  auto tokenizer = getHandle<WorldTokenizer>(env, obj);
   int id = static_cast<int>(jId);
   auto output = tokenizer->decode(id);
   return env->NewStringUTF(output.c_str());
 }
 
-extern "C" JNIEXPORT jstring JNICALL Java_com_rwkv_faster_Tokenizer_decodeSeq(
+extern "C" JNIEXPORT jstring JNICALL Java_com_rwkv_faster_WorldTokenizer_decodeSeq(
     JNIEnv *env, jobject obj /* this */, jintArray jIds) {
-  auto tokenizer = getHandle<Tokenizer>(env, obj);
+  auto tokenizer = getHandle<WorldTokenizer>(env, obj);
+  jint *arr = env->GetIntArrayElements(jIds, nullptr);
+  std::vector<int> ids(arr, arr + env->GetArrayLength(jIds));
+  env->ReleaseIntArrayElements(jIds, arr, 0);
+  auto output = tokenizer->decode(ids);
+  return env->NewStringUTF(output.c_str());
+}
+
+extern "C" JNIEXPORT void JNICALL Java_com_rwkv_faster_ABCTokenizer_init(
+    JNIEnv *env, jobject obj /* this */) {
+  auto *tokenizer =
+      new std::shared_ptr<ABCTokenizer>(new ABCTokenizer());
+  setHandle(env, obj, tokenizer);
+}
+
+extern "C" JNIEXPORT jintArray JNICALL Java_com_rwkv_faster_ABCTokenizer_encode(
+    JNIEnv *env, jobject obj /* this */, jstring jStr) {
+  auto tokenizer = getHandle<ABCTokenizer>(env, obj);
+  std::string str(to_cpp_string(env, jStr));
+  auto output = tokenizer->encode(str);
+  jintArray result = env->NewIntArray(output.size());
+  env->SetIntArrayRegion(result, 0, output.size(), output.data());
+  return result;
+}
+
+extern "C" JNIEXPORT jstring JNICALL Java_com_rwkv_faster_ABCTokenizer_decodeSingle(
+    JNIEnv *env, jobject obj /* this */, jint jId) {
+  auto tokenizer = getHandle<ABCTokenizer>(env, obj);
+  int id = static_cast<int>(jId);
+  auto output = tokenizer->decode(id);
+  return env->NewStringUTF(output.c_str());
+}
+
+extern "C" JNIEXPORT jstring JNICALL Java_com_rwkv_faster_ABCTokenizer_decodeSeq(
+    JNIEnv *env, jobject obj /* this */, jintArray jIds) {
+  auto tokenizer = getHandle<ABCTokenizer>(env, obj);
   jint *arr = env->GetIntArrayElements(jIds, nullptr);
   std::vector<int> ids(arr, arr + env->GetArrayLength(jIds));
   env->ReleaseIntArrayElements(jIds, arr, 0);
@@ -104,9 +141,9 @@ extern "C" JNIEXPORT void JNICALL Java_com_rwkv_faster_Sampler_init(
 }
 
 extern "C" JNIEXPORT jint JNICALL Java_com_rwkv_faster_Sampler_sample(
-    JNIEnv *env, jobject obj /* this */, jfloatArray jProbs) {
+    JNIEnv *env, jobject obj /* this */, jfloatArray jProbs, jfloat temperature, jint top_k, jfloat top_p) {
   auto sampler = getHandle<Sampler>(env, obj);
   jfloat *arr = env->GetFloatArrayElements(jProbs, nullptr);
-  auto output = sampler->Sample(arr, env->GetArrayLength(jProbs));
+  auto output = sampler->Sample(arr, env->GetArrayLength(jProbs), temperature, top_k, top_p);
   return static_cast<jint>(output);
 }

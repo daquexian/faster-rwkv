@@ -5,3 +5,4 @@ __pycache__/
 build-*/
 models/
 *.fr
+abc_music_input*.txt

@@ -159,6 +159,9 @@ target_link_libraries(bench_model benchmark::benchmark faster_rwkv)
 add_executable(chat chat.cpp)
 target_link_libraries(chat faster_rwkv)
 
+add_executable(abc_music abc_music.cpp)
+target_link_libraries(abc_music faster_rwkv)
+
 if (FR_BUILD_JNI)
     add_subdirectory(aar)
 endif()

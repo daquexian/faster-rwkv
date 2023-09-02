@@ -1,3 +1,4 @@
+# WIP, do not use it.
 import msgpack
 import sys
 import json
@@ -5,15 +6,10 @@ import json
 idx2token = {}
 
 with open(sys.argv[1], "r", encoding="utf-8") as f:
-    json.load(f)
+    j = json.load(f)
+    token2idx = j["model"]["vocab"]
 
-for l in lines:
-    idx = int(l[:l.index(' ')])
-    x = eval(l[l.index(' '):l.rindex(' ')])
-    x = x.encode("utf-8") if isinstance(x, str) else x
-    assert isinstance(x, bytes)
-    assert len(x) == int(l[l.rindex(' '):])
-    idx2token[idx] = x
+idx2token = {v: k for k, v in token2idx.items()}
 
 with open(sys.argv[2], "wb") as f:
     msgpack.pack(idx2token, f)

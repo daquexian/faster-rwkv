@@ -1,13 +1,13 @@
 #include "tokenizer.h"
 
-#include <iostream>
 #include <fstream>
+#include <iostream>
 #include <string_view>
 
 #include <msgpack.hpp>
 
 namespace rwkv {
-Tokenizer::Tokenizer(const std::string &path) {
+WorldTokenizer::WorldTokenizer(const std::string &path) {
   std::ifstream infile;
   infile.open(path, std::ios::binary | std::ios::in);
   infile.seekg(0, std::ios::end);
@@ -25,7 +25,7 @@ Tokenizer::Tokenizer(const std::string &path) {
   }
 }
 
-std::vector<int> Tokenizer::encode(std::string_view str) const {
+std::vector<int> WorldTokenizer::encode(std::string_view str) const {
   std::vector<int> ids;
   int str_idx = 0;
   int word_len = 1;
@@ -49,7 +49,7 @@ std::vector<int> Tokenizer::encode(std::string_view str) const {
   return ids;
 }
 
-std::string Tokenizer::decode(int id) const {
+std::string WorldTokenizer::decode(int id) const {
   auto it = _idx2word.find(id);
   if (it == _idx2word.end()) {
     return "<unk>";
@@ -58,7 +58,31 @@ std::string Tokenizer::decode(int id) const {
   }
 }
 
-std::string Tokenizer::decode(const std::vector<int> &ids) const {
+std::string WorldTokenizer::decode(const std::vector<int> &ids) const {
+  std::string str;
+  for (auto id : ids) {
+    str += decode(id);
+  }
+  return str;
+}
+
+std::vector<int> ABCTokenizer::encode(std::string_view str) const {
+  std::vector<int> ids;
+  for (int i = 0; i < str.size(); ++i) {
+    ids.push_back(str[i]);
+  }
+  return ids;
+}
+
+std::string ABCTokenizer::decode(int id) const {
+  if (id <= eos_token_id) {
+    return "";
+  } else {
+    return std::string(1, static_cast<char>(id));
+  }
+}
+
+std::string ABCTokenizer::decode(const std::vector<int> &ids) const {
   std::string str;
   for (auto id : ids) {
     str += decode(id);

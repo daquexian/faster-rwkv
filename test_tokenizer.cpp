@@ -3,12 +3,12 @@
 #include <gtest/gtest.h>
 
 TEST(Tokenizer, load) {
-  rwkv::Tokenizer tokenizer("../tokenizer_model");
+  rwkv::WorldTokenizer tokenizer("../tokenizer_model");
 }
 
 
 TEST(Tokenizer, encode_decode) {
-  rwkv::Tokenizer tokenizer("../tokenizer_model");
+  rwkv::WorldTokenizer tokenizer("../tokenizer_model");
   auto ids = tokenizer.encode("今天天气不错");
   EXPECT_EQ(ids.size(), 6);
   EXPECT_EQ(ids[0], 10381);

@@ -21,6 +21,7 @@ struct Model {
 
   std::vector<Tensor> _embd_weights;
 private:
+  Tensor _Run(int id);
   // std::unordered_map<std::string, Tensor> _params;
   // _params is not a map because we know the exact order of the parameters
   std::vector<Tensor> _params;
