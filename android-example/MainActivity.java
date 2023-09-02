@@ -20,7 +20,7 @@ import java.util.Arrays;
 
 public class MainActivity extends AppCompatActivity {
 
-    // Used to load the 'faster' library on application startup.
+    // Used to load the 'faster_rwkv' library on application startup.
     static {
         System.loadLibrary("faster_rwkv_jni");
     }
@@ -43,6 +43,15 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        binding = ActivityMainBinding.inflate(getLayoutInflater());
+        setContentView(binding.getRoot());
+
+        // IMPORTANT! Request for permission to access all files.
+        // This is required for the app to access the model file. Otherwise, the app will crash.
+        // manifest.xml should be also updated, declaring `MANAGE_EXTERNAL_STORAGE` permission.
+        // See https://developer.android.com/training/data-storage/manage-all-files
+        // These seem only required for Android 11 and above. But I don't check the version here.
+        // What's more, the following piece of code is copied from stackoverflow.
         if (Environment.isExternalStorageManager()) {
             //todo when permission is granted
         } else {
@@ -52,9 +61,6 @@ public class MainActivity extends AppCompatActivity {
             intent.setData(uri);
             startActivity(intent);
         }
-
-        binding = ActivityMainBinding.inflate(getLayoutInflater());
-        setContentView(binding.getRoot());
 
         String input = "S:2";
         String result = input;
