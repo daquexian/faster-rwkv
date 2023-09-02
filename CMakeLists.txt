@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.25)
+cmake_minimum_required(VERSION 3.22)
 project(faster-rwkv CXX)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -29,6 +29,12 @@ if (FR_ENABLE_CUDA)
     )
 endif()
 
+if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.25)
+    set(SYSTEM_ARG SYSTEM)
+else()
+    set(SYSTEM_ARG)
+endif()
+
 if (FR_ENABLE_NCNN)
     FetchContent_Declare(
         ncnn
@@ -36,7 +42,7 @@ if (FR_ENABLE_NCNN)
         # This commit reduces peak memory usage
         # https://github.com/Tencent/ncnn/pull/4966
         GIT_TAG 0829fa49d3d74e9e8d6b053cc0bef60a06c60bce
-        SYSTEM
+        ${SYSTEM_ARG}
         )
     option(NCNN_BUILD_BENCHMARK "" OFF)
     option(NCNN_BUILD_TOOLS "" OFF)
@@ -65,7 +71,7 @@ if (FR_ENABLE_ONNX)
         onnx
         GIT_REPOSITORY https://github.com/onnx/onnx
         GIT_TAG v1.14.0
-        SYSTEM
+        ${SYSTEM_ARG}
     )
     FetchContent_MakeAvailable(onnx)
 endif()
@@ -74,7 +80,7 @@ FetchContent_Declare(
         msgpack
         GIT_REPOSITORY https://github.com/msgpack/msgpack-c
         GIT_TAG cpp-6.1.0
-        SYSTEM
+        ${SYSTEM_ARG}
         )
 option(MSGPACK_USE_BOOST "" OFF)
 FetchContent_MakeAvailable(msgpack)
@@ -110,7 +116,7 @@ FetchContent_Declare(
         gtest
         GIT_REPOSITORY https://github.com/google/googletest.git
         GIT_TAG v1.14.0
-        SYSTEM
+        ${SYSTEM_ARG}
         )
 FetchContent_MakeAvailable(gtest)
 enable_testing()
@@ -143,7 +149,7 @@ FetchContent_Declare(
         benchmark
         GIT_REPOSITORY https://github.com/google/benchmark
         GIT_TAG v1.8.2
-        SYSTEM
+        ${SYSTEM_ARG}
         )
 FetchContent_MakeAvailable(benchmark)
 add_executable(bench_model bench_model.cpp)
