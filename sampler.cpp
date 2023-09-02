@@ -5,7 +5,7 @@
 #include "check.h"
 
 namespace rwkv {
-int GreedySampler::Sample(const float *ptr, int len) {
+int Sampler::Sample(const float *ptr, int len) {
   RV_CHECK(len >= 1);
   float max = ptr[0];
   int max_idx = 0;

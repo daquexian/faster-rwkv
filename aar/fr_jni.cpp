@@ -4,7 +4,9 @@
 #include <android/log.h>
 
 #include "jni_handle.h"
-#include <pipeline.h>
+#include <model.h>
+#include <tokenizer.h>
+#include <sampler.h>
 
 #include <android/log.h>
 
@@ -18,8 +20,8 @@
 jint throwException(JNIEnv *env, std::string message);
 
 using rwkv::Model;
-using rwkv::Pipeline;
 using rwkv::Tokenizer;
+using rwkv::Sampler;
 
 std::string to_cpp_string(JNIEnv *env, jstring jstr) {
   const char *ptr = env->GetStringUTFChars(jstr, nullptr);
@@ -37,23 +39,74 @@ extern "C" JNIEXPORT void JNICALL Java_com_rwkv_faster_Model_init(
   setHandle(env, obj, model);
 }
 
-extern "C" JNIEXPORT void JNICALL Java_com_rwkv_faster_Pipeline_init(
-    JNIEnv *env, jobject obj /* this */, jstring jModelPath, jstring jTokenizerPath, jstring jStrategy) {
-
-  std::string model_path(to_cpp_string(env, jModelPath));
-  std::string tokenizer_path(to_cpp_string(env, jTokenizerPath));
-  std::string strategy(to_cpp_string(env, jStrategy));
-
-  auto model = std::make_shared<Model>(model_path, strategy);
-  auto tokenizer = std::make_shared<Tokenizer>(tokenizer_path);
-  auto pipeline = new std::shared_ptr<Pipeline>(new Pipeline(model, tokenizer));
-  setHandle(env, obj, pipeline);
+extern "C" JNIEXPORT jfloatArray JNICALL Java_com_rwkv_faster_Model_run_single(
+    JNIEnv *env, jobject obj /* this */, jint input_id) {
+  auto model = getHandle<Model>(env, obj);
+  auto output = model->Run(input_id);
+  jfloatArray result = env->NewFloatArray(output.numel());
+  env->SetFloatArrayRegion(result, 0, output.numel(), output.data_ptr<float>());
+  return result;
 }
 
-extern "C" JNIEXPORT jstring JNICALL Java_com_rwkv_faster_Pipeline_Run(
-    JNIEnv *env, jobject obj /* this */, jstring jInput, jobject callback) {
-  auto pipeline = getHandle<Pipeline>(env, obj);
-  std::string input(to_cpp_string(env, jInput));
-  auto output = pipeline->Run(input);
+extern "C" JNIEXPORT jfloatArray JNICALL Java_com_rwkv_faster_Model_run_seq(
+    JNIEnv *env, jobject obj /* this */, jintArray jInputIds) {
+  auto model = getHandle<Model>(env, obj);
+  jint *arr = env->GetIntArrayElements(jInputIds, nullptr);
+  std::vector<int> input_ids(arr, arr + env->GetArrayLength(jInputIds));
+  env->ReleaseIntArrayElements(jInputIds, arr, 0);
+  auto output = model->Run(input_ids);
+  jfloatArray result = env->NewFloatArray(output.numel());
+  env->SetFloatArrayRegion(result, 0, output.numel(), output.data_ptr<float>());
+  return result;
+}
+
+extern "C" JNIEXPORT void JNICALL Java_com_rwkv_faster_Tokenizer_init(
+    JNIEnv *env, jobject obj /* this */, jstring jPath) {
+  std::string path(to_cpp_string(env, jPath));
+  auto *tokenizer =
+      new std::shared_ptr<Tokenizer>(new Tokenizer(path));
+  setHandle(env, obj, tokenizer);
+}
+
+extern "C" JNIEXPORT jintArray JNICALL Java_com_rwkv_faster_Tokenizer_encode(
+    JNIEnv *env, jobject obj /* this */, jstring jStr) {
+  auto tokenizer = getHandle<Tokenizer>(env, obj);
+  std::string str(to_cpp_string(env, jStr));
+  auto output = tokenizer->encode(str);
+  jintArray result = env->NewIntArray(output.size());
+  env->SetIntArrayRegion(result, 0, output.size(), output.data());
+  return result;
+}
+
+extern "C" JNIEXPORT jstring JNICALL Java_com_rwkv_faster_Tokenizer_decode_single(
+    JNIEnv *env, jobject obj /* this */, jint jId) {
+  auto tokenizer = getHandle<Tokenizer>(env, obj);
+  int id = static_cast<int>(jId);
+  auto output = tokenizer->decode(id);
   return env->NewStringUTF(output.c_str());
+}
+
+extern "C" JNIEXPORT jstring JNICALL Java_com_rwkv_faster_Tokenizer_decode_seq(
+    JNIEnv *env, jobject obj /* this */, jintArray jIds) {
+  auto tokenizer = getHandle<Tokenizer>(env, obj);
+  jint *arr = env->GetIntArrayElements(jIds, nullptr);
+  std::vector<int> ids(arr, arr + env->GetArrayLength(jIds));
+  env->ReleaseIntArrayElements(jIds, arr, 0);
+  auto output = tokenizer->decode(ids);
+  return env->NewStringUTF(output.c_str());
+}
+
+extern "C" JNIEXPORT void JNICALL Java_com_rwkv_faster_Sampler_init(
+    JNIEnv *env, jobject obj /* this */) {
+  auto *sampler =
+      new std::shared_ptr<Sampler>(new Sampler());
+  setHandle(env, obj, sampler);
+}
+
+extern "C" JNIEXPORT jint JNICALL Java_com_rwkv_faster_Sampler_sample(
+    JNIEnv *env, jobject obj /* this */, jfloatArray jProbs) {
+  auto sampler = getHandle<Sampler>(env, obj);
+  jfloat *arr = env->GetFloatArrayElements(jProbs, nullptr);
+  auto output = sampler->Sample(arr, env->GetArrayLength(jProbs));
+  return static_cast<jint>(output);
 }

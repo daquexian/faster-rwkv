@@ -26,7 +26,7 @@ int main(int argc, char **argv) {
   std::cout.setf(std::ios::unitbuf);
 
   rwkv::Tokenizer tokenizer(argv[1]);
-  rwkv::GreedySampler sampler;
+  rwkv::Sampler sampler;
   rwkv::Model model(argv[2], argv[3]);
   std::map<int, float> occurences;
   while (true) {
