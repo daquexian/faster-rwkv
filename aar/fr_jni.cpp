@@ -39,7 +39,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_rwkv_faster_Model_init(
   setHandle(env, obj, model);
 }
 
-extern "C" JNIEXPORT jfloatArray JNICALL Java_com_rwkv_faster_Model_run_single(
+extern "C" JNIEXPORT jfloatArray JNICALL Java_com_rwkv_faster_Model_runSingle(
     JNIEnv *env, jobject obj /* this */, jint input_id) {
   auto model = getHandle<Model>(env, obj);
   auto output = model->Run(input_id);
@@ -48,7 +48,7 @@ extern "C" JNIEXPORT jfloatArray JNICALL Java_com_rwkv_faster_Model_run_single(
   return result;
 }
 
-extern "C" JNIEXPORT jfloatArray JNICALL Java_com_rwkv_faster_Model_run_seq(
+extern "C" JNIEXPORT jfloatArray JNICALL Java_com_rwkv_faster_Model_runSeq(
     JNIEnv *env, jobject obj /* this */, jintArray jInputIds) {
   auto model = getHandle<Model>(env, obj);
   jint *arr = env->GetIntArrayElements(jInputIds, nullptr);
@@ -78,7 +78,7 @@ extern "C" JNIEXPORT jintArray JNICALL Java_com_rwkv_faster_Tokenizer_encode(
   return result;
 }
 
-extern "C" JNIEXPORT jstring JNICALL Java_com_rwkv_faster_Tokenizer_decode_single(
+extern "C" JNIEXPORT jstring JNICALL Java_com_rwkv_faster_Tokenizer_decodeSingle(
     JNIEnv *env, jobject obj /* this */, jint jId) {
   auto tokenizer = getHandle<Tokenizer>(env, obj);
   int id = static_cast<int>(jId);
@@ -86,7 +86,7 @@ extern "C" JNIEXPORT jstring JNICALL Java_com_rwkv_faster_Tokenizer_decode_singl
   return env->NewStringUTF(output.c_str());
 }
 
-extern "C" JNIEXPORT jstring JNICALL Java_com_rwkv_faster_Tokenizer_decode_seq(
+extern "C" JNIEXPORT jstring JNICALL Java_com_rwkv_faster_Tokenizer_decodeSeq(
     JNIEnv *env, jobject obj /* this */, jintArray jIds) {
   auto tokenizer = getHandle<Tokenizer>(env, obj);
   jint *arr = env->GetIntArrayElements(jIds, nullptr);
