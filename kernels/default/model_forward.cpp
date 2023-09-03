@@ -19,6 +19,7 @@ Tensor ModelForward(const Model *model, Device device, int id,
                     std::vector<std::vector<Tensor>> &states) {
   Tensor x = model->_embd_weights[id];
   auto &params = model->_params;
+#ifdef FR_ENABLE_NCNN
   if (model->_act_device == Device::kNCNNMeta) {
     x = ncnnmeta::add_input(x.shape(), "input");
     for (int i = 0; i < states.size(); i++) {
@@ -30,6 +31,7 @@ Tensor ModelForward(const Model *model, Device device, int id,
       }
     }
   }
+#endif
 
   int param_idx = 0;
 

@@ -2,8 +2,11 @@
 #include "check.h"
 #include <iostream>
 #include <kernels/kernels.h>
-#include <kernels/ncnn-meta/kernels.h>
 #include <stdexcept>
+
+#ifdef FR_ENABLE_NCNN
+#include <kernels/ncnn-meta/kernels.h>
+#endif
 
 namespace rwkv {
 
@@ -26,7 +29,7 @@ void print_tensor(const Tensor &t, const std::string &name) {
 }
 
 Tensor Copy(const Tensor &x, Device device, bool always_copy) {
-  if (x.device() == device && ! always_copy) {
+  if (x.device() == device && !always_copy) {
     return x;
   }
   Tensor y = Tensor::Empty(x.sizes(), x.dtype(), device);
@@ -43,10 +46,13 @@ Tensor Copy(const Tensor &x, Device device, bool always_copy) {
     return y;
   }
 #endif
+
+#ifdef FR_ENABLE_NCNN
   if (device == Device::kNCNNMeta && x.device() == Device::kCPU) {
     y = ncnnmeta::MemoryData(x);
     return y;
   }
+#endif
   if (device == Device::kCPU && x.device() == Device::kCPU) {
     memcpy(y.data_ptr(), x.data_ptr(), x.numel() * x.elem_size());
     return y;
@@ -59,7 +65,7 @@ int unique_id() {
   static int _unique_id = 0;
   return _unique_id++;
 }
-}
+} // namespace
 
 Tensor Tensor::Empty(const Shape &shape, DType dtype, Device device) {
   auto storage = std::make_shared<TensorStorage>(
@@ -83,25 +89,15 @@ Tensor Tensor::FromPtr(void *dptr, const Shape &shape, DType dtype,
   return tensor;
 }
 
-Tensor operator+(const Tensor &lhs, const Tensor &rhs) {
-  return add(lhs, rhs);
-}
+Tensor operator+(const Tensor &lhs, const Tensor &rhs) { return add(lhs, rhs); }
 
-Tensor operator-(const Tensor &lhs, const Tensor &rhs) {
-  return sub(lhs, rhs);
-}
+Tensor operator-(const Tensor &lhs, const Tensor &rhs) { return sub(lhs, rhs); }
 
-Tensor operator-(float lhs, const Tensor &rhs) {
-  return sub(lhs, rhs);
-}
+Tensor operator-(float lhs, const Tensor &rhs) { return sub(lhs, rhs); }
 
-Tensor operator*(const Tensor &lhs, const Tensor &rhs) {
-  return mul(lhs, rhs);
-}
+Tensor operator*(const Tensor &lhs, const Tensor &rhs) { return mul(lhs, rhs); }
 
-Tensor operator/(const Tensor &lhs, const Tensor &rhs) {
-  return div(lhs, rhs);
-}
+Tensor operator/(const Tensor &lhs, const Tensor &rhs) { return div(lhs, rhs); }
 
 TensorStorage::TensorStorage(size_t nbytes, Device device) {
   _data = allocator(device).Allocate(nbytes);
