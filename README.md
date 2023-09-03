@@ -40,7 +40,7 @@ For the path of Android NDK and toolchain file, please refer to Android NDK docs
 ```
 mkdir build
 cd build
-cmake -DFR_ENABLE_NCNN=ON -DNCNN_DISABLE_EXCEPTION=OFF -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-28 -DANDROID_NDK=xxxx -DCMAKE_TOOLCHAIN_FILE=xxxx -DCMAKE_BUILD_TYPE=Release -GNinja ..
+cmake -DFR_ENABLE_NCNN=ON -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-28 -DANDROID_NDK=xxxx -DCMAKE_TOOLCHAIN_FILE=xxxx -DCMAKE_BUILD_TYPE=Release -GNinja ..
 ninja
 ```
 
@@ -84,6 +84,9 @@ curl -L -s https://raw.githubusercontent.com/daquexian/faster-rwkv/master/downlo
 
 ### TODO
 
+- [x] JNI
+- [ ] Music/Raven models support
+- [ ] CI
 - [ ] seq mode
 - [ ] v5 models support
 - [ ] export ONNX

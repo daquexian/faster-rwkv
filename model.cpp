@@ -13,6 +13,8 @@
 
 namespace rwkv {
 
+static const bool kDebug = std::getenv("FR_DEBUG") != nullptr;
+
 Model::Model(const std::string &path, const std::string &strategy) {
   auto dev_str = strategy.substr(0, strategy.find(" "));
   Device act_device = [&]() {
@@ -46,9 +48,11 @@ Model::Model(const std::string &path, const std::string &strategy) {
   init_model(this, act_device, path, strategy);
   RV_CHECK(_n_layer > 0);
   RV_CHECK(_n_embd > 0);
+  ResetStates();
 }
 
-std::vector<std::vector<Tensor>> Model::CreateInitialStates() const {
+void Model::ResetStates() {
+  _states.clear();
   auto device = _act_device == Device::kNCNN ? Device::kCPU : _act_device;
   std::vector<std::vector<Tensor>> states;
   if (this->_version == 4) {
@@ -79,14 +83,19 @@ std::vector<std::vector<Tensor>> Model::CreateInitialStates() const {
       states.back().push_back(Copy(fill_(s3, 0), device));
     }
   }
-  return states;
 }
 
-Tensor Model::Run(const std::vector<int> &ids,
-                  std::vector<std::vector<Tensor>> &states) const {
+Tensor Model::Run(const std::vector<int> &ids) {
+  if (kDebug) {
+    std::cout << "Model::Run([";
+    for (auto id : ids) {
+      std::cout << id << ", ";
+    }
+    std::cout << "])" << std::endl;
+  }
   for (int i = 0; i < ids.size(); ++i) {
     auto id = ids[i];
-    auto out = Run(id, states);
+    auto out = _Run(id);
     if (i == ids.size() - 1) {
       return out;
     }
@@ -94,8 +103,15 @@ Tensor Model::Run(const std::vector<int> &ids,
   RV_UNIMPLEMENTED();
 }
 
-Tensor Model::Run(int id, std::vector<std::vector<Tensor>> &states) const {
-  return ModelForward(this, this->_act_device, id, states);
+Tensor Model::Run(int id) {
+  if (kDebug) {
+    std::cout << "Model::Run(" << id << ")" << std::endl;
+  }
+  return _Run(id);
+}
+
+Tensor Model::_Run(int id) {
+  return ModelForward(this, this->_act_device, id, _states);
 }
 
 } // namespace rwkv

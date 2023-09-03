@@ -1,4 +1,5 @@
 #include <fstream>
+#include <iostream>
 
 #include <msgpack.hpp>
 
@@ -113,6 +114,9 @@ Tensor ModelForward(const Model *model, Device device, int id,
   x = matmul(x, params[param_idx + 2]);
   if (x.dtype() == DType::kFloat16) {
     x = cast_dtype(x, DType::kFloat32);
+  }
+  if (device == Device::kNCNNMeta) {
+    mark_as_output(x, "output");
   }
   return x;
 }

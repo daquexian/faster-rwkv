@@ -3,13 +3,9 @@
 namespace rwkv {
 class Sampler {
 public:
-  virtual int Sample(const float *ptr, int len) = 0;
+  int Sample(const float *ptr, int len, float temperature=1.f, int top_k=0, float top_p=0.85f);
 };
 
-class GreedySampler : public Sampler {
-public:
-  int Sample(const float *ptr, int len);
-};
 } // namespace rwkv
 
 

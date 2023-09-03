@@ -10,16 +10,19 @@
 #include "tensor.h"
 
 namespace rwkv {
+using States = std::vector<std::vector<Tensor>>;
 struct Model {
   Model(const std::string &path, const std::string &strategy);
-  Tensor Run(const std::vector<int> &id,
-             std::vector<std::vector<Tensor>> &states) const;
-  Tensor Run(int id, std::vector<std::vector<Tensor>> &states) const;
-  std::vector<std::vector<Tensor>> CreateInitialStates() const;
+  Tensor Run(const std::vector<int> &id);
+  Tensor Run(int id);
+  void ResetStates();
+  void set_states(const States &states);
+  States get_states() const;
 
   std::vector<Tensor> _embd_weights;
 
 private:
+  Tensor _Run(int id);
   // std::unordered_map<std::string, Tensor> _params;
   // _params is not a map because we know the exact order of the parameters
   std::vector<Tensor> _params;
@@ -31,5 +34,6 @@ private:
   int _head_size = 0;
   int _version;
   std::any _extra;
+  States _states;
 };
 } // namespace rwkv

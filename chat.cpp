@@ -2,34 +2,32 @@
 #include <map>
 #include <chrono>
 
-#include "model.h"
-#include "sampler.h"
-#include "tokenizer.h"
+#include <model.h>
+#include <sampler.h>
+#include <tokenizer.h>
 
-const std::string kUserPrefix = "User: ";
-const std::string kAssistantPrefix = "Assistant:";
-const int kMaxOutputLength = 999;
-const int kEndOfSentence = 0;
-const std::string kDoubleNewLine = "\n\n";
-const int kNewLineId = 11;
-const int kChatLenShort = 40;
-const int kChatLenLong = 150;
-const float kPresencePenalty = 0.4;
-const float kFrequencyPenalty = 0.4;
-const float kPenaltyDecay = 0.996;
+static const std::string kUserPrefix = "User: ";
+static const std::string kAssistantPrefix = "Assistant:";
+static const int kMaxOutputLength = 999;
+static const int kEndOfSentence = 0;
+static const std::string kDoubleNewLine = "\n\n";
+static const int kNewLineId = 11;
+static const int kChatLenShort = 40;
+static const int kChatLenLong = 150;
+static const float kPresencePenalty = 0.4;
+static const float kFrequencyPenalty = 0.4;
+static const float kPenaltyDecay = 0.996;
 
-const bool kQAMode = true;
-const bool kDebug = std::getenv("FR_DEBUG") != nullptr;
-const bool kShowSpeed = std::getenv("FR_SHOW_SPEED") != nullptr;
+static const bool kQAMode = true;
+static const bool kShowSpeed = std::getenv("FR_SHOW_SPEED") != nullptr;
 
 int main(int argc, char **argv) {
   std::cout.setf(std::ios::unitbuf);
 
-  rwkv::Tokenizer tokenizer(argv[1]);
-  rwkv::GreedySampler sampler;
+  rwkv::WorldTokenizer tokenizer(argv[1]);
+  rwkv::Sampler sampler;
   rwkv::Model model(argv[2], argv[3]);
   std::map<int, float> occurences;
-  auto states = model.CreateInitialStates();
   while (true) {
     std::cout << kUserPrefix;
     std::string input;
@@ -43,14 +41,7 @@ int main(int argc, char **argv) {
     auto encode_time = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::system_clock::now() - tmp);
     tmp = std::chrono::system_clock::now();
-    if (kDebug) {
-      std::cout << "prompt_ids: [";
-      for (auto id : prompt_ids) {
-        std::cout << id << ", ";
-      }
-      std::cout << "]" << std::endl;
-    }
-    auto output = Copy(model.Run(prompt_ids, states), rwkv::Device::kCPU);
+    auto output = Copy(model.Run(prompt_ids), rwkv::Device::kCPU);
     std::string response;
     int num_new_tokens = 0;
     for (; num_new_tokens < kMaxOutputLength; num_new_tokens++) {
@@ -72,15 +63,7 @@ int main(int argc, char **argv) {
               std::min(3.0f, (num_new_tokens - kChatLenLong) * 0.25f);
         }
       }
-      auto output_id = sampler.Sample(output.data_ptr<float>(), output.numel());
-      if (kDebug) {
-        std::cout << "output_id: " << output_id << std::endl;
-        static const int kDebugOutputLength = 10;
-        std::cout << "output: [";
-        for (int i = 0; i < kDebugOutputLength; i++) {
-          std::cout << output.data_ptr<float>()[i] << ", ";
-        }
-      }
+      auto output_id = sampler.Sample(output.data_ptr<float>(), output.numel(), 1.f, 1, 0.f);
       occurences[output_id]++;
       if (output_id == kEndOfSentence && !kQAMode) {
         break;
@@ -96,7 +79,7 @@ int main(int argc, char **argv) {
       // response.substr(response.size() - 7) == "\nUser: ") {
       //   break;
       // }
-      output = Copy(model.Run(output_id, states), rwkv::Device::kCPU);
+      output = Copy(model.Run(output_id), rwkv::Device::kCPU);
     }
     auto model_time = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::system_clock::now() - tmp);
