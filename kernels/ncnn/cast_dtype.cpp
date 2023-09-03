@@ -1,6 +1,5 @@
 #include <iostream>
 #include <layer.h>
-#include <layer/cast.h>
 #include <mat.h>
 
 #include <tensor.h>
@@ -33,7 +32,7 @@ static int ncnn_cast(const ncnn::Mat &a, ncnn::Mat &b, int type_from,
 
   op->create_pipeline(opt);
 
-  ((ncnn::Cast *)op)->ncnn::Cast::forward(a, b, opt);
+  op->forward(a, b, opt);
 
   op->destroy_pipeline(opt);
 
