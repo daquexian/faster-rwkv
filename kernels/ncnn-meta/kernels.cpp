@@ -8,6 +8,7 @@
 #include <kernels/allocator.h>
 #include <kernels/registry.h>
 #include <tensor.h>
+#include <model.h>
 
 #define STRINGIFY(x) STRINGIFY_(x)
 #define STRINGIFY_(x) #x
@@ -53,6 +54,16 @@ void destroy() {
   std::ofstream out(_pp_path);
   out << pp_str;
   out.close();
+}
+
+void ExportModel(const std::string& input_path, const std::string &output_prefix) {
+  rwkv::ncnnmeta::init(output_prefix + ".bin", output_prefix + ".param");
+
+  // NOTE: fp32 here is just a placeholder. The dtype used by ncnn is determined
+  // when the model is loaded.
+  rwkv::Model model(input_path, "ncnn-meta fp32");
+  model.Run(0);
+  rwkv::ncnnmeta::destroy();
 }
 
 void append_data_to_bin_file(const Tensor &tensor, bool write_tag) {

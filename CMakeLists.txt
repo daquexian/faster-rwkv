@@ -145,6 +145,7 @@ endif()
 add_executable(export_ncnn export_ncnn.cpp)
 target_link_libraries(export_ncnn faster_rwkv)
 
+option(BENCHMARK_ENABLE_TESTING "Enable testing of the benchmark library." OFF)
 option(BENCHMARK_ENABLE_GTEST_TESTS "Enable building the unit tests which depend on gtest" OFF)
 FetchContent_Declare(
         benchmark
