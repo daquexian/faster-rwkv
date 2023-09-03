@@ -54,33 +54,32 @@ Model::Model(const std::string &path, const std::string &strategy) {
 void Model::ResetStates() {
   _states.clear();
   auto device = _act_device == Device::kNCNN ? Device::kCPU : _act_device;
-  std::vector<std::vector<Tensor>> states;
   if (this->_version == 4) {
     for (int i = 0; i < _n_layer; i++) {
-      states.push_back({});
+      _states.push_back({});
       auto s1 = Tensor::Empty(Shape{_n_embd}, _act_dtype, Device::kCPU);
-      states.back().push_back(Copy(fill_(s1, 0), device));
+      _states.back().push_back(Copy(fill_(s1, 0), device));
       auto s2 = Tensor::Empty(Shape{_n_embd}, DType::kFloat32, Device::kCPU);
-      states.back().push_back(Copy(fill_(s2, 0), device));
+      _states.back().push_back(Copy(fill_(s2, 0), device));
       auto s3 = Tensor::Empty(Shape{_n_embd}, DType::kFloat32, Device::kCPU);
-      states.back().push_back(Copy(fill_(s3, 0), device));
+      _states.back().push_back(Copy(fill_(s3, 0), device));
       auto s4 = Tensor::Empty(Shape{_n_embd}, DType::kFloat32, Device::kCPU);
-      states.back().push_back(Copy(fill_(s4, -1e30), device));
+      _states.back().push_back(Copy(fill_(s4, -1e30), device));
       auto s5 = Tensor::Empty(Shape{_n_embd}, _act_dtype, Device::kCPU);
-      states.back().push_back(Copy(fill_(s5, 0), device));
+      _states.back().push_back(Copy(fill_(s5, 0), device));
     }
   } else {
     for (int i = 0; i < _n_layer; i++) {
-      states.push_back({});
+      _states.push_back({});
       auto s1 = Tensor::Empty(Shape{_n_embd}, _act_dtype, Device::kCPU);
-      states.back().push_back(Copy(fill_(s1, 0), device));
+      _states.back().push_back(Copy(fill_(s1, 0), device));
       auto s2 =
           Tensor::Empty(Shape{this->_head_size, _n_embd / this->_head_size,
                               _n_embd / this->_head_size},
                         DType::kFloat32, Device::kCPU);
-      states.back().push_back(Copy(fill_(s2, 0), device));
+      _states.back().push_back(Copy(fill_(s2, 0), device));
       auto s3 = Tensor::Empty(Shape{_n_embd}, _act_dtype, Device::kCPU);
-      states.back().push_back(Copy(fill_(s3, 0), device));
+      _states.back().push_back(Copy(fill_(s3, 0), device));
     }
   }
 }
