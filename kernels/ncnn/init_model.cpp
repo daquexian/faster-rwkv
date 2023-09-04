@@ -38,6 +38,7 @@ void init_model(Model *model, Device device, const std::string &path,
     }
     model->_n_layer = n_layer;
   }
+  model->_version = 4;
   auto net = std::make_shared<ncnn::Net>();
   if (model->_act_dtype == DType::kFloat16) {
     net->opt.use_fp16_packed = false;

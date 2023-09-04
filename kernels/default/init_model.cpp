@@ -70,12 +70,11 @@ inline void init_model(Model *model, Device device, const std::string &path,
   model->_n_layer = map["n_layer"].as<int>();
   model->_n_embd = map["n_embd"].as<int>();
 
-  if (std::any_of(
-          weights.begin(), weights.end(),
-          [](const std::pair<const class std::__cxx11::basic_string<char>,
-                             struct msgpack::v2::object> &item) {
-            return item.first.find("ln_x") != std::string::npos;
-          })) {
+  if (std::any_of(weights.begin(), weights.end(),
+                  [](const std::pair<const std::string,
+                                     struct msgpack::v2::object> &item) {
+                    return item.first.find("ln_x") != std::string::npos;
+                  })) {
     model->_version = 5;
   } else {
     model->_version = 4;

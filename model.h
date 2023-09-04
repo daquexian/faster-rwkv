@@ -32,7 +32,7 @@ private:
   int _n_layer = 0;
   int _n_embd = 0;
   int _head_size = 0;
-  int _version;
+  int _version = 0;
   std::any _extra;
   States _states;
 };

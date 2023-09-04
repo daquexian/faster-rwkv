@@ -48,6 +48,10 @@ Model::Model(const std::string &path, const std::string &strategy) {
   init_model(this, act_device, path, strategy);
   RV_CHECK(_n_layer > 0);
   RV_CHECK(_n_embd > 0);
+  RV_CHECK(_version > 0);
+  if (_version == 5) {
+    RV_CHECK(_head_size > 0);
+  }
   ResetStates();
 }
 
