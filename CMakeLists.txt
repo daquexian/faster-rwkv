@@ -63,8 +63,6 @@ if (FR_ENABLE_NCNN)
     set(ncnn_kernel_srcs
         kernels/ncnn/init_model.cpp
         kernels/ncnn/model_forward.cpp
-        kernels/ncnn/cast_dtype.cpp
-        kernels/ncnn/element_wise.cpp
     )
 endif()
 
