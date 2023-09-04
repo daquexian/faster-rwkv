@@ -20,6 +20,7 @@ if (FR_ENABLE_CUDA)
     set(cuda_kernel_srcs
         kernels/cuda/matmul.cpp
         kernels/cuda/layer_norm.cu
+        kernels/cuda/group_norm.cu
         kernels/cuda/cast_dtype.cu
         kernels/cuda/att.cu
         kernels/cuda/ffn.cu

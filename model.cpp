@@ -54,22 +54,37 @@ Model::Model(const std::string &path, const std::string &strategy) {
 void Model::ResetStates() {
   _states.clear();
   auto device = _act_device == Device::kNCNN ? Device::kCPU : _act_device;
-  for (int i = 0; i < _n_layer; i++) {
-    _states.push_back({});
-    auto s1 = Tensor::Empty(Shape{_n_embd}, _act_dtype, Device::kCPU);
-    _states.back().push_back(Copy(fill_(s1, 0), device));
-    auto s2 = Tensor::Empty(Shape{_n_embd}, DType::kFloat32, Device::kCPU);
-    _states.back().push_back(Copy(fill_(s2, 0), device));
-    auto s3 = Tensor::Empty(Shape{_n_embd}, DType::kFloat32, Device::kCPU);
-    _states.back().push_back(Copy(fill_(s3, 0), device));
-    auto s4 = Tensor::Empty(Shape{_n_embd}, DType::kFloat32, Device::kCPU);
-    _states.back().push_back(Copy(fill_(s4, -1e30), device));
-    auto s5 = Tensor::Empty(Shape{_n_embd}, _act_dtype, Device::kCPU);
-    _states.back().push_back(Copy(fill_(s5, 0), device));
+  if (this->_version == 4) {
+    for (int i = 0; i < _n_layer; i++) {
+      _states.push_back({});
+      auto s1 = Tensor::Empty(Shape{_n_embd}, _act_dtype, Device::kCPU);
+      _states.back().push_back(Copy(fill_(s1, 0), device));
+      auto s2 = Tensor::Empty(Shape{_n_embd}, DType::kFloat32, Device::kCPU);
+      _states.back().push_back(Copy(fill_(s2, 0), device));
+      auto s3 = Tensor::Empty(Shape{_n_embd}, DType::kFloat32, Device::kCPU);
+      _states.back().push_back(Copy(fill_(s3, 0), device));
+      auto s4 = Tensor::Empty(Shape{_n_embd}, DType::kFloat32, Device::kCPU);
+      _states.back().push_back(Copy(fill_(s4, -1e30), device));
+      auto s5 = Tensor::Empty(Shape{_n_embd}, _act_dtype, Device::kCPU);
+      _states.back().push_back(Copy(fill_(s5, 0), device));
+    }
+  } else {
+    for (int i = 0; i < _n_layer; i++) {
+      _states.push_back({});
+      auto s1 = Tensor::Empty(Shape{_n_embd}, _act_dtype, Device::kCPU);
+      _states.back().push_back(Copy(fill_(s1, 0), device));
+      auto s2 =
+          Tensor::Empty(Shape{this->_head_size, _n_embd / this->_head_size,
+                              _n_embd / this->_head_size},
+                        DType::kFloat32, Device::kCPU);
+      _states.back().push_back(Copy(fill_(s2, 0), device));
+      auto s3 = Tensor::Empty(Shape{_n_embd}, _act_dtype, Device::kCPU);
+      _states.back().push_back(Copy(fill_(s3, 0), device));
+    }
   }
 }
 
-Tensor Model::Run(const std::vector<int>& ids) {
+Tensor Model::Run(const std::vector<int> &ids) {
   if (kDebug) {
     std::cout << "Model::Run([";
     for (auto id : ids) {
