@@ -17,6 +17,7 @@ static const int kChatLenLong = 150;
 static const float kPresencePenalty = 0.4;
 static const float kFrequencyPenalty = 0.4;
 static const float kPenaltyDecay = 0.996;
+static const bool kGlobalPenalty = std::getenv("FR_GLOBAL_PENALTY") != nullptr;
 
 static const bool kQAMode = true;
 static const bool kShowSpeed = std::getenv("FR_SHOW_SPEED") != nullptr;
@@ -91,6 +92,9 @@ int main(int argc, char **argv) {
       std::cout << "num tokens: " << prompt_ids.size() + num_new_tokens << std::endl;
       std::cout << "ms per token: " << 1. * total_time.count() / (prompt_ids.size() + num_new_tokens) << std::endl;
       std::cout << "tokens per second: " << 1. * (prompt_ids.size() + num_new_tokens) / total_time.count() * 1000 << std::endl;
+    }
+    if (!kGlobalPenalty) {
+      occurences.clear();
     }
 
     // std::cout << std::endl;
