@@ -4,9 +4,7 @@
 #include <kernels/kernels.h>
 #include <stdexcept>
 
-#ifdef FR_ENABLE_NCNN
 #include <kernels/ncnn-meta/kernels.h>
-#endif
 
 namespace rwkv {
 
@@ -47,12 +45,10 @@ Tensor Copy(const Tensor &x, Device device, bool always_copy) {
   }
 #endif
 
-#ifdef FR_ENABLE_NCNN
   if (device == Device::kNCNNMeta && x.device() == Device::kCPU) {
     y = ncnnmeta::MemoryData(x);
     return y;
   }
-#endif
   if (device == Device::kCPU && x.device() == Device::kCPU) {
     memcpy(y.data_ptr(), x.data_ptr(), x.numel() * x.elem_size());
     return y;
