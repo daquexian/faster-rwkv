@@ -16,7 +16,9 @@ endif()
 
 if (FR_ENABLE_CUDA)
     enable_language(CUDA)
-    set(CMAKE_CUDA_ARCHITECTURES native)
+    if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
+        set(CMAKE_CUDA_ARCHITECTURES native)
+    endif()
     set(cuda_kernel_srcs
         kernels/cuda/matmul.cpp
         kernels/cuda/layer_norm.cu

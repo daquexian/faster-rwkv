@@ -57,6 +57,13 @@ Tensor ModelForward(const Model *model, Device device, int id,
             params[param_idx + 4], params[param_idx + 5], params[param_idx + 6],
             params[param_idx + 7], params[param_idx + 8], params[param_idx + 9],
             params[param_idx + 10]);
+        if (device == Device::kNCNNMeta) {
+          mark_as_output(state[0], "output_state_" + std::to_string(i) + "_0");
+          mark_as_output(state[1], "output_state_" + std::to_string(i) + "_1");
+          mark_as_output(state[2], "output_state_" + std::to_string(i) + "_2");
+          mark_as_output(state[3], "output_state_" + std::to_string(i) + "_3");
+        }
+        param_idx += 11;
       } else {
         std::tie(x, state[0], state[1]) = att_one_v5(
             x, state[0], state[1], params[param_idx], params[param_idx + 1],
@@ -65,16 +72,10 @@ Tensor ModelForward(const Model *model, Device device, int id,
             params[param_idx + 8], params[param_idx + 9],
             params[param_idx + 10], params[param_idx + 11],
             params[param_idx + 12]);
-      }
-      if (device == Device::kNCNNMeta) {
-        mark_as_output(state[0], "output_state_" + std::to_string(i) + "_0");
-        mark_as_output(state[1], "output_state_" + std::to_string(i) + "_1");
-        mark_as_output(state[2], "output_state_" + std::to_string(i) + "_2");
-        mark_as_output(state[3], "output_state_" + std::to_string(i) + "_3");
-      }
-      if (model->_version == 4) {
-        param_idx += 11;
-      } else {
+        if (device == Device::kNCNNMeta) {
+          mark_as_output(state[0], "output_state_" + std::to_string(i) + "_0");
+          mark_as_output(state[1], "output_state_" + std::to_string(i) + "_1");
+        }
         param_idx += 13;
       }
     }

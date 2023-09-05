@@ -94,27 +94,16 @@ public:
   LengthType numel() const { return num_elements(_shape); }
   int32_t elem_size() const { return ::rwkv::elem_size(_dtype); }
 
-  // warning: copying happens here without RVO
-  Tensor &view(const std::initializer_list<LengthType> &shape) {
-    _shape = Shape(shape);
-    return *this;
-  }
+  Tensor view(const Shape &shape);
 
-  Tensor &flatten() {
-    auto elems = numel();
-    _shape.clear();
-    _shape.push_back(elems);
-    return *this;
-  }
+  Tensor flatten();
 
-  Tensor &unsqueeze(int dim) {
-    _shape.insert(_shape.begin() + dim, 1);
-    return *this;
-  }
+  Tensor unsqueeze(int dim);
 
   static Tensor Empty(const Shape &shape, DType dtype, Device device);
   static Tensor FromPtr(void *ptr, const Shape &shape, DType dtype,
                         Device device);
+  static Tensor FromOther(const Tensor& other, const Shape &shape);
 
   std::string name;
   bool is_constant = false;

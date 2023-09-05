@@ -14,8 +14,8 @@ static const std::string kDoubleNewLine = "\n\n";
 static const int kNewLineId = 11;
 static const int kChatLenShort = 40;
 static const int kChatLenLong = 150;
-static const float kPresencePenalty = 0.4;
-static const float kFrequencyPenalty = 0.4;
+static const float kPresencePenalty = 0.8;
+static const float kFrequencyPenalty = 0.8;
 static const float kPenaltyDecay = 0.996;
 static const bool kGlobalPenalty = std::getenv("FR_GLOBAL_PENALTY") != nullptr;
 

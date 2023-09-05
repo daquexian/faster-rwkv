@@ -85,6 +85,28 @@ Tensor Tensor::FromPtr(void *dptr, const Shape &shape, DType dtype,
   return tensor;
 }
 
+Tensor Tensor::FromOther(const Tensor& other, const Shape &shape) {
+  auto storage = other._storage;
+  Tensor tensor;
+  tensor._storage = storage;
+  tensor._shape = shape;
+  tensor._dtype = other._dtype;
+  tensor.name = "tensor_" + std::to_string(unique_id());
+  return tensor;
+}
+
+Tensor Tensor::view(const Shape &shape) {
+  return rwkv::reshape(*this, shape);
+}
+
+Tensor Tensor::flatten() {
+  return rwkv::flatten(*this);
+}
+
+Tensor Tensor::unsqueeze(int dim) {
+  return rwkv::unsqueeze(*this, dim);
+}
+
 Tensor operator+(const Tensor &lhs, const Tensor &rhs) { return add(lhs, rhs); }
 
 Tensor operator-(const Tensor &lhs, const Tensor &rhs) { return sub(lhs, rhs); }

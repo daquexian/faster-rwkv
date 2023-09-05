@@ -18,7 +18,9 @@ namespace _ncnn {
 void init_model(Model *model, Device device, const std::string &path,
                 const std::string &strategy) {
   // use all big cores
+#ifdef __ANDROID__
   ncnn::set_cpu_powersave(2);
+#endif
   
   auto param_path = path + ".param";
   auto bin_path = path + ".bin";

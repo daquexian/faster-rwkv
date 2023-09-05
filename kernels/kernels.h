@@ -123,6 +123,21 @@ inline Tensor maximum(const Tensor &x, const Tensor &y) {
                                                              x.device())(x, y);
 }
 
+inline Tensor reshape(const Tensor &x, const Shape &shape) {
+  return KernelRegistry::Instance().Get<decltype(reshape) *>("reshape",
+                                                             x.device())(x, shape);
+}
+
+inline Tensor flatten(const Tensor &x) {
+  return reshape(x, {x.numel()});
+}
+
+inline Tensor unsqueeze(const Tensor &x, int dim) {
+  auto new_shape = x.shape();
+  new_shape.insert(new_shape.begin() + dim, 1);
+  return reshape(x, new_shape);
+}
+
 inline Tensor mark_as_output(const Tensor &x, const std::string &name) {
   return KernelRegistry::Instance().Get<decltype(mark_as_output) *>(
       "mark_as_output", x.device())(x, name);

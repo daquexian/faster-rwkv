@@ -51,7 +51,7 @@ att_one_v5(const Tensor &x, const Tensor &sx, const Tensor &s,
   auto rx = xx * r_mix + sx * (1 - r_mix);
 
   auto H = t_decay.size(0);
-  auto S = x.size(x.shape().size() - 1);
+  auto S = x.size(x.shape().size() - 1) / H;
 
   auto r = matmul(rx, rw).view({H, 1, S});
   auto k = matmul(kx, kw).view({H, S, 1});
