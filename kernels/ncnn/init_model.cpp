@@ -70,6 +70,7 @@ void init_model(Model *model, Device device, const std::string &path,
     } else {
       // config file not found, indicating that this model has old version 4
       model->_version = "4";
+      model->_n_att = model->_n_embd;
     }
   }
   auto net = std::make_shared<ncnn::Net>();
