@@ -20,15 +20,32 @@ Tensor cast_dtype(const Tensor &x, DType dtype);
 }
 namespace ncnnmeta {
 
-int unique_layer_id() {
+int* get_unique_layer_id_ptr() {
   static int _unique_id = 0;
-  return _unique_id++;
+  return &_unique_id;
+}
+
+int unique_layer_id() {
+  return (*get_unique_layer_id_ptr())++;
+}
+
+void reset_unique_layer_id() {
+  *get_unique_layer_id_ptr() = 0;
+}
+
+int* get_blob_num_ptr() {
+  static int _blob_num = 0;
+  return &_blob_num;
 }
 
 int add_and_get_blob_num(int num) {
-  static int _blob_num = 0;
-  _blob_num += num;
-  return _blob_num;
+  int* ptr = get_blob_num_ptr();
+  *ptr += num;
+  return *ptr;
+}
+
+void reset_blob_num() {
+  *get_blob_num_ptr() = 0;
 }
 
 FILE *bp, *pp;
@@ -36,6 +53,8 @@ std::string _pp_path;
 std::string _config_path;
 
 void init(const std::string &bp_path, const std::string &pp_path, const std::string& config_path) {
+  reset_blob_num();
+  reset_unique_layer_id();
   bp = fopen(bp_path.c_str(), "wb");
   pp = fopen(pp_path.c_str(), "wb");
   _pp_path = pp_path;
@@ -65,6 +84,8 @@ void destroy(const Model& model) {
     config_file << "head_size: " << model.head_size() << std::endl;
     config_file << "n_layer: " << model.n_layer() << std::endl;
     config_file << "n_embd: " << model.n_embd() << std::endl;
+    config_file << "n_att: " << model.n_att() << std::endl;
+    config_file << "n_ffn: " << model.n_ffn() << std::endl;
     config_file.close();
   }
 }

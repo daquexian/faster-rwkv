@@ -62,9 +62,11 @@ void init_model(Model *model, Device device, const std::string &path,
 
       model->_version = get_value("version");
       model->_head_size = std::stoi(get_value("head_size"));
-      // overwrite these fields
+      // overwrite these fields if it is new model (having config file)
       model->_n_embd = std::stoi(get_value("n_embd"));
       model->_n_layer = std::stoi(get_value("n_layer"));
+      model->_n_att = std::stoi(get_value("n_att"));
+      model->_n_ffn = std::stoi(get_value("n_ffn"));
     } else {
       // config file not found, indicating that this model has old version 4
       model->_version = "4";
