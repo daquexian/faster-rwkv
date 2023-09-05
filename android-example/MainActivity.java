@@ -69,8 +69,8 @@ public class MainActivity extends AppCompatActivity {
         tokenizer = new ABCTokenizer();
         sampler = new Sampler();
 
-        int BOS_ID = 0;
-        int EOS_ID = 0;
+        int BOS_ID = 2;
+        int EOS_ID = 3;
         float temperature = 1;
         int top_k = 1;
         float top_p = 0.0f;
