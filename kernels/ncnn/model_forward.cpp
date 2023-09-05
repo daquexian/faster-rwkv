@@ -24,7 +24,6 @@ Tensor ModelForward(const Model *model, Device device, int id,
   auto output_blob_id = extra.output_blob_id;
   auto &output_state_ids = extra.output_state_ids;
   ncnn::Extractor ex = net.create_extractor();
-  ex.set_light_mode(false);
   ncnn::Mat input;
   // In ncnn model we generated, blob with id `n` is the embedding weights for
   // token with id `n`
