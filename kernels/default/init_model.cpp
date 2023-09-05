@@ -65,6 +65,7 @@ inline void init_model(Model *model, Device device, const std::string &path,
   };
 
   auto push_param = [model, &from_mp_tensor, &weights](const std::string &key) {
+    // copy the weights so that it will not be released
     model->_params.push_back(from_mp_tensor(weights[key], key));
   };
   model->_n_layer = map["n_layer"].as<int>();
@@ -75,9 +76,9 @@ inline void init_model(Model *model, Device device, const std::string &path,
                                      struct msgpack::v2::object> &item) {
                     return item.first.find("ln_x") != std::string::npos;
                   })) {
-    model->_version = 5;
+    model->_version = "5";
   } else {
-    model->_version = 4;
+    model->_version = "4";
   }
 
   for (int i = 0; i < model->_n_layer; i++) {
@@ -98,7 +99,7 @@ inline void init_model(Model *model, Device device, const std::string &path,
 
     push_param(bbb_pf + "ln1.weight");
     push_param(bbb_pf + "ln1.bias");
-    if (model->_version == 5) {
+    if (model->_version.substr(0, 1) == "5") {
       push_param(att_pf + "ln_x.weight");
       push_param(att_pf + "ln_x.bias");
     }
@@ -127,7 +128,7 @@ inline void init_model(Model *model, Device device, const std::string &path,
   push_param("ln_out.bias");
   push_param("head.weight");
 
-  if (model->_version == 5) {
+  if (model->_version.substr(0, 1) == "5") {
     model->_head_size = model->_params[7].size(0);
   }
 

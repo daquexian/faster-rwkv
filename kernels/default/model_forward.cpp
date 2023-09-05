@@ -50,7 +50,7 @@ Tensor ModelForward(const Model *model, Device device, int id,
       //   rmx, rrx, rmy, rry,
       //   omx, orx, omy, ory,
       // )
-      if (model->_version == 4) {
+      if (model->_version == "4") {
         std::tie(x, state[0], state[1], state[2], state[3]) = att(
             x, state[0], state[1], state[2], state[3], params[param_idx],
             params[param_idx + 1], params[param_idx + 2], params[param_idx + 3],
@@ -81,7 +81,7 @@ Tensor ModelForward(const Model *model, Device device, int id,
     }
     {
       int offset = 4;
-      if (model->_version == 5) {
+      if (model->_version.substr(0, 1) == "5") {
         offset = 2;
       }
 

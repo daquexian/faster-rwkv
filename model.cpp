@@ -48,9 +48,16 @@ Model::Model(const std::string &path, const std::string &strategy) {
   init_model(this, act_device, path, strategy);
   RV_CHECK(_n_layer > 0);
   RV_CHECK(_n_embd > 0);
-  RV_CHECK(_version > 0);
-  if (_version == 5) {
+  RV_CHECK(!_version.empty());
+  if (_version.substr(0, 1) == "5") {
     RV_CHECK(_head_size > 0);
+  }
+  if (kDebug) {
+    std::cout << "Model inited" << std::endl;
+    std::cout << "version: " << _version << std::endl;
+    std::cout << "head_size: " << _head_size << std::endl;
+    std::cout << "n_embd: " << _n_embd << std::endl;
+    std::cout << "n_layer: " << _n_layer << std::endl;
   }
   ResetStates();
 }
@@ -58,7 +65,7 @@ Model::Model(const std::string &path, const std::string &strategy) {
 void Model::ResetStates() {
   _states.clear();
   auto device = _act_device == Device::kNCNN ? Device::kCPU : _act_device;
-  if (this->_version == 4) {
+  if (this->_version == "4") {
     for (int i = 0; i < _n_layer; i++) {
       _states.push_back({});
       auto s1 = Tensor::Empty(Shape{_n_embd}, _act_dtype, Device::kCPU);

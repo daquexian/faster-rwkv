@@ -18,12 +18,16 @@ struct Model {
   void ResetStates();
   void set_states(const States &states);
   States get_states() const;
+  const int head_size() const { return _head_size; }
+  const int n_layer() const { return _n_layer; }
+  const int n_embd() const { return _n_embd; }
+  const std::string version() const { return _version; }
 
+  // TODO:
   std::vector<Tensor> _embd_weights;
 
 private:
   Tensor _Run(int id);
-  // std::unordered_map<std::string, Tensor> _params;
   // _params is not a map because we know the exact order of the parameters
   std::vector<Tensor> _params;
   Device _act_device;
@@ -32,7 +36,7 @@ private:
   int _n_layer = 0;
   int _n_embd = 0;
   int _head_size = 0;
-  int _version = 0;
+  std::string _version;
   std::any _extra;
   States _states;
 };

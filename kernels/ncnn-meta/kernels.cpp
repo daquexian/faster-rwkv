@@ -33,39 +33,51 @@ int add_and_get_blob_num(int num) {
 
 FILE *bp, *pp;
 std::string _pp_path;
+std::string _config_path;
 
-void init(const std::string &bp_path, const std::string &pp_path) {
+void init(const std::string &bp_path, const std::string &pp_path, const std::string& config_path) {
   bp = fopen(bp_path.c_str(), "wb");
   pp = fopen(pp_path.c_str(), "wb");
   _pp_path = pp_path;
+  _config_path = config_path;
 }
 
-void destroy() {
+void destroy(const Model& model) {
   fclose(bp);
   fclose(pp);
-  std::ifstream t(_pp_path);
-  std::stringstream buffer;
-  buffer << t.rdbuf();
-  t.close();
-  std::string pp_str = buffer.str();
-  int layer_num = unique_layer_id();
-  int blob_num = add_and_get_blob_num(0);
-  pp_str = "7767517\n" + std::to_string(layer_num) + " " +
-           std::to_string(blob_num) + "\n" + pp_str;
-  std::ofstream out(_pp_path);
-  out << pp_str;
-  out.close();
+  {
+    std::ifstream t(_pp_path);
+    std::stringstream buffer;
+    buffer << t.rdbuf();
+    t.close();
+    std::string pp_str = buffer.str();
+    int layer_num = unique_layer_id();
+    int blob_num = add_and_get_blob_num(0);
+    pp_str = "7767517\n" + std::to_string(layer_num) + " " +
+             std::to_string(blob_num) + "\n" + pp_str;
+    std::ofstream out(_pp_path);
+    out << pp_str;
+    out.close();
+  }
+  {
+    std::ofstream config_file(_config_path);
+    config_file << "version: " << model.version() << std::endl;
+    config_file << "head_size: " << model.head_size() << std::endl;
+    config_file << "n_layer: " << model.n_layer() << std::endl;
+    config_file << "n_embd: " << model.n_embd() << std::endl;
+    config_file.close();
+  }
 }
 
 void ExportModel(const std::string &input_path,
                  const std::string &output_prefix) {
-  rwkv::ncnnmeta::init(output_prefix + ".bin", output_prefix + ".param");
+  rwkv::ncnnmeta::init(output_prefix + ".bin", output_prefix + ".param", output_prefix + ".config");
 
   // NOTE: fp32 here is just a placeholder. The dtype used by ncnn is determined
   // when the model is loaded.
   rwkv::Model model(input_path, "ncnn-meta fp32");
   model.Run(0);
-  rwkv::ncnnmeta::destroy();
+  rwkv::ncnnmeta::destroy(model);
 }
 
 void append_data_to_bin_file(const Tensor &tensor, bool write_tag) {

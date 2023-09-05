@@ -31,3 +31,18 @@ TEST(Model, ncnn_fp16) {
   EXPECT_FLOAT_EQ(output_ptr[0], -1.28125);
   EXPECT_FLOAT_EQ(output_ptr[9], -9.25);
 }
+
+TEST(Model, ncnn_fp16_v5) {
+  const std::string model_dir(std::getenv("FR_MODEL_DIR"));
+  rwkv::ncnnmeta::ExportModel(model_dir + "/RWKV-5-World-0.1B-v1-20230803-ctx4096-fp32.fr",
+                              "/tmp/rwkv-5-0.1b-ncnn");
+  rwkv::Model model("/tmp/rwkv-5-0.1b-ncnn", "ncnn fp16");
+  auto output = rwkv::Copy(model.Run(0), rwkv::Device::kCPU);
+  auto output_ptr = output.data_ptr<float>();
+  EXPECT_FLOAT_EQ(output_ptr[0], -7.0625);
+  EXPECT_FLOAT_EQ(output_ptr[9], -15.8125);
+  output = rwkv::Copy(model.Run(0), rwkv::Device::kCPU);
+  output_ptr = output.data_ptr<float>();
+  EXPECT_FLOAT_EQ(output_ptr[0], -7.4375);
+  EXPECT_FLOAT_EQ(output_ptr[9], -14.9375);
+}
