@@ -1,5 +1,6 @@
 #include <fstream>
 #include <iostream>
+#include <sstream>
 
 #include <cpu.h>
 #include <net.h>
@@ -15,13 +16,18 @@
 namespace rwkv {
 namespace _ncnn {
 
+static const bool kDebug = std::getenv("FR_DEBUG") != nullptr;
+
 void init_model(Model *model, Device device, const std::string &path,
                 const std::string &strategy) {
   // use all big cores
+#ifdef __ANDROID__
   ncnn::set_cpu_powersave(2);
+#endif
   
   auto param_path = path + ".param";
   auto bin_path = path + ".bin";
+  auto config_path = path + ".config";
 
   {
     auto n_layer = 0;
@@ -37,6 +43,35 @@ void init_model(Model *model, Device device, const std::string &path,
       }
     }
     model->_n_layer = n_layer;
+  }
+  {
+    std::ifstream config_file(config_path);
+    if (config_file.good()) {
+      std::stringstream ss;
+      ss << config_file.rdbuf();
+      auto config = ss.str();
+      auto get_value = [&config](const std::string &key) {
+        auto pos = config.find(key);
+        RV_CHECK(pos != std::string::npos);
+        auto pos2 = config.find(": ", pos);
+        RV_CHECK(pos2 != std::string::npos);
+        auto pos3 = config.find("\n", pos2);
+        RV_CHECK(pos3 != std::string::npos);
+        return config.substr(pos2 + 2, pos3 - pos2 - 2);
+      };
+
+      model->_version = get_value("version");
+      model->_head_size = std::stoi(get_value("head_size"));
+      // overwrite these fields if it is new model (having config file)
+      model->_n_embd = std::stoi(get_value("n_embd"));
+      model->_n_layer = std::stoi(get_value("n_layer"));
+      model->_n_att = std::stoi(get_value("n_att"));
+      model->_n_ffn = std::stoi(get_value("n_ffn"));
+    } else {
+      // config file not found, indicating that this model has old version 4
+      model->_version = "4";
+      model->_n_att = model->_n_embd;
+    }
   }
   auto net = std::make_shared<ncnn::Net>();
   if (model->_act_dtype == DType::kFloat16) {

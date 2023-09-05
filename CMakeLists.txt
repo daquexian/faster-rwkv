@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.22)
+cmake_minimum_required(VERSION 3.25)
 project(faster-rwkv CXX)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -16,10 +16,13 @@ endif()
 
 if (FR_ENABLE_CUDA)
     enable_language(CUDA)
-    set(CMAKE_CUDA_ARCHITECTURES native)
+    if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
+        set(CMAKE_CUDA_ARCHITECTURES native)
+    endif()
     set(cuda_kernel_srcs
         kernels/cuda/matmul.cpp
         kernels/cuda/layer_norm.cu
+        kernels/cuda/group_norm.cu
         kernels/cuda/cast_dtype.cu
         kernels/cuda/att.cu
         kernels/cuda/ffn.cu
@@ -29,12 +32,6 @@ if (FR_ENABLE_CUDA)
     )
 endif()
 
-if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.25)
-    set(SYSTEM_ARG SYSTEM)
-else()
-    set(SYSTEM_ARG)
-endif()
-
 if (FR_ENABLE_NCNN)
     FetchContent_Declare(
         ncnn
@@ -42,7 +39,7 @@ if (FR_ENABLE_NCNN)
         # This commit reduces peak memory usage
         # https://github.com/Tencent/ncnn/pull/4966
         GIT_TAG 0829fa49d3d74e9e8d6b053cc0bef60a06c60bce
-        ${SYSTEM_ARG}
+        SYSTEM
         )
     option(NCNN_BUILD_BENCHMARK "" OFF)
     option(NCNN_BUILD_TOOLS "" OFF)
@@ -62,8 +59,6 @@ if (FR_ENABLE_NCNN)
     set(ncnn_kernel_srcs
         kernels/ncnn/init_model.cpp
         kernels/ncnn/model_forward.cpp
-        kernels/ncnn/cast_dtype.cpp
-        kernels/ncnn/element_wise.cpp
     )
 endif()
 
@@ -72,7 +67,7 @@ if (FR_ENABLE_ONNX)
         onnx
         GIT_REPOSITORY https://github.com/onnx/onnx
         GIT_TAG v1.14.0
-        ${SYSTEM_ARG}
+        SYSTEM
     )
     FetchContent_MakeAvailable(onnx)
 endif()
@@ -81,7 +76,7 @@ FetchContent_Declare(
         msgpack
         GIT_REPOSITORY https://github.com/msgpack/msgpack-c
         GIT_TAG cpp-6.1.0
-        ${SYSTEM_ARG}
+        SYSTEM
         )
 option(MSGPACK_USE_BOOST "" OFF)
 FetchContent_MakeAvailable(msgpack)
@@ -102,13 +97,17 @@ add_library(faster_rwkv_internal
         ${cuda_kernel_srcs}
         ${ncnn_kernel_srcs}
         )
-target_link_libraries(faster_rwkv_internal PRIVATE msgpack-cxx ${ncnn_deps})
+target_link_libraries(faster_rwkv_internal PRIVATE msgpack-cxx)
+target_link_libraries(faster_rwkv_internal PUBLIC ${ncnn_deps})
 target_include_directories(faster_rwkv_internal PUBLIC ${PROJECT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
 
 if (FR_ENABLE_CUDA)
     find_package(CUDAToolkit REQUIRED)
     target_link_libraries(faster_rwkv_internal PUBLIC CUDA::cudart CUDA::cublas)
     target_compile_definitions(faster_rwkv_internal PUBLIC FR_ENABLE_CUDA)
+endif()
+if (FR_ENABLE_NCNN)
+    target_compile_definitions(faster_rwkv_internal PUBLIC FR_ENABLE_NCNN)
 endif()
 
 add_library(faster_rwkv INTERFACE)
@@ -117,7 +116,7 @@ FetchContent_Declare(
         gtest
         GIT_REPOSITORY https://github.com/google/googletest.git
         GIT_TAG v1.14.0
-        ${SYSTEM_ARG}
+        SYSTEM
         )
 FetchContent_MakeAvailable(gtest)
 enable_testing()
@@ -134,23 +133,22 @@ if (NOT CMAKE_SYSTEM_NAME STREQUAL "Android")
     gtest_discover_tests(test_tokenizer)
 endif()
 
-if (FR_ENABLE_NCNN)
-    add_executable(test_ops test_ops.cpp)
-    target_link_libraries(test_ops gtest_main faster_rwkv)
-    if (NOT CMAKE_SYSTEM_NAME STREQUAL "Android")
-        gtest_discover_tests(test_ops)
-    endif()
+add_executable(test_ops test_ops.cpp)
+target_link_libraries(test_ops gtest_main faster_rwkv)
+if (NOT CMAKE_SYSTEM_NAME STREQUAL "Android")
+    gtest_discover_tests(test_ops)
 endif()
 
 add_executable(export_ncnn export_ncnn.cpp)
 target_link_libraries(export_ncnn faster_rwkv)
 
+option(BENCHMARK_ENABLE_TESTING "Enable testing of the benchmark library." OFF)
 option(BENCHMARK_ENABLE_GTEST_TESTS "Enable building the unit tests which depend on gtest" OFF)
 FetchContent_Declare(
         benchmark
         GIT_REPOSITORY https://github.com/google/benchmark
         GIT_TAG v1.8.2
-        ${SYSTEM_ARG}
+        SYSTEM
         )
 FetchContent_MakeAvailable(benchmark)
 add_executable(bench_model bench_model.cpp)

@@ -37,12 +37,25 @@ for k, v in w.items():
         d['weights'][k] = v
 
 n_layer = 0
+version = 4
 for x in w.keys():
     layer_id = int(x.split('.')[1]) if ('blocks.' in x) else 0
     n_layer = max(n_layer, layer_id+1)
+    if 'ln_x' in x:
+        version = max(5, version)
+    if 'gate.weight' in x:
+        version = max(5.1, version)
+    if int(version) == 5 and 'att.time_decay' in x:
+        n_head = w[x].shape[0]
+        d['n_head'] = n_head
 
+
+d['version'] = str(version)
 d['n_layer'] = n_layer
 d['n_embd'] = w['emb.weight'].shape[1]
+# weight has been transposed in chatrwkv conversion
+d['n_att'] = w['blocks.0.att.key.weight'].shape[1]
+d['n_ffn'] = w['blocks.0.ffn.key.weight'].shape[1]
 
 def pack(x):
     if isinstance(x, torch.Tensor):

@@ -1,5 +1,4 @@
 #include <layer.h>
-#include <layer/binaryop.h>
 #include <mat.h>
 
 #include <kernels/registry.h>
@@ -10,7 +9,7 @@ namespace {
 
 static int ncnn_scalar_div(ncnn::Mat &a, float b) {
   ncnn::ParamDict pd;
-  pd.set(0, ncnn::BinaryOp::Operation_DIV);
+  pd.set(0, 4);
   pd.set(1, 1); // with_scalar
   pd.set(2, b); // b
 
@@ -37,7 +36,7 @@ static int ncnn_scalar_div(ncnn::Mat &a, float b) {
 
   op->create_pipeline(opt);
 
-  ((ncnn::BinaryOp *)op)->ncnn::BinaryOp::forward_inplace(a, opt);
+  op->forward_inplace(a, opt);
 
   op->destroy_pipeline(opt);
 

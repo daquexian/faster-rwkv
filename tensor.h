@@ -1,12 +1,16 @@
 #pragma once
 
 #include <cassert>
+#include <initializer_list>
 #include <memory>
 #include <string>
 #include <vector>
 #ifdef FR_ENABLE_CUDA
-#include <cuda_runtime.h>
 #include <cuda_fp16.h>
+#include <cuda_runtime.h>
+#endif
+#ifdef FR_ENABLE_NCNN
+#include <mat.h>
 #endif
 
 #include <check.h>
@@ -93,11 +97,24 @@ public:
   LengthType numel() const { return num_elements(_shape); }
   int32_t elem_size() const { return ::rwkv::elem_size(_dtype); }
 
+  Tensor view(const Shape &shape);
+
+  Tensor flatten();
+
+  Tensor unsqueeze(int dim);
+
   static Tensor Empty(const Shape &shape, DType dtype, Device device);
-  static Tensor FromPtr(void *ptr, const Shape &shape, DType dtype, Device device);
+  static Tensor FromPtr(void *ptr, const Shape &shape, DType dtype,
+                        Device device);
+  static Tensor FromOther(const Tensor& other, const Shape &shape);
+#ifdef FR_ENABLE_NCNN
+  ncnn::Mat ToNcnnMat() const;
+  static Tensor FromNcnnMat(const ncnn::Mat& ncnn_mat, bool copy);
+#endif
 
   std::string name;
   bool is_constant = false;
+
 private:
   Tensor() = default;
   std::shared_ptr<TensorStorage> _storage;
@@ -111,8 +128,8 @@ Tensor operator-(float lhs, const Tensor &rhs);
 Tensor operator*(const Tensor &lhs, const Tensor &rhs);
 Tensor operator/(const Tensor &lhs, const Tensor &rhs);
 
-Tensor Copy(const Tensor &x, Device device, bool always_copy=false);
+Tensor Copy(const Tensor &x, Device device, bool always_copy = false);
 
-void print_tensor(const Tensor& t, const std::string &name);
+void print_tensor(const Tensor &t, const std::string &name);
 
 } // namespace rwkv

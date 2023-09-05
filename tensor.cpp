@@ -2,8 +2,9 @@
 #include "check.h"
 #include <iostream>
 #include <kernels/kernels.h>
-#include <kernels/ncnn-meta/kernels.h>
 #include <stdexcept>
+
+#include <kernels/ncnn-meta/kernels.h>
 
 namespace rwkv {
 
@@ -26,7 +27,7 @@ void print_tensor(const Tensor &t, const std::string &name) {
 }
 
 Tensor Copy(const Tensor &x, Device device, bool always_copy) {
-  if (x.device() == device && ! always_copy) {
+  if (x.device() == device && !always_copy) {
     return x;
   }
   Tensor y = Tensor::Empty(x.sizes(), x.dtype(), device);
@@ -43,6 +44,7 @@ Tensor Copy(const Tensor &x, Device device, bool always_copy) {
     return y;
   }
 #endif
+
   if (device == Device::kNCNNMeta && x.device() == Device::kCPU) {
     y = ncnnmeta::MemoryData(x);
     return y;
@@ -59,7 +61,7 @@ int unique_id() {
   static int _unique_id = 0;
   return _unique_id++;
 }
-}
+} // namespace
 
 Tensor Tensor::Empty(const Shape &shape, DType dtype, Device device) {
   auto storage = std::make_shared<TensorStorage>(
@@ -83,25 +85,67 @@ Tensor Tensor::FromPtr(void *dptr, const Shape &shape, DType dtype,
   return tensor;
 }
 
-Tensor operator+(const Tensor &lhs, const Tensor &rhs) {
-  return add(lhs, rhs);
+Tensor Tensor::FromOther(const Tensor &other, const Shape &shape) {
+  auto storage = other._storage;
+  Tensor tensor;
+  tensor._storage = storage;
+  tensor._shape = shape;
+  tensor._dtype = other._dtype;
+  tensor.name = "tensor_" + std::to_string(unique_id());
+  return tensor;
 }
 
-Tensor operator-(const Tensor &lhs, const Tensor &rhs) {
-  return sub(lhs, rhs);
+#ifdef FR_ENABLE_NCNN
+// NOTE: the memory is shared
+ncnn::Mat Tensor::ToNcnnMat() const {
+  RV_CHECK(device() == Device::kCPU);
+
+  int nranks = shape().size();
+  if (nranks == 3) {
+    return ncnn::Mat(size(2), size(1), size(0), const_cast<void *>(data_ptr()),
+                     elem_size());
+  } else if (nranks == 2) {
+    return ncnn::Mat(size(1), size(0), const_cast<void *>(data_ptr()),
+                     elem_size());
+  } else if (nranks == 1) {
+    return ncnn::Mat(size(0), const_cast<void *>(data_ptr()), elem_size());
+  } else {
+    RV_UNIMPLEMENTED();
+  }
 }
 
-Tensor operator-(float lhs, const Tensor &rhs) {
-  return sub(lhs, rhs);
+Tensor Tensor::FromNcnnMat(const ncnn::Mat &ncnn_mat, bool copy) {
+  Shape shape;
+  if (ncnn_mat.dims == 1) {
+    shape = {ncnn_mat.w};
+  } else if (ncnn_mat.dims == 2) {
+    shape = {ncnn_mat.h, ncnn_mat.w};
+  } else if (ncnn_mat.dims == 3) {
+    shape = {ncnn_mat.c, ncnn_mat.h, ncnn_mat.w};
+  } else {
+    RV_UNIMPLEMENTED();
+  }
+  return Copy(
+      Tensor::FromPtr(ncnn_mat.data, shape, DType::kFloat32, Device::kCPU),
+      Device::kCPU, copy);
 }
+#endif
 
-Tensor operator*(const Tensor &lhs, const Tensor &rhs) {
-  return mul(lhs, rhs);
-}
+Tensor Tensor::view(const Shape &shape) { return rwkv::reshape(*this, shape); }
 
-Tensor operator/(const Tensor &lhs, const Tensor &rhs) {
-  return div(lhs, rhs);
-}
+Tensor Tensor::flatten() { return rwkv::flatten(*this); }
+
+Tensor Tensor::unsqueeze(int dim) { return rwkv::unsqueeze(*this, dim); }
+
+Tensor operator+(const Tensor &lhs, const Tensor &rhs) { return add(lhs, rhs); }
+
+Tensor operator-(const Tensor &lhs, const Tensor &rhs) { return sub(lhs, rhs); }
+
+Tensor operator-(float lhs, const Tensor &rhs) { return sub(lhs, rhs); }
+
+Tensor operator*(const Tensor &lhs, const Tensor &rhs) { return mul(lhs, rhs); }
+
+Tensor operator/(const Tensor &lhs, const Tensor &rhs) { return div(lhs, rhs); }
 
 TensorStorage::TensorStorage(size_t nbytes, Device device) {
   _data = allocator(device).Allocate(nbytes);
