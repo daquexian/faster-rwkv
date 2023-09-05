@@ -34,10 +34,8 @@ Tensor ModelForward(const Model *model, Device device, int id,
   for (int i = 0; i < states.size(); i++) {
     for (int j = 0; j < states[i].size(); j++) {
       auto &state_tensor = states[i][j];
-      RV_CHECK(state_tensor.shape().size() == 1);
       RV_CHECK(state_tensor.device() == Device::kCPU);
-      ncnn::Mat state_mat(state_tensor.numel(), state_tensor.data_ptr(),
-                          state_tensor.elem_size());
+      ncnn::Mat state_mat = state_tensor.ToNcnnMat();
       ex.input(state_ids[i][j], state_mat);
     }
   }
@@ -47,10 +45,7 @@ Tensor ModelForward(const Model *model, Device device, int id,
     for (int j = 0; j < states[i].size(); j++) {
       ncnn::Mat output_state;
       ex.extract(output_state_ids[i][j], output_state);
-      auto output_state_tensor =
-          Copy(Tensor::FromPtr(output_state.data, {output_state.w},
-                               DType::kFloat32, Device::kCPU),
-               Device::kCPU, true);
+      auto output_state_tensor = Tensor::FromNcnnMat(output_state, true);
       states[i][j] = output_state_tensor;
     }
   }

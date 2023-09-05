@@ -518,7 +518,7 @@ att_one_v5(const Tensor &x, const Tensor &sx, const Tensor &s,
            const Tensor &kw, const Tensor &vw, const Tensor &rw,
            const Tensor &ow) {
 
-  auto [x_s1, x_s2, x_s3, x_s4] = split4(x);
+  auto [x_s1, x_s2] = split2(x);
   auto xx = layernorm(x_s1, ln_w, ln_b);
   // auto [kx, vx, rx] = time_mix()
   auto [xx_s1, xx_s2, xx_s3, xx_s4] = split4(xx);
@@ -533,28 +533,19 @@ att_one_v5(const Tensor &x, const Tensor &sx, const Tensor &s,
   auto H = t_decay.size(0);
   auto S = x.size(x.shape().size() - 1) / H;
 
-  // auto r = x_s3.view({H, 1, S});
   auto r = matmul(rx, rw).view({H, 1, S});
-  // auto k = x_s3.view({H, S, 1});
   auto k = matmul(kx, kw).view({H, S, 1});
-  // auto v = x_s4.view({H, 1, S});
   auto v = matmul(vx, vw).view({H, 1, S});
   
   auto a = matmul(k, v);
   auto [a_s1, a_s2] = split2(a);
   auto [s_s1, s_s2] = split2(s);
-  // OK (when no groupnorm):
-  auto out = r;
-  // OK (when no groupnorm):
-  // auto out = matmul(r, a_s1);
-  // OK (when no groupnorm):
-  // auto out = matmul(r, a_s1 * t_first);
-  // fail (when no groupnorm):
-  // auto out = matmul(r, a_s1 * t_first + s_s1);
+  auto out = matmul(r, a_s1 * t_first + s_s1);
   auto decayed_s = a_s2 + s_s2 * t_decay;
 
   out = out.flatten();
-  // out = groupnorm(out.unsqueeze(0), static_cast<int>(H), lx_w, lx_b).flatten();
+  // NOTE: ncnn groupnorm is different from pytorch groupnorm, so we use 1d input here
+  out = groupnorm(out, static_cast<int>(H), lx_w, lx_b).flatten();
   out = matmul(out, ow);
 
   return {x_s2 + out, xx_s4, decayed_s};

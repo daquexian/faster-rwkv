@@ -97,13 +97,17 @@ add_library(faster_rwkv_internal
         ${cuda_kernel_srcs}
         ${ncnn_kernel_srcs}
         )
-target_link_libraries(faster_rwkv_internal PRIVATE msgpack-cxx ${ncnn_deps})
+target_link_libraries(faster_rwkv_internal PRIVATE msgpack-cxx)
+target_link_libraries(faster_rwkv_internal PUBLIC ${ncnn_deps})
 target_include_directories(faster_rwkv_internal PUBLIC ${PROJECT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
 
 if (FR_ENABLE_CUDA)
     find_package(CUDAToolkit REQUIRED)
     target_link_libraries(faster_rwkv_internal PUBLIC CUDA::cudart CUDA::cublas)
     target_compile_definitions(faster_rwkv_internal PUBLIC FR_ENABLE_CUDA)
+endif()
+if (FR_ENABLE_NCNN)
+    target_compile_definitions(faster_rwkv_internal PUBLIC FR_ENABLE_NCNN)
 endif()
 
 add_library(faster_rwkv INTERFACE)
@@ -129,12 +133,10 @@ if (NOT CMAKE_SYSTEM_NAME STREQUAL "Android")
     gtest_discover_tests(test_tokenizer)
 endif()
 
-if (FR_ENABLE_NCNN)
-    add_executable(test_ops test_ops.cpp)
-    target_link_libraries(test_ops gtest_main faster_rwkv)
-    if (NOT CMAKE_SYSTEM_NAME STREQUAL "Android")
-        gtest_discover_tests(test_ops)
-    endif()
+add_executable(test_ops test_ops.cpp)
+target_link_libraries(test_ops gtest_main faster_rwkv)
+if (NOT CMAKE_SYSTEM_NAME STREQUAL "Android")
+    gtest_discover_tests(test_ops)
 endif()
 
 add_executable(export_ncnn export_ncnn.cpp)

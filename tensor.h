@@ -9,6 +9,9 @@
 #include <cuda_fp16.h>
 #include <cuda_runtime.h>
 #endif
+#ifdef FR_ENABLE_NCNN
+#include <mat.h>
+#endif
 
 #include <check.h>
 #include <half.hpp>
@@ -104,6 +107,10 @@ public:
   static Tensor FromPtr(void *ptr, const Shape &shape, DType dtype,
                         Device device);
   static Tensor FromOther(const Tensor& other, const Shape &shape);
+#ifdef FR_ENABLE_NCNN
+  ncnn::Mat ToNcnnMat() const;
+  static Tensor FromNcnnMat(const ncnn::Mat& ncnn_mat, bool copy);
+#endif
 
   std::string name;
   bool is_constant = false;

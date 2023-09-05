@@ -85,7 +85,7 @@ Tensor Tensor::FromPtr(void *dptr, const Shape &shape, DType dtype,
   return tensor;
 }
 
-Tensor Tensor::FromOther(const Tensor& other, const Shape &shape) {
+Tensor Tensor::FromOther(const Tensor &other, const Shape &shape) {
   auto storage = other._storage;
   Tensor tensor;
   tensor._storage = storage;
@@ -95,17 +95,47 @@ Tensor Tensor::FromOther(const Tensor& other, const Shape &shape) {
   return tensor;
 }
 
-Tensor Tensor::view(const Shape &shape) {
-  return rwkv::reshape(*this, shape);
+#ifdef FR_ENABLE_NCNN
+// NOTE: the memory is shared
+ncnn::Mat Tensor::ToNcnnMat() const {
+  RV_CHECK(device() == Device::kCPU);
+
+  int nranks = shape().size();
+  if (nranks == 3) {
+    return ncnn::Mat(size(2), size(1), size(0), const_cast<void *>(data_ptr()),
+                     elem_size());
+  } else if (nranks == 2) {
+    return ncnn::Mat(size(1), size(0), const_cast<void *>(data_ptr()),
+                     elem_size());
+  } else if (nranks == 1) {
+    return ncnn::Mat(size(0), const_cast<void *>(data_ptr()), elem_size());
+  } else {
+    RV_UNIMPLEMENTED();
+  }
 }
 
-Tensor Tensor::flatten() {
-  return rwkv::flatten(*this);
+Tensor Tensor::FromNcnnMat(const ncnn::Mat &ncnn_mat, bool copy) {
+  Shape shape;
+  if (ncnn_mat.dims == 1) {
+    shape = {ncnn_mat.w};
+  } else if (ncnn_mat.dims == 2) {
+    shape = {ncnn_mat.h, ncnn_mat.w};
+  } else if (ncnn_mat.dims == 3) {
+    shape = {ncnn_mat.c, ncnn_mat.h, ncnn_mat.w};
+  } else {
+    RV_UNIMPLEMENTED();
+  }
+  return Copy(
+      Tensor::FromPtr(ncnn_mat.data, shape, DType::kFloat32, Device::kCPU),
+      Device::kCPU, copy);
 }
+#endif
 
-Tensor Tensor::unsqueeze(int dim) {
-  return rwkv::unsqueeze(*this, dim);
-}
+Tensor Tensor::view(const Shape &shape) { return rwkv::reshape(*this, shape); }
+
+Tensor Tensor::flatten() { return rwkv::flatten(*this); }
+
+Tensor Tensor::unsqueeze(int dim) { return rwkv::unsqueeze(*this, dim); }
 
 Tensor operator+(const Tensor &lhs, const Tensor &rhs) { return add(lhs, rhs); }
 
