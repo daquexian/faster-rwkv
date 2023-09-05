@@ -110,11 +110,17 @@ inline void init_model(Model *model, Device device, const std::string &path,
     push_param(att_pf + "time_mix_k");
     push_param(att_pf + "time_mix_v");
     push_param(att_pf + "time_mix_r");
+    if (model->_version == "5.1") {
+      push_param(att_pf + "time_mix_g");
+    }
     push_param(att_pf + "time_decay");
     push_param(att_pf + "time_first");
     push_param(att_pf + "key.weight");
     push_param(att_pf + "value.weight");
     push_param(att_pf + "receptance.weight");
+    if (model->_version == "5.1") {
+      push_param(att_pf + "gate.weight");
+    }
     push_param(att_pf + "output.weight");
     // std::tie(x, state[offset]) =
     //     ffn(x, state[offset], _params[bbb_pf + "ln2.weight"],
@@ -131,10 +137,6 @@ inline void init_model(Model *model, Device device, const std::string &path,
   push_param("ln_out.weight");
   push_param("ln_out.bias");
   push_param("head.weight");
-
-  if (model->_version.substr(0, 1) == "5") {
-    RV_CHECK(model->_head_size == model->_params[7].size(0));
-  }
 
   for (int i = 0; i < embd_weights.size(); i++) {
     auto mp_tensor = embd_weights[i];

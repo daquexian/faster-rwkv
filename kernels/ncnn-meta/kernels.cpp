@@ -436,6 +436,15 @@ Tensor sigmoid(const Tensor &x) {
   return output;
 }
 
+Tensor silu(const Tensor &x) {
+  PRINT_OP_TYPE_AND_NAME("Swish", 1, 1);
+  auto output = Tensor::Empty(x.shape(), DType::kFloat32, Device::kNCNNMeta);
+  fprintf(pp, " %s", x.name.c_str());
+  fprintf(pp, " %s", output.name.c_str());
+  fprintf(pp, "\n");
+  return output;
+}
+
 Tensor mark_as_output(const Tensor &x, const std::string &name) {
   PRINT_OP_TYPE_AND_NAME("Split", 1, 1);
   auto output = Tensor::Empty(x.shape(), DType::kFloat32, Device::kNCNNMeta);
@@ -488,6 +497,24 @@ std::tuple<Tensor, Tensor, Tensor, Tensor> split4(const Tensor &x) {
   fprintf(pp, " %s", output4.name.c_str());
   fprintf(pp, "\n");
   return {output1, output2, output3, output4};
+}
+
+std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor> split5(const Tensor &x) {
+  Tensor meta_x = x.device() == Device::kCPU ? MemoryData(x) : x;
+  PRINT_OP_TYPE_AND_NAME("Split", 1, 5);
+  auto output1 = Tensor::Empty(x.shape(), DType::kFloat32, Device::kNCNNMeta);
+  auto output2 = Tensor::Empty(x.shape(), DType::kFloat32, Device::kNCNNMeta);
+  auto output3 = Tensor::Empty(x.shape(), DType::kFloat32, Device::kNCNNMeta);
+  auto output4 = Tensor::Empty(x.shape(), DType::kFloat32, Device::kNCNNMeta);
+  auto output5 = Tensor::Empty(x.shape(), DType::kFloat32, Device::kNCNNMeta);
+  fprintf(pp, " %s", meta_x.name.c_str());
+  fprintf(pp, " %s", output1.name.c_str());
+  fprintf(pp, " %s", output2.name.c_str());
+  fprintf(pp, " %s", output3.name.c_str());
+  fprintf(pp, " %s", output4.name.c_str());
+  fprintf(pp, " %s", output5.name.c_str());
+  fprintf(pp, "\n");
+  return {output1, output2, output3, output4, output5};
 }
 
 std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor>
@@ -585,6 +612,53 @@ att_one_v5(const Tensor &x, const Tensor &sx, const Tensor &s,
 }
 
 KernelRegister att_v5_reg("att_one_v5", Device::kNCNNMeta, att_one_v5);
+
+std::tuple<Tensor, Tensor, Tensor>
+att_one_v5_1(const Tensor &x, const Tensor &sx, const Tensor &s,
+           const Tensor &ln_w, const Tensor &ln_b, const Tensor &lx_w,
+           const Tensor &lx_b, const Tensor &k_mix, const Tensor &v_mix,
+           const Tensor &r_mix, const Tensor &g_mix, const Tensor &t_decay, const Tensor &t_first,
+           const Tensor &kw, const Tensor &vw, const Tensor &rw, const Tensor &gw,
+           const Tensor &ow) {
+
+  auto [x_s1, x_s2] = split2(x);
+  auto xx = layernorm(x_s1, ln_w, ln_b);
+  // auto [kx, vx, rx] = time_mix()
+  auto [xx_s1, xx_s2, xx_s3, xx_s4, xx_s5] = split5(xx);
+  auto [sx_s1, sx_s2, sx_s3, sx_s4] = split4(sx);
+  auto [k_mix_s1, k_mix_s2] = split2(k_mix);
+  auto [v_mix_s1, v_mix_s2] = split2(v_mix);
+  auto [r_mix_s1, r_mix_s2] = split2(r_mix);
+  auto [g_mix_s1, g_mix_s2] = split2(g_mix);
+  auto kx = xx_s1 * k_mix_s1 + sx_s1 * (1 - k_mix_s2);
+  auto vx = xx_s2 * v_mix_s1 + sx_s2 * (1 - v_mix_s2);
+  auto rx = xx_s3 * r_mix_s1 + sx_s3 * (1 - r_mix_s2);
+  auto gx = xx_s4 * g_mix_s1 + sx_s4 * (1 - g_mix_s2);
+
+  auto H = t_decay.size(0);
+  auto S = x.size(x.shape().size() - 1) / H;
+
+  auto r = matmul(rx, rw).view({H, 1, S});
+  auto k = matmul(kx, kw).view({H, S, 1});
+  auto v = matmul(vx, vw).view({H, 1, S});
+  auto g = silu(matmul(gx, gw));
+  
+  auto a = matmul(k, v);
+  auto [a_s1, a_s2] = split2(a);
+  auto [s_s1, s_s2] = split2(s);
+  auto out = matmul(r, a_s1 * t_first + s_s1);
+  auto decayed_s = a_s2 + s_s2 * t_decay;
+
+  out = out.flatten();
+  // NOTE: ncnn groupnorm is different from pytorch groupnorm, so we use 1d input here
+  out = groupnorm(out, static_cast<int>(H), lx_w, lx_b).flatten();
+  out = out * g;
+  out = matmul(out, ow);
+
+  return {x_s2 + out, xx_s5, decayed_s};
+}
+
+KernelRegister att_v5_1_reg("att_one_v5_1", Device::kNCNNMeta, att_one_v5_1);
 
 std::tuple<Tensor, Tensor> ffn(const Tensor &x, const Tensor &sx,
                                const Tensor &ln_w, const Tensor &ln_b,

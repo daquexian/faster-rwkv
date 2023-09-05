@@ -7,6 +7,7 @@
 #include <tokenizer.h>
 
 int main(int argc, char **argv) {
+  std::cout.setf(std::ios::unitbuf);
   rwkv::ABCTokenizer tokenizer;
   rwkv::Sampler sampler;
   rwkv::Model model(argv[1], argv[2]);
@@ -16,6 +17,7 @@ int main(int argc, char **argv) {
   buffer << ifs.rdbuf();
   std::string input = buffer.str();
   input.erase(input.find_last_not_of(" \t\n\r\f\v") + 1);
+  std::cout << input;
   std::vector<int> input_ids = tokenizer.encode(input);
   input_ids.insert(input_ids.begin(), tokenizer.bos_token_id);
   static const int N_TRIAL = 1;
@@ -29,7 +31,9 @@ int main(int argc, char **argv) {
       if (output_id == tokenizer.eos_token_id) {
         break;
       }
-      ofs << tokenizer.decode(output_id);
+      std::string output = tokenizer.decode(output_id);
+      std::cout << output;
+      ofs << output;
       output_tensor = model.Run(output_id);
     }
   }

@@ -39,17 +39,6 @@ Tensor ModelForward(const Model *model, Device device, int id,
     auto &state = states[i];
 
     {
-      // x, state[i*5+0], state[i*5+1], state[i*5+2], state[i*5+3] = ATT(
-      //   x, state[i*5+0], state[i*5+1], state[i*5+2], state[i*5+3],
-      //   w[f'{bbb}ln1.weight'], w[f'{bbb}ln1.bias'],
-      //   w[f'{att}time_mix_k'], w[f'{att}time_mix_v'], w[f'{att}time_mix_r'],
-      //   w[f'{att}time_decay'], w[f'{att}time_first'],
-      //   kw, vw, rw, ow,
-      //   kmx, krx, kmy, kry,
-      //   vmx, vrx, vmy, vry,
-      //   rmx, rrx, rmy, rry,
-      //   omx, orx, omy, ory,
-      // )
       if (model->_version == "4") {
         std::tie(x, state[0], state[1], state[2], state[3]) = att(
             x, state[0], state[1], state[2], state[3], params[param_idx],
@@ -64,7 +53,7 @@ Tensor ModelForward(const Model *model, Device device, int id,
           mark_as_output(state[3], "output_state_" + std::to_string(i) + "_3");
         }
         param_idx += 11;
-      } else {
+      } else if (model->_version == "5") {
         std::tie(x, state[0], state[1]) = att_one_v5(
             x, state[0], state[1], params[param_idx], params[param_idx + 1],
             params[param_idx + 2], params[param_idx + 3], params[param_idx + 4],
@@ -77,6 +66,23 @@ Tensor ModelForward(const Model *model, Device device, int id,
           mark_as_output(state[1], "output_state_" + std::to_string(i) + "_1");
         }
         param_idx += 13;
+      } else if (model->_version == "5.1") {
+        std::tie(x, state[0], state[1]) = att_one_v5_1(
+            x, state[0], state[1], params[param_idx], params[param_idx + 1],
+            params[param_idx + 2], params[param_idx + 3], params[param_idx + 4],
+            params[param_idx + 5], params[param_idx + 6], params[param_idx + 7],
+            params[param_idx + 8], params[param_idx + 9],
+            params[param_idx + 10], params[param_idx + 11],
+            params[param_idx + 12],
+            params[param_idx + 13],
+            params[param_idx + 14]);
+        if (device == Device::kNCNNMeta) {
+          mark_as_output(state[0], "output_state_" + std::to_string(i) + "_0");
+          mark_as_output(state[1], "output_state_" + std::to_string(i) + "_1");
+        }
+        param_idx += 15;
+      } else {
+        RV_UNIMPLEMENTED();
       }
     }
     {
@@ -85,10 +91,6 @@ Tensor ModelForward(const Model *model, Device device, int id,
         offset = 2;
       }
 
-      // x, state[offset] =
-      //     FFN(x, state[offset], w[f '{bbb}ln2.weight'], w[f '{bbb}ln2.bias'],
-      //         w[f '{ffn}time_mix_k'], w[f '{ffn}time_mix_r'], kw, vw, rw,
-      //         kmx, krx, kmy, kry, vmx, vrx, vmy, vry, rmx, rrx, rmy, rry, )
       std::tie(x, state[offset]) = ffn(
           x, state[offset], params[param_idx], params[param_idx + 1],
           params[param_idx + 2], params[param_idx + 3], params[param_idx + 4],
