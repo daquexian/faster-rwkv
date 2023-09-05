@@ -31,7 +31,7 @@ For example, `./chat ../tokenizer_model ../rwkv-4-1.5b-chntuned-fp16.fr "cuda fp
 
 2. Generate a faster-rwkv weight file by `tools/convert_weight.py`.
 
-3. Export ncnn model by `export_ncnn.cpp`.
+3. Export ncnn model by `export_ncnn.cpp`: `./export_ncnn <output_path_prefix> <input_faster_rwkv_model_path>`
 
 #### Build
 
@@ -46,11 +46,11 @@ ninja
 
 #### Run
 
-1. Copy `chat`, `libfaster_rwkv.so` into the Android phone (by using adb or Termux).
+1. Copy `chat` into the Android phone (by using adb or Termux).
 
-2. Copy the [tokenizer_model](https://github.com/daquexian/faster-rwkv/blob/master/tokenizer_model) and the ncnn models (.param and .bin) into the Android phone (by using adb or Termux).
+2. Copy the [tokenizer_model](https://github.com/daquexian/faster-rwkv/blob/master/tokenizer_model) and the ncnn models (.param, .bin and .config) into the Android phone (by using adb or Termux).
 
-3. Run ``LD_LIBRARY_PATH=`pwd` ./chat tokenizer_model ncnn_models_basename "ncnn fp16"`` in adb shell or Termux, for example, if the ncnn models are named `rwkv-4-chntuned-1.5b.param` and `rwkv-4-chntuned-1.5b.bin`, the command should be ``LD_LIBRARY_PATH=`pwd` ./chat tokenizer_model rwkv-4-chntuned-1.5b "ncnn fp16"``.
+3. Run ``./chat tokenizer_model ncnn_models_basename "ncnn fp16"`` in adb shell or Termux, for example, if the ncnn models are named `rwkv-4-chntuned-1.5b.param`, `rwkv-4-chntuned-1.5b.bin` and `rwkv-4-chntuned-1.5b.config`, the command should be ``./chat tokenizer_model rwkv-4-chntuned-1.5b "ncnn fp16"``.
 
 #### Requirements
 
