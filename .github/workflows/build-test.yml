@@ -31,6 +31,7 @@ jobs:
       run: |
         git clone https://github.com/BlinkDL/ChatRWKV
         cd ChatRWKV
+        pip install -r requirements.txt
         cd rwkv_pip_package
         pip install .
         cd ..
