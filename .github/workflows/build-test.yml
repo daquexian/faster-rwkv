@@ -22,11 +22,23 @@ jobs:
     - uses: actions/checkout@v3
 
     - run: |
+        mkdir ${{env.FR_MODEL_DIR}}
         cd ${{env.FR_MODEL_DIR}}
         wget https://huggingface.co/BlinkDL/rwkv-4-world/resolve/main/RWKV-4-World-0.1B-v1-20230520-ctx4096.pth 
-        git clone 
+        wget https://huggingface.co/BlinkDL/rwkv-5-world/resolve/main/RWKV-5-World-0.1B-v1-20230803-ctx4096.pth
+        git clone https://github.com/BlinkDL/ChatRWKV
+        cd ChatRWKV
+        cd rwkv_pip_package
+        pip install -e .
+        cd ..
+        python3 v2/convert_model.py --in ${{env.FR_MODEL_DIR}}/RWKV-4-World-0.1B-v1-20230520-ctx4096.pth  --out ${{env.FR_MODEL_DIR}}/RWKV-4-World-0.1B-v1-20230520-ctx4096-fp32-converted.pth --strategy "cuda fp32"
+        python3 v2/convert_model.py --in ${{env.FR_MODEL_DIR}}/RWKV-4-World-0.1B-v1-20230520-ctx4096.pth  --out ${{env.FR_MODEL_DIR}}/RWKV-4-World-0.1B-v1-20230520-ctx4096-fp16-converted.pth --strategy "cuda fp16"
+        python3 v2/convert_model.py --in ${{env.FR_MODEL_DIR}}/RWKV-5-World-0.1B-v1-20230803-ctx4096.pth  --out ${{env.FR_MODEL_DIR}}/RWKV-5-World-0.1B-v1-20230803-ctx4096-fp32-converted.pth --strategy "cuda fp32"
     - run: |
-        python3 tools/convert_weight.py ${{env.FR_MODEL_DIR}}/RWKV-4-World-0.1B-v1-20230520-ctx4096.pth ${{env.FR_MODEL_DIR}}/
+        pip install -r tools/requirements.txt
+        python3 tools/convert_weight.py ${{env.FR_MODEL_DIR}}/RWKV-4-World-0.1B-v1-20230520-ctx4096-fp32-converted.pth ${{env.FR_MODEL_DIR}}/RWKV-4-World-0.1B-v1-20230520-ctx4096-fp32.fr
+        python3 tools/convert_weight.py ${{env.FR_MODEL_DIR}}/RWKV-4-World-0.1B-v1-20230520-ctx4096-fp16-converted.pth ${{env.FR_MODEL_DIR}}/RWKV-4-World-0.1B-v1-20230520-ctx4096-fp16.fr
+        python3 tools/convert_weight.py ${{env.FR_MODEL_DIR}}/RWKV-5-World-0.1B-v1-20230803-ctx4096-fp32-converted.pth ${{env.FR_MODEL_DIR}}/RWKV-5-World-0.1B-v1-20230803-ctx4096-fp32.fr
 
     - name: Configure CMake
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
@@ -41,4 +53,5 @@ jobs:
       working-directory: ${{github.workspace}}/build
       # Execute tests defined by the CMake configuration.
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
-      run: ctest -C ${{env.BUILD_TYPE}}
+      run: |
+        FR_MODEL_DIR=${{env.FR_MODEL_DIR}} ctest -C ${{env.BUILD_TYPE}}
