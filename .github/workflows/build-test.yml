@@ -12,7 +12,7 @@ env:
   FR_MODEL_DIR: /tmp/models
 
 jobs:
-  build:
+  build-and-test:
     # The CMake configure and build commands are platform agnostic and should work equally well on Windows or Mac.
     # You can convert this to a matrix build if you need cross-platform coverage.
     # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
@@ -21,20 +21,23 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - run: |
+    - name: Download ChatRWKV models
+      run: |
         mkdir ${{env.FR_MODEL_DIR}}
         cd ${{env.FR_MODEL_DIR}}
         wget https://huggingface.co/BlinkDL/rwkv-4-world/resolve/main/RWKV-4-World-0.1B-v1-20230520-ctx4096.pth 
         wget https://huggingface.co/BlinkDL/rwkv-5-world/resolve/main/RWKV-5-World-0.1B-v1-20230803-ctx4096.pth
+    - name: Convert ChatRWKV models
+    - run: |
         git clone https://github.com/BlinkDL/ChatRWKV
         cd ChatRWKV
         cd rwkv_pip_package
-        pip install -e .
+        pip install .
         cd ..
         python3 v2/convert_model.py --in ${{env.FR_MODEL_DIR}}/RWKV-4-World-0.1B-v1-20230520-ctx4096.pth  --out ${{env.FR_MODEL_DIR}}/RWKV-4-World-0.1B-v1-20230520-ctx4096-fp32-converted.pth --strategy "cuda fp32"
         python3 v2/convert_model.py --in ${{env.FR_MODEL_DIR}}/RWKV-4-World-0.1B-v1-20230520-ctx4096.pth  --out ${{env.FR_MODEL_DIR}}/RWKV-4-World-0.1B-v1-20230520-ctx4096-fp16-converted.pth --strategy "cuda fp16"
         python3 v2/convert_model.py --in ${{env.FR_MODEL_DIR}}/RWKV-5-World-0.1B-v1-20230803-ctx4096.pth  --out ${{env.FR_MODEL_DIR}}/RWKV-5-World-0.1B-v1-20230803-ctx4096-fp32-converted.pth --strategy "cuda fp32"
-    - run: |
+        cd ..
         pip install -r tools/requirements.txt
         python3 tools/convert_weight.py ${{env.FR_MODEL_DIR}}/RWKV-4-World-0.1B-v1-20230520-ctx4096-fp32-converted.pth ${{env.FR_MODEL_DIR}}/RWKV-4-World-0.1B-v1-20230520-ctx4096-fp32.fr
         python3 tools/convert_weight.py ${{env.FR_MODEL_DIR}}/RWKV-4-World-0.1B-v1-20230520-ctx4096-fp16-converted.pth ${{env.FR_MODEL_DIR}}/RWKV-4-World-0.1B-v1-20230520-ctx4096-fp16.fr
