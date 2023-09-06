@@ -3,6 +3,7 @@
 
 #include <gtest/gtest.h>
 
+#ifdef FR_ENABLE_CUDA
 // TODO: generate models
 TEST(Model, cuda_fp16) {
   const std::string model_dir(std::getenv("FR_MODEL_DIR"));
@@ -16,7 +17,9 @@ TEST(Model, cuda_fp16) {
   EXPECT_FLOAT_EQ(output_ptr[0], -1.5488281);
   EXPECT_FLOAT_EQ(output_ptr[9], -9.640625);
 }
+#endif
 
+#ifdef FR_ENABLE_NCNN
 TEST(Model, ncnn_fp16) {
   const std::string model_dir(std::getenv("FR_MODEL_DIR"));
   rwkv::ncnnmeta::ExportModel(model_dir + "/RWKV-4-World-0.1B-v1-20230520-ctx4096-fp32.fr",
@@ -46,3 +49,4 @@ TEST(Model, ncnn_fp16_v5) {
   EXPECT_FLOAT_EQ(output_ptr[0], -7.4375);
   EXPECT_FLOAT_EQ(output_ptr[9], -14.9375);
 }
+#endif
