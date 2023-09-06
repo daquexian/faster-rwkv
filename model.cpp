@@ -15,7 +15,9 @@ namespace rwkv {
 
 static const bool kDebug = std::getenv("FR_DEBUG") != nullptr;
 
-Model::Model(const std::string &path, const std::string &strategy) {
+Model::Model(const std::string &path, const std::string &strategy): Model(path, strategy, std::any()) {}
+
+Model::Model(const std::string &path, const std::string &strategy, std::any extra) {
   auto dev_str = strategy.substr(0, strategy.find(" "));
   Device act_device = [&]() {
     if (dev_str == "ncnn-meta") {
@@ -45,7 +47,7 @@ Model::Model(const std::string &path, const std::string &strategy) {
   }();
   _act_dtype = atype;
 
-  init_model(this, act_device, path, strategy);
+  init_model(this, act_device, path, strategy, extra);
   if (kDebug) {
     std::cout << "Model inited" << std::endl;
     std::cout << "version: " << _version << std::endl;

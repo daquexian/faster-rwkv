@@ -9,6 +9,7 @@
 #include <sampler.h>
 
 #include <android/log.h>
+#include <android/asset_manager_jni.h>
 
 #define LOG_TAG "RWKV Demo"
 
@@ -20,7 +21,6 @@
 jint throwException(JNIEnv *env, std::string message);
 
 using rwkv::Model;
-using rwkv::Tokenizer;
 using rwkv::WorldTokenizer;
 using rwkv::ABCTokenizer;
 using rwkv::Sampler;
@@ -36,8 +36,21 @@ extern "C" JNIEXPORT void JNICALL Java_com_rwkv_faster_Model_init(
     JNIEnv *env, jobject obj /* this */, jstring jPath, jstring jStrategy) {
   std::string path(to_cpp_string(env, jPath));
   std::string strategy(to_cpp_string(env, jStrategy));
+
   auto *model =
       new std::shared_ptr<Model>(new Model(path, strategy));
+  setHandle(env, obj, model);
+}
+
+extern "C" JNIEXPORT void JNICALL Java_com_rwkv_faster_Model_initWithAssetManager(
+    JNIEnv *env, jobject obj /* this */, jstring jPath, jstring jStrategy, jobject jAssetManager) {
+  std::string path(to_cpp_string(env, jPath));
+  std::string strategy(to_cpp_string(env, jStrategy));
+
+  AAssetManager *asset_manager = AAssetManager_fromJava(env, jAssetManager);
+
+  auto *model =
+      new std::shared_ptr<Model>(new Model(path, strategy, asset_manager));
   setHandle(env, obj, model);
 }
 

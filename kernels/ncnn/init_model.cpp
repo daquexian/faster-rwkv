@@ -1,6 +1,12 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#ifdef __ANDROID__
+#define _FR_ENABLE_ANDROID_ASSET
+#endif
+#ifdef _FR_ENABLE_ANDROID_ASSET
+#include <android/asset_manager.h>
+#endif
 
 #include <cpu.h>
 #include <net.h>
@@ -18,18 +24,36 @@ namespace _ncnn {
 
 static const bool kDebug = std::getenv("FR_DEBUG") != nullptr;
 
-void init_model(Model *model, Device device, const std::string &path,
-                const std::string &strategy) {
+void init_model(Model *model, Device device, const std::string &_path,
+                const std::string &strategy, const std::any& extra) {
   // use all big cores
 #ifdef __ANDROID__
   ncnn::set_cpu_powersave(2);
+#endif
+
+  const auto [path, android_asset] = [&]() {
+    if (_path.substr(0, 6) == "asset:") {
+      return std::make_pair(_path.substr(6), true);
+    }
+    return std::make_pair(_path, false);
+  }();
+
+#ifndef _FR_ENABLE_ANDROID_ASSET
+  RV_CHECK(!android_asset);
+#else
+  if (android_asset) {
+    RV_CHECK(extra.has_value());
+  }
 #endif
   
   auto param_path = path + ".param";
   auto bin_path = path + ".bin";
   auto config_path = path + ".config";
 
-  {
+  // legacy model compatibility
+  // asset support is added in v0.0.3, which ncnn config is already added,
+  // so no need to read and parse the param file when android_asset == true.
+  if (!android_asset) {
     auto n_layer = 0;
     std::ifstream param_file(param_path);
     int i;
@@ -43,35 +67,50 @@ void init_model(Model *model, Device device, const std::string &path,
       }
     }
     model->_n_layer = n_layer;
+    // may be overwritten in the next step
+    model->_version = "4";
+    model->_n_att = model->_n_embd;
   }
+  std::string config;
+#ifdef _FR_ENABLE_ANDROID_ASSET
+  if (android_asset) {
+    auto* mgr = std::any_cast<AAssetManager*>(extra);
+    AAsset *asset = AAssetManager_open(mgr, config_path.c_str(), AASSET_MODE_BUFFER);
+    if (asset) {
+      const char* config_data = static_cast<const char*>(AAsset_getBuffer(asset));
+      auto config_size = AAsset_getLength(asset);
+      config = std::string(config_data, config_data + config_size);
+      AAsset_close(asset);
+    }
+  } else {
+#else
   {
+#endif
     std::ifstream config_file(config_path);
     if (config_file.good()) {
       std::stringstream ss;
       ss << config_file.rdbuf();
-      auto config = ss.str();
-      auto get_value = [&config](const std::string &key) {
-        auto pos = config.find(key);
-        RV_CHECK(pos != std::string::npos);
-        auto pos2 = config.find(": ", pos);
-        RV_CHECK(pos2 != std::string::npos);
-        auto pos3 = config.find("\n", pos2);
-        RV_CHECK(pos3 != std::string::npos);
-        return config.substr(pos2 + 2, pos3 - pos2 - 2);
-      };
-
-      model->_version = get_value("version");
-      model->_head_size = std::stoi(get_value("head_size"));
-      // overwrite these fields if it is new model (having config file)
-      model->_n_embd = std::stoi(get_value("n_embd"));
-      model->_n_layer = std::stoi(get_value("n_layer"));
-      model->_n_att = std::stoi(get_value("n_att"));
-      model->_n_ffn = std::stoi(get_value("n_ffn"));
-    } else {
-      // config file not found, indicating that this model has old version 4
-      model->_version = "4";
-      model->_n_att = model->_n_embd;
+      config = ss.str();
     }
+  }
+  {
+    auto get_value = [&config](const std::string &key) {
+      auto pos = config.find(key);
+      RV_CHECK(pos != std::string::npos);
+      auto pos2 = config.find(": ", pos);
+      RV_CHECK(pos2 != std::string::npos);
+      auto pos3 = config.find("\n", pos2);
+      RV_CHECK(pos3 != std::string::npos);
+      return config.substr(pos2 + 2, pos3 - pos2 - 2);
+    };
+
+    model->_version = get_value("version");
+    model->_head_size = std::stoi(get_value("head_size"));
+    // overwrite these fields if it is new model (having config file)
+    model->_n_embd = std::stoi(get_value("n_embd"));
+    model->_n_layer = std::stoi(get_value("n_layer"));
+    model->_n_att = std::stoi(get_value("n_att"));
+    model->_n_ffn = std::stoi(get_value("n_ffn"));
   }
   auto net = std::make_shared<ncnn::Net>();
   if (model->_act_dtype == DType::kFloat16) {
@@ -86,8 +125,18 @@ void init_model(Model *model, Device device, const std::string &path,
     net->opt.use_fp16_storage = false;
     net->opt.use_bf16_storage = false;
   }
-  RV_CHECK(!net->load_param(param_path.c_str()));
-  RV_CHECK(!net->load_model(bin_path.c_str()));
+#ifdef _FR_ENABLE_ANDROID_ASSET
+  if (android_asset) {
+    auto* mgr = std::any_cast<AAssetManager*>(extra);
+    RV_CHECK(!net->load_param(mgr, param_path.c_str()));
+    RV_CHECK(!net->load_model(mgr, bin_path.c_str()));
+  } else {
+#else
+  {
+#endif
+    RV_CHECK(!net->load_param(param_path.c_str()));
+    RV_CHECK(!net->load_model(bin_path.c_str()));
+  }
   int input_blob_id;
   std::vector<std::vector<int>> state_ids;
   int output_blob_id;

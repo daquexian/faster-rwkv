@@ -159,10 +159,10 @@ inline Tensor mark_as_output(const Tensor &x, const std::string &name) {
 class Model;
 
 inline void init_model(Model *model, Device device, const std::string &path,
-                       const std::string &strategy) {
+                       const std::string &strategy, const std::any& extra) {
   KernelRegistry::Instance()
-      .Get<void (*)(Model *, Device, const std::string &, const std::string &)>(
-          "init_model", device)(model, device, path, strategy);
+      .Get<decltype(init_model)*>(
+          "init_model", device)(model, device, path, strategy, extra);
 }
 
 inline Tensor ModelForward(const Model *model, Device device, int id,

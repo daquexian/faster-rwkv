@@ -13,6 +13,7 @@ namespace rwkv {
 using States = std::vector<std::vector<Tensor>>;
 struct Model {
   Model(const std::string &path, const std::string &strategy);
+  Model(const std::string &path, const std::string &strategy, std::any extra);
   Tensor Run(const std::vector<int> &id);
   Tensor Run(int id);
   void ResetStates();

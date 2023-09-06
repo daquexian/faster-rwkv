@@ -16,7 +16,7 @@ namespace rwkv {
 namespace def {
 
 inline void init_model(Model *model, Device device, const std::string &path,
-                       const std::string &strategy) {
+                       const std::string &strategy, const std::any& extra) {
   std::ifstream infile;
   infile.open(path, std::ios::binary | std::ios::in);
   infile.seekg(0, std::ios::end);
