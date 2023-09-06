@@ -182,8 +182,7 @@ Tensor groupnorm(const Tensor &x, int num_groups, const Tensor &weight,
   return output;
 }
 
-// Tensor builtin_matmul(const Tensor &a, const Tensor &b) {
-Tensor matmul(const Tensor &a, const Tensor &b) {
+Tensor batch_matmul(const Tensor &a, const Tensor &b) {
   int batch, m, n, k;
   const int a_ranks = a.shape().size();
   const int b_ranks = b.shape().size();
@@ -264,8 +263,7 @@ Tensor reshape(const Tensor& x, const Shape& shape) {
   return output;
 }
 
-Tensor matmul_by_gemm(const Tensor &a, const Tensor &b) {
-  // Tensor matmul(const Tensor &a, const Tensor &b) {
+Tensor gemm(const Tensor &a, const Tensor &b) {
   RV_CHECK(a.device() == Device::kNCNNMeta);
   auto [a_reshape, reshaped] = [&]() -> std::pair<Tensor, bool> {
     if (a.shape().size() == 1) {
@@ -322,6 +320,14 @@ Tensor matmul_by_gemm(const Tensor &a, const Tensor &b) {
     return squeezed;
   } else {
     return output;
+  }
+}
+
+Tensor matmul(const Tensor &a, const Tensor &b) {
+  if (a.shape().size() <= 2 && b.shape().size() <= 2) {
+    return gemm(a, b);
+  } else {
+    return batch_matmul(a, b);
   }
 }
 
