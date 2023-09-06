@@ -28,7 +28,7 @@ jobs:
         wget https://huggingface.co/BlinkDL/rwkv-4-world/resolve/main/RWKV-4-World-0.1B-v1-20230520-ctx4096.pth 
         wget https://huggingface.co/BlinkDL/rwkv-5-world/resolve/main/RWKV-5-World-0.1B-v1-20230803-ctx4096.pth
     - name: Convert ChatRWKV models
-    - run: |
+      run: |
         git clone https://github.com/BlinkDL/ChatRWKV
         cd ChatRWKV
         cd rwkv_pip_package
