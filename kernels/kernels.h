@@ -35,15 +35,15 @@ att_one_v5(const Tensor &x, const Tensor &sx, const Tensor &s,
 
 inline std::tuple<Tensor, Tensor, Tensor>
 att_one_v5_1(const Tensor &x, const Tensor &sx, const Tensor &s,
-           const Tensor &ln_w, const Tensor &ln_b, const Tensor &lx_w,
-           const Tensor &lx_b, const Tensor &k_mix, const Tensor &v_mix,
-           const Tensor &r_mix, const Tensor &g_mix, const Tensor &t_decay, const Tensor &t_first,
-           const Tensor &kw, const Tensor &vw, const Tensor &rw, const Tensor& gw,
-           const Tensor &ow) {
+             const Tensor &ln_w, const Tensor &ln_b, const Tensor &lx_w,
+             const Tensor &lx_b, const Tensor &k_mix, const Tensor &v_mix,
+             const Tensor &r_mix, const Tensor &g_mix, const Tensor &t_decay,
+             const Tensor &t_first, const Tensor &kw, const Tensor &vw,
+             const Tensor &rw, const Tensor &gw, const Tensor &ow) {
   auto tmp = KernelRegistry::Instance().Get<decltype(att_one_v5_1) *>(
       "att_one_v5_1", x.device());
-  return tmp(x, sx, s, ln_w, ln_b, lx_w, lx_b, k_mix, v_mix, r_mix, g_mix, t_decay,
-             t_first, kw, vw, rw, gw, ow);
+  return tmp(x, sx, s, ln_w, ln_b, lx_w, lx_b, k_mix, v_mix, r_mix, g_mix,
+             t_decay, t_first, kw, vw, rw, gw, ow);
 }
 
 //         def cuda_ffn_one_fp16(self, x, sx, ln_w, ln_b, k_mix, r_mix, kw, vw,
@@ -88,6 +88,12 @@ inline Tensor matmul(const Tensor &a, const Tensor &b) {
   return KernelRegistry::Instance().Get<decltype(matmul) *>("matmul",
                                                             a.device())(a, b);
 }
+
+// inline Tensor cat(const Tensor &a, const Tensor &b) {
+//   return KernelRegistry::Instance().Get<decltype(cat) *>("cat",
+//   a.device())(a,
+//                                                                             b);
+// }
 
 // TODO:
 // REGISTER_KERNEL(Tensor, add, const Tensor&, x, const Tensor&, y);
@@ -137,13 +143,11 @@ inline Tensor maximum(const Tensor &x, const Tensor &y) {
 }
 
 inline Tensor reshape(const Tensor &x, const Shape &shape) {
-  return KernelRegistry::Instance().Get<decltype(reshape) *>("reshape",
-                                                             x.device())(x, shape);
+  return KernelRegistry::Instance().Get<decltype(reshape) *>(
+      "reshape", x.device())(x, shape);
 }
 
-inline Tensor flatten(const Tensor &x) {
-  return reshape(x, {x.numel()});
-}
+inline Tensor flatten(const Tensor &x) { return reshape(x, {x.numel()}); }
 
 inline Tensor unsqueeze(const Tensor &x, int dim) {
   auto new_shape = x.shape();
@@ -159,10 +163,9 @@ inline Tensor mark_as_output(const Tensor &x, const std::string &name) {
 class Model;
 
 inline void init_model(Model *model, Device device, const std::string &path,
-                       const std::string &strategy, const std::any& extra) {
-  KernelRegistry::Instance()
-      .Get<decltype(init_model)*>(
-          "init_model", device)(model, device, path, strategy, extra);
+                       const std::string &strategy, const std::any &extra) {
+  KernelRegistry::Instance().Get<decltype(init_model) *>("init_model", device)(
+      model, device, path, strategy, extra);
 }
 
 inline Tensor ModelForward(const Model *model, Device device, int id,
