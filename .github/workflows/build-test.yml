@@ -21,20 +21,8 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - uses: actions/setup-java@v3
-      with:
-        distribution: 'zulu'
-        java-version: '17'
-
     - name: Build Android AAR
       run: |
-        java --version
-        wget https://dl.google.com/android/repository/commandlinetools-linux-10406996_latest.zip
-        unzip commandlinetools-linux-10406996_latest.zip
-        cd cmdline-tools
-        export ANDROID_HOME=~/android_sdk
-        yes | ./bin/sdkmanager --licenses --sdk_root=$ANDROID_HOME
-        ./bin/sdkmanager "build-tools;34.0.0" "platforms;android-34" "ndk;25.2.9519653" --sdk_root=$ANDROID_HOME
         cd ..
         cd aar
         ./build_aar.sh
