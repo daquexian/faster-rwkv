@@ -25,6 +25,11 @@ jobs:
       run: |
         sudo apt-get install ninja-build
 
+    - uses: actions/setup-java@v3
+      with:
+        distribution: 'zulu'
+        java-version: '17'
+
     - name: Build Android AAR
       run: |
         ./aar/build_aar.sh
