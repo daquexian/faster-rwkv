@@ -60,4 +60,14 @@ jobs:
       # Execute tests defined by the CMake configuration.
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
       run: |
-        FR_MODEL_DIR=${{env.FR_MODEL_DIR}} ctest -C ${{env.BUILD_TYPE}}
+        FR_MODEL_DIR=${{env.FR_MODEL_DIR}} ctest -C ${{env.BUILD_TYPE}} -vv --output-on-failure
+
+    - name: Build Android AAR
+      run: |
+        apt install openjdk-17-jdk openjdk-17-jre
+        wget https://dl.google.com/android/repository/commandlinetools-linux-10406996_latest.zip
+        unzip commandlinetools-linux-10406996_latest.zip
+        cd cmdline-tools
+        export ANDROID_HOME=~/android_sdk
+        yes | ./bin/sdkmanager --licenses --sdk_root=$ANDROID_HOME
+        ./bin/sdkmanager "build-tools;34.0.0" "platforms;android-34" "ndk;25.2.9519653" --sdk_root=$ANDROID_HOME
