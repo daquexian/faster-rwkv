@@ -88,9 +88,10 @@ curl -L -s https://raw.githubusercontent.com/daquexian/faster-rwkv/master/downlo
 
 - [x] JNI
 - [x] v5 models support (models are published at https://huggingface.co/daquexian/fr-models/tree/main)
-- [x] Music models support (models are published at https://huggingface.co/daquexian/fr-models/tree/main)
+- [x] ABC music models support (models are published at https://huggingface.co/daquexian/fr-models/tree/main)
+- [x] CI
 - [ ] Raven models support
-- [ ] CI
+- [ ] MIDI music models support
 - [ ] seq mode
 - [ ] export ONNX
 - [ ] more backends..
