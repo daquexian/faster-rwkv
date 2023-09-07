@@ -1,7 +1,18 @@
+#include <iostream>
+#include <fstream>
+
 #include <kernels/ncnn-meta/kernels.h>
 
 int main(int argc, char **argv) {
-  // ./export_ncnn <output prefix> <input path>
-  rwkv::ncnnmeta::ExportModel(argv[2], argv[1]);
+  if (argc != 3) {
+    std::cerr << "Usage: ./export_ncnn <input path> <output prefix>" << std::endl;
+    return 1;
+  }
+  if (std::ifstream ifs(argv[1]); !ifs.good()) {
+    std::cerr << "Failed to open " << argv[1] << std::endl;
+    std::cerr << "Usage: ./export_ncnn <input path> <output prefix>" << std::endl;
+    return 1;
+  }
+  rwkv::ncnnmeta::ExportModel(argv[1], argv[2]);
   return 0;
 }
