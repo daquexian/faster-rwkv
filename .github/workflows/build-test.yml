@@ -86,3 +86,12 @@ jobs:
         name: export_ncnn
         path: |
           build_export_ncnn/export_ncnn
+    - uses: "marvinpinto/action-automatic-releases@latest"
+      with:
+        repo_token: "${{ secrets.GH_TOKEN }}"
+        automatic_release_tag: "latest"
+        prerelease: true
+        title: "Development Build"
+        files: |
+          build_export_ncnn/export_ncnn
+          aar/java/faster-rwkv-java/build/outputs/aar/faster-rwkv-java-release.aar
