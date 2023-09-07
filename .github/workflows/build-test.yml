@@ -13,10 +13,8 @@ env:
 
 jobs:
   build-and-test:
-    # The CMake configure and build commands are platform agnostic and should work equally well on Windows or Mac.
-    # You can convert this to a matrix build if you need cross-platform coverage.
-    # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
-    runs-on: ubuntu-latest
+    # Use ubuntu 20.04 to build with enough old glibc, so that products can be distributed to more Linux distributions
+    runs-on: ubuntu-20.04
 
     steps:
     - uses: actions/checkout@v3
@@ -34,13 +32,13 @@ jobs:
       run: |
         ./aar/build_aar.sh
 
-    - name: Download ChatRWKV models
+    - name: Download ChatRWKV Models
       run: |
         mkdir ${{env.FR_MODEL_DIR}}
         cd ${{env.FR_MODEL_DIR}}
         wget https://huggingface.co/BlinkDL/rwkv-4-world/resolve/main/RWKV-4-World-0.1B-v1-20230520-ctx4096.pth 
         wget https://huggingface.co/BlinkDL/rwkv-5-world/resolve/main/RWKV-5-World-0.1B-v1-20230803-ctx4096.pth
-    - name: Convert ChatRWKV models
+    - name: Convert ChatRWKV Models
       run: |
         git clone https://github.com/BlinkDL/ChatRWKV
         cd ChatRWKV
@@ -59,11 +57,10 @@ jobs:
         python3 tools/convert_weight.py ${{env.FR_MODEL_DIR}}/RWKV-4-World-0.1B-v1-20230520-ctx4096-fp16-converted.pth ${{env.FR_MODEL_DIR}}/RWKV-4-World-0.1B-v1-20230520-ctx4096-fp16.fr
         python3 tools/convert_weight.py ${{env.FR_MODEL_DIR}}/RWKV-5-World-0.1B-v1-20230803-ctx4096-fp32-converted.pth ${{env.FR_MODEL_DIR}}/RWKV-5-World-0.1B-v1-20230803-ctx4096-fp32.fr
 
-    - name: Configure CMake
-      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DFR_ENABLE_NCNN=ON -GNinja
-
     - name: Build
-      run: cmake --build ${{github.workspace}}/build
+      run: |
+        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DFR_ENABLE_NCNN=ON -GNinja
+        cmake --build ${{github.workspace}}/build
 
     - name: Test
       working-directory: ${{github.workspace}}/build
@@ -72,8 +69,20 @@ jobs:
       run: |
         FR_MODEL_DIR=${{env.FR_MODEL_DIR}} ctest -C ${{env.BUILD_TYPE}} -vv --output-on-failure
 
-    - name: Upload Android AAR
+    - name: Build pure export_ncnn
+      run: |
+        cmake -B ${{github.workspace}}/build_export_ncnn -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -GNinja
+        cmake --build ${{github.workspace}}/build_export_ncnn
+
+    - name: Upload Android AAR libraries
       uses: actions/upload-artifact@v3
       with:
         name: Android AAR Packages
-        path: aar/java/faster-rwkv-java/build/outputs/aar/*
+        path: |
+          aar/java/faster-rwkv-java/build/outputs/aar/*
+    - name: Upload Executables
+      uses: actions/upload-artifact@v3
+      with:
+        name: export_ncnn
+        path: |
+          build_export_ncnn/export_ncnn

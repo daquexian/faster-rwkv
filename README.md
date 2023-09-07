@@ -44,6 +44,8 @@ cmake -DFR_ENABLE_NCNN=ON -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-28 
 ninja
 ```
 
+Or use the `build_aar.sh` in `aar` directory to build an Android AAR library if you want to call faster-rwkv from Java or Kotlin.
+
 #### Run
 
 1. Copy `chat` into the Android phone (by using adb or Termux).
