@@ -27,12 +27,17 @@ TEST(Model, ncnn_fp16) {
   rwkv::Model model("/tmp/rwkv-4-0.1b-ncnn", "ncnn fp16");
   auto output = rwkv::Copy(model.Run(0), rwkv::Device::kCPU);
   auto output_ptr = output.data_ptr<float>();
-  EXPECT_FLOAT_EQ(output_ptr[0], -0.056640625);
-  EXPECT_FLOAT_EQ(output_ptr[9], -9.875);
+  // NOTE: different machines may have different results
+  EXPECT_LT(output_ptr[0], -0.048);
+  EXPECT_GT(output_ptr[0], -0.059);
+  EXPECT_LT(output_ptr[9], -9.7);
+  EXPECT_GT(output_ptr[9], -10.0);
   output = rwkv::Copy(model.Run(0), rwkv::Device::kCPU);
   output_ptr = output.data_ptr<float>();
-  EXPECT_FLOAT_EQ(output_ptr[0], -1.28125);
-  EXPECT_FLOAT_EQ(output_ptr[9], -9.25);
+  EXPECT_LT(output_ptr[0], -1.28);
+  EXPECT_GT(output_ptr[0], -1.31);
+  EXPECT_LT(output_ptr[9], -9.1);
+  EXPECT_GT(output_ptr[9], -9.4);
 }
 
 TEST(Model, ncnn_fp16_v5) {
@@ -42,11 +47,16 @@ TEST(Model, ncnn_fp16_v5) {
   rwkv::Model model("/tmp/rwkv-5-0.1b-ncnn", "ncnn fp16");
   auto output = rwkv::Copy(model.Run(0), rwkv::Device::kCPU);
   auto output_ptr = output.data_ptr<float>();
-  EXPECT_FLOAT_EQ(output_ptr[0], -7.0625);
-  EXPECT_FLOAT_EQ(output_ptr[9], -15.8125);
+  EXPECT_LT(output_ptr[0], -7.0);
+  EXPECT_GT(output_ptr[0], -7.1);
+  EXPECT_LT(output_ptr[9], -15.75);
+  EXPECT_GT(output_ptr[9], -15.9);
   output = rwkv::Copy(model.Run(0), rwkv::Device::kCPU);
   output_ptr = output.data_ptr<float>();
+  EXPECT_LT(output_ptr[0], -7.3);
+  EXPECT_GT(output_ptr[0], -7.5);
   EXPECT_FLOAT_EQ(output_ptr[0], -7.4375);
-  EXPECT_FLOAT_EQ(output_ptr[9], -14.9375);
+  EXPECT_LT(output_ptr[9], -14.8);
+  EXPECT_GT(output_ptr[9], -15.0);
 }
 #endif

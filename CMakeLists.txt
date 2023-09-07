@@ -14,6 +14,8 @@ else()
     option(FR_ENABLE_NCNN "Enable NCNN" OFF)
 endif()
 
+list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
+
 if (FR_ENABLE_CUDA)
     enable_language(CUDA)
     if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
@@ -54,6 +56,7 @@ if (FR_ENABLE_NCNN)
         option(NCNN_OPENMP "" OFF)
         option(NCNN_SIMPLEOMP "" ON)
     endif()
+    include(disable_unused_ncnn_layers)
     FetchContent_MakeAvailable(ncnn)
     set(ncnn_deps ncnn)
     set(ncnn_kernel_srcs
