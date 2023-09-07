@@ -31,9 +31,15 @@ For example, `./chat ../tokenizer_model ../rwkv-4-1.5b-chntuned-fp16.fr "cuda fp
 
 2. Generate a faster-rwkv weight file by `tools/convert_weight.py`.
 
-3. Export ncnn model by `export_ncnn.cpp`: `./export_ncnn <output_path_prefix> <input_faster_rwkv_model_path>`
+3. Export ncnn model by `./export_ncnn <input_faster_rwkv_model_path> <output_path_prefix>`. You can download pre-built `export_ncnn` from [Releases](https://github.com/daquexian/faster-rwkv/releases) if you are a Linux users, or build it by yourself.
 
 #### Build
+
+##### Android App Development
+
+Download the pre-built [Android AAR library](https://developer.android.com/studio/projects/android-library#psd-add-aar-jar-dependency) from [Releases](https://github.com/daquexian/faster-rwkv/releases), or run the `aar/build_aar.sh` to build it by yourself.
+
+##### Android C++ Development
 
 For the path of Android NDK and toolchain file, please refer to Android NDK docs.
 
@@ -44,9 +50,7 @@ cmake -DFR_ENABLE_NCNN=ON -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-28 
 ninja
 ```
 
-Or use the `build_aar.sh` in `aar` directory to build an Android AAR library if you want to call faster-rwkv from Java or Kotlin.
-
-#### Run
+#### Run in Termux (Ignore it if you are an app developer)
 
 1. Copy `chat` into the Android phone (by using adb or Termux).
 
