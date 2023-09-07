@@ -23,6 +23,7 @@ jobs:
 
     - name: Build Android AAR
       run: |
+        sudo apt update
         sudo apt install openjdk-17-jdk openjdk-17-jre
         wget https://dl.google.com/android/repository/commandlinetools-linux-10406996_latest.zip
         unzip commandlinetools-linux-10406996_latest.zip
