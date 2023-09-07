@@ -23,9 +23,7 @@ jobs:
 
     - name: Build Android AAR
       run: |
-        cd ..
-        cd aar
-        ./build_aar.sh
+        ./aar/build_aar.sh
 
     - name: Download ChatRWKV models
       run: |
