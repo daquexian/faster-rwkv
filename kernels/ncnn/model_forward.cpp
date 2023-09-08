@@ -23,7 +23,7 @@ namespace rwkv {
 // KernelRegister xxxxx_model_forward_reg("model_forward", Device::kXXX,
 //         GraphBackendForward<T>);
 
-// NOTE: the memory is shared
+// NOTE: the memory is shared here. You can also copy it if you want.
 template <> ncnn::Mat Tensor::FromTensor() const {
   RV_CHECK(device() == Device::kCPU);
 
@@ -41,7 +41,7 @@ template <> ncnn::Mat Tensor::FromTensor() const {
   }
 }
 
-// NOTE: the memory is not shared
+// NOTE: the memory is not shared, otherwise the data may be released
 template <> Tensor Tensor::ToTensor(const ncnn::Mat &ncnn_mat) {
   Shape shape;
   if (ncnn_mat.dims == 1) {
