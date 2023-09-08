@@ -90,4 +90,12 @@ std::string ABCTokenizer::decode(const std::vector<int> &ids) const {
   return str;
 }
 
+template<typename T>
+void test(T);
+
+template<>
+void test(int) {
+
+}
+
 } // namespace rwkv

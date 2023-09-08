@@ -107,10 +107,12 @@ public:
   static Tensor FromPtr(void *ptr, const Shape &shape, DType dtype,
                         Device device);
   static Tensor FromOther(const Tensor& other, const Shape &shape);
-#ifdef FR_ENABLE_NCNN
-  ncnn::Mat ToNcnnMat() const;
-  static Tensor FromNcnnMat(const ncnn::Mat& ncnn_mat, bool copy);
-#endif
+
+  template<typename T>
+  T FromTensor() const;
+
+  template<typename T>
+  static Tensor ToTensor(const T& x);
 
   std::string name;
   bool is_constant = false;
