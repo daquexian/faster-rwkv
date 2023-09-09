@@ -93,7 +93,7 @@ void init_model(Model *model, Device device, const std::string &_path,
       config = ss.str();
     }
   }
-  {
+  if (!config.empty()) {
     auto get_value = [&config](const std::string &key) {
       auto pos = config.find(key);
       RV_CHECK(pos != std::string::npos);
