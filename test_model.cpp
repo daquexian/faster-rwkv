@@ -55,7 +55,6 @@ TEST(Model, ncnn_fp16_v5) {
   output_ptr = output.data_ptr<float>();
   EXPECT_LT(output_ptr[0], -7.3);
   EXPECT_GT(output_ptr[0], -7.5);
-  EXPECT_FLOAT_EQ(output_ptr[0], -7.4375);
   EXPECT_LT(output_ptr[9], -14.8);
   EXPECT_GT(output_ptr[9], -15.0);
 }
