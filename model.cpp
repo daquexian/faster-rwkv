@@ -35,17 +35,18 @@ Model::Model(const std::string &path, const std::string &strategy, std::any extr
     }
   }();
   _act_device = act_device;
-  std::string atype_str = strategy.substr(strategy.find(" ") + 1);
-  DType atype = [&]() {
-    if (atype_str == "fp16") {
-      return DType::kFloat16;
-    } else if (atype_str == "fp32") {
-      return DType::kFloat32;
+  std::tie(_act_dtype, _weight_dtype) = [&]() -> std::pair<DType, DType> {
+    std::string dtype_str = strategy.substr(strategy.find(" ") + 1);
+    if (dtype_str == "int8") {
+      return {DType::kFloat32, DType::kInt8};
+    } else if (dtype_str == "fp16") {
+      return {DType::kFloat16, DType::kFloat16};
+    } else if (dtype_str == "fp32") {
+      return {DType::kFloat32, DType::kFloat32};
     } else {
       RV_UNIMPLEMENTED();
     }
   }();
-  _act_dtype = atype;
 
   init_model(this, act_device, path, strategy, extra);
   if (kDebug) {

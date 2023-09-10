@@ -263,6 +263,20 @@ Tensor reshape(const Tensor& x, const Shape& shape) {
   return output;
 }
 
+Tensor gemv(const Tensor &a, const Tensor &b) {
+  RV_CHECK(b.device() == Device::kCPU);
+  append_data_to_bin_file(cpu::cast_dtype(b, DType::kFloat16), true);
+  PRINT_OP_TYPE_AND_NAME("Gemv", 1, 1);
+  int K = b.shape()[0];
+  int N = b.shape()[1];
+  auto output = Tensor::Empty({N}, DType::kFloat32, Device::kNCNNMeta);
+  fprintf(pp, " %s", a.name.c_str());
+  fprintf(pp, " %s", output.name.c_str());
+  fprintf(pp, " 0=%d", N);
+  fprintf(pp, " 1=%d\n", K);
+  return output;
+}
+
 Tensor gemm(const Tensor &a, const Tensor &b) {
   RV_CHECK(a.device() == Device::kNCNNMeta);
   auto [a_reshape, reshaped] = [&]() -> std::pair<Tensor, bool> {
@@ -324,7 +338,9 @@ Tensor gemm(const Tensor &a, const Tensor &b) {
 }
 
 Tensor matmul(const Tensor &a, const Tensor &b) {
-  if (a.shape().size() <= 2 && b.shape().size() <= 2) {
+  if (std::getenv("FR_NO_NCNN_GEMV") == nullptr && a.shape().size() == 1 && b.shape().size() == 2 && b.device() == Device::kCPU) {
+    return gemv(a, b);
+  } else if (a.shape().size() <= 2 && b.shape().size() <= 2) {
     return gemm(a, b);
   } else {
     return batch_matmul(a, b);

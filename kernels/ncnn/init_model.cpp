@@ -113,17 +113,25 @@ void init_model(Model *model, Device device, const std::string &_path,
     model->_n_ffn = std::stoi(get_value("n_ffn"));
   }
   auto net = std::make_shared<ncnn::Net>();
-  if (model->_act_dtype == DType::kFloat16) {
+  if (model->_weight_dtype == DType::kInt8) {
+    net->opt.use_fp16_packed = false;
+    net->opt.use_fp16_arithmetic = false;
+    net->opt.use_fp16_storage = false;
+    net->opt.use_bf16_storage = false;
+  } else if (model->_weight_dtype == DType::kFloat16) {
     net->opt.use_fp16_packed = false;
     net->opt.use_fp16_arithmetic = false;
     net->opt.use_fp16_storage = false;
     net->opt.use_bf16_storage = true;
   } else {
-    RV_CHECK(model->_act_dtype == DType::kFloat32);
+    RV_CHECK(model->_weight_dtype == DType::kFloat32);
     net->opt.use_fp16_packed = false;
     net->opt.use_fp16_arithmetic = false;
     net->opt.use_fp16_storage = false;
     net->opt.use_bf16_storage = false;
+  }
+  if (std::getenv("FR_THREADS")) {
+    net->opt.num_threads = std::stoi(std::getenv("FR_THREADS"));
   }
 #ifdef _FR_ENABLE_ANDROID_ASSET
   if (android_asset) {
