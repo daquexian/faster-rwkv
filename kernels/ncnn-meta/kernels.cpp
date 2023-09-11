@@ -1,5 +1,6 @@
 #include <kernels/ncnn-meta/kernels.h>
 
+#include <array>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -20,48 +21,45 @@ Tensor cast_dtype(const Tensor &x, DType dtype);
 }
 namespace ncnnmeta {
 
-int* get_unique_layer_id_ptr() {
+int *get_unique_layer_id_ptr() {
   static int _unique_id = 0;
   return &_unique_id;
 }
 
-int unique_layer_id() {
-  return (*get_unique_layer_id_ptr())++;
-}
+int unique_layer_id() { return (*get_unique_layer_id_ptr())++; }
 
-void reset_unique_layer_id() {
-  *get_unique_layer_id_ptr() = 0;
-}
+void reset_unique_layer_id() { *get_unique_layer_id_ptr() = 0; }
 
-int* get_blob_num_ptr() {
+int *get_blob_num_ptr() {
   static int _blob_num = 0;
   return &_blob_num;
 }
 
 int add_and_get_blob_num(int num) {
-  int* ptr = get_blob_num_ptr();
+  int *ptr = get_blob_num_ptr();
   *ptr += num;
   return *ptr;
 }
 
-void reset_blob_num() {
-  *get_blob_num_ptr() = 0;
-}
+void reset_blob_num() { *get_blob_num_ptr() = 0; }
 
 FILE *bp, *pp;
 std::string _pp_path;
 std::string _config_path;
+DType _weight_dtype;
 
-void init(const std::string &bp_path, const std::string &pp_path, const std::string& config_path) {
+void init(DType weight_dtype, const std::string &bp_path, const std::string &pp_path,
+          const std::string &config_path) {
   reset_blob_num();
   reset_unique_layer_id();
   bp = fopen(bp_path.c_str(), "wb");
   pp = fopen(pp_path.c_str(), "wb");
   _pp_path = pp_path;
   _config_path = config_path;
+  _weight_dtype = weight_dtype;
 }
 
-void destroy(const Model& model) {
+void destroy(const Model &model) {
   fclose(bp);
   fclose(pp);
   {
@@ -81,6 +79,8 @@ void destroy(const Model& model) {
   {
     std::ofstream config_file(_config_path);
     config_file << "version: " << model.version() << std::endl;
+    config_file << "act_dtype: " << dtype_to_string(DType::kFloat32) << std::endl;
+    config_file << "weight_dtype: " << dtype_to_string(_weight_dtype) << std::endl;
     config_file << "head_size: " << model.head_size() << std::endl;
     config_file << "n_layer: " << model.n_layer() << std::endl;
     config_file << "n_embd: " << model.n_embd() << std::endl;
@@ -90,12 +90,15 @@ void destroy(const Model& model) {
   }
 }
 
-void ExportModel(const std::string &input_path,
+void ExportModel(const std::string &input_path, DType weight_dtype,
                  const std::string &output_prefix) {
-  rwkv::ncnnmeta::init(output_prefix + ".bin", output_prefix + ".param", output_prefix + ".config");
+  RV_CHECK(weight_dtype == DType::kFloat16 || weight_dtype == DType::kInt8);
+
+  rwkv::ncnnmeta::init(weight_dtype, output_prefix + ".bin", output_prefix + ".param",
+                       output_prefix + ".config");
 
   // NOTE: fp32 here is just a placeholder. The dtype used by ncnn is determined
-  // when the model is loaded.
+  // by the weight_dtype parameter.
   rwkv::Model model(input_path, "ncnn-meta fp32");
   model.Run(0);
   rwkv::ncnnmeta::destroy(model);
@@ -105,7 +108,10 @@ void append_data_to_bin_file(const Tensor &tensor, bool write_tag) {
   RV_CHECK(tensor.device() == Device::kCPU);
   // RV_CHECK(tensor.is_constant);
   if (write_tag) {
-    if (tensor.dtype() == DType::kFloat16) {
+    if (tensor.dtype() == DType::kInt8) {
+      unsigned int int8_flag = 0x000D4B38;
+      fwrite((const char *)&int8_flag, sizeof(int8_flag), 1, bp);
+    } else if (tensor.dtype() == DType::kFloat16) {
       unsigned int fp16_flag = 0x01306B47;
       fwrite((const char *)&fp16_flag, sizeof(fp16_flag), 1, bp);
     } else {
@@ -236,11 +242,10 @@ Tensor batch_matmul(const Tensor &a, const Tensor &b) {
   return output;
 }
 
-Tensor reshape(const Tensor& x, const Shape& shape) {
+Tensor reshape(const Tensor &x, const Shape &shape) {
   RV_CHECK(x.numel() == num_elements(shape));
   PRINT_OP_TYPE_AND_NAME("Reshape", 1, 1);
-  auto output =
-      Tensor::Empty(shape, DType::kFloat32, Device::kNCNNMeta);
+  auto output = Tensor::Empty(shape, DType::kFloat32, Device::kNCNNMeta);
   fprintf(pp, " %s %s", x.name.c_str(), output.name.c_str());
   if (shape.size() == 4) {
     fprintf(pp, " 0=%d", (int)shape[3]);
@@ -263,12 +268,105 @@ Tensor reshape(const Tensor& x, const Shape& shape) {
   return output;
 }
 
-Tensor gemv(const Tensor &a, const Tensor &b) {
+Tensor gemv_a32w8(const Tensor &a, const Tensor &b) {
   RV_CHECK(b.device() == Device::kCPU);
-  append_data_to_bin_file(cpu::cast_dtype(b, DType::kFloat16), true);
-  PRINT_OP_TYPE_AND_NAME("Gemv", 1, 1);
-  int K = b.shape()[0];
-  int N = b.shape()[1];
+  const float *const ptr0 = b.data_ptr<float>();
+  const int K = b.shape()[0];
+  const int N = b.shape()[1];
+  static const int KT = 64;
+  Tensor B_int8_t = Tensor::Empty({K, N}, DType::kInt8, Device::kCPU);
+  Tensor scales_t = Tensor::Empty({K * N / KT}, DType::kFloat32, Device::kCPU);
+  float* scales = scales_t.data_ptr<float>();
+  Tensor zero_points_t =
+      Tensor::Empty({K * N / KT}, DType::kFloat32, Device::kCPU);
+  float* zero_points = zero_points_t.data_ptr<float>();
+
+  // (K, N)
+  // (K / 64, N / 4, 64, 4)
+  for (int a = 0; a < K / KT; a++) {
+    uint8_t *ptr = static_cast<uint8_t*>(B_int8_t.data_ptr()) + a * KT * N;
+    int block_id = a * (N / 4);
+    for (int b = 0; b < N / 4; b++) {
+      std::array<float, KT * 4> block_data;
+      int index = 0;
+      // every (64, 1) block in (64, 4) superblock has a scale and a zero_point
+      for (int c = 0; c < KT; c++) {
+        for (int d = 0; d < 4; d++) {
+          int k = a * KT + c;
+          int n = b * 4 + d;
+          block_data[index++] = ptr0[k * N + n];
+        }
+      }
+
+      const auto [col_scales, col_zeropoints] =
+          [&]() -> std::pair<std::array<float, 4>, std::array<float, 4>> {
+        std::array<std::array<float, KT>, 4> col_datas;
+        std::array<float, 4> col_scales;
+        std::array<float, 4> col_zeropoints;
+
+        for (int i = 0; i < KT * 4; i++) {
+          col_datas[i % 4][i / 4] = block_data[i];
+        }
+
+        // calculate scale and zero point
+        // float[i] = int[i] * scale + zero_point
+        // int[i] = (float[i] - zero_point) / scale
+        // scale = (max - min) / 255
+        for (int col = 0; col < 4; col++) {
+          const auto &col_data = col_datas[col];
+          float scale;
+          float zero_point;
+          float max = col_data[0];
+          float min = col_data[0];
+          for (int i = 1; i < static_cast<int>(col_data.size()); i++) {
+            if (col_data[i] > max) {
+              max = col_data[i];
+            }
+            if (col_data[i] < min) {
+              min = col_data[i];
+            }
+          }
+          // std::cout << "max = " << max << std::endl;
+          // std::cout << "min = " << min << std::endl;
+          if (max == min) {
+            scale = 1.f;
+          } else {
+            scale = (max - min) / 255.f;
+          }
+          zero_point = min;
+          col_scales[col] = scale;
+          col_zeropoints[col] = zero_point;
+
+          scales[block_id * 4 + col] = scale;
+          zero_points[block_id * 4 + col] = zero_point;
+        }
+
+        return {col_scales, col_zeropoints};
+      }();
+
+      // std::cout << "scales[" << block_id << "] = " << scale << std::endl;
+      // std::cout << "zero_points[" << block_id << "] = " << zero_point <<
+      // std::endl;
+      block_id++;
+
+      for (int i = 0; i < KT * 4; i++) {
+        // std::cout << "pre quant, col_datas[" << i << "] = " << col_datas[i]
+        // << std::endl;
+        block_data[i] =
+            (block_data[i] - col_zeropoints[i % 4]) / col_scales[i % 4];
+        assert(block_data[i] >= 0 && block_data[i] <= 255);
+        *ptr++ = std::round(block_data[i]);
+        // std::cout << "col_datas[" << i << "] = " << col_datas[i] <<
+        // std::endl; std::cout << "(int)col_datas[" << i << "] = " <<
+        // std::round(col_datas[i]) << std::endl;
+      }
+    }
+  }
+
+  append_data_to_bin_file(B_int8_t, true);
+  append_data_to_bin_file(scales_t, false);
+  append_data_to_bin_file(zero_points_t, false);
+  PRINT_OP_TYPE_AND_NAME("GemvA32W8", 1, 1);
   auto output = Tensor::Empty({N}, DType::kFloat32, Device::kNCNNMeta);
   fprintf(pp, " %s", a.name.c_str());
   fprintf(pp, " %s", output.name.c_str());
@@ -338,8 +436,9 @@ Tensor gemm(const Tensor &a, const Tensor &b) {
 }
 
 Tensor matmul(const Tensor &a, const Tensor &b) {
-  if (std::getenv("FR_NO_NCNN_GEMV") == nullptr && a.shape().size() == 1 && b.shape().size() == 2 && b.device() == Device::kCPU) {
-    return gemv(a, b);
+  if (_weight_dtype == DType::kInt8 && a.shape().size() == 1 &&
+      b.shape().size() == 2 && b.device() == Device::kCPU) {
+    return gemv_a32w8(a, b);
   } else if (a.shape().size() <= 2 && b.shape().size() <= 2) {
     return gemm(a, b);
   } else {
@@ -618,7 +717,7 @@ att_one_v5(const Tensor &x, const Tensor &sx, const Tensor &s,
   auto r = matmul(rx, rw).view({H, 1, S});
   auto k = matmul(kx, kw).view({H, S, 1});
   auto v = matmul(vx, vw).view({H, 1, S});
-  
+
   auto a = matmul(k, v);
   auto [a_s1, a_s2] = split2(a);
   auto [s_s1, s_s2] = split2(s);
@@ -626,7 +725,8 @@ att_one_v5(const Tensor &x, const Tensor &sx, const Tensor &s,
   auto decayed_s = a_s2 + s_s2 * t_decay;
 
   out = out.flatten();
-  // NOTE: ncnn groupnorm is different from pytorch groupnorm, so we use 1d input here
+  // NOTE: ncnn groupnorm is different from pytorch groupnorm, so we use 1d
+  // input here
   out = groupnorm(out, static_cast<int>(H), lx_w, lx_b).flatten();
   out = matmul(out, ow);
 
@@ -637,11 +737,11 @@ KernelRegister att_v5_reg("att_one_v5", Device::kNCNNMeta, att_one_v5);
 
 std::tuple<Tensor, Tensor, Tensor>
 att_one_v5_1(const Tensor &x, const Tensor &sx, const Tensor &s,
-           const Tensor &ln_w, const Tensor &ln_b, const Tensor &lx_w,
-           const Tensor &lx_b, const Tensor &k_mix, const Tensor &v_mix,
-           const Tensor &r_mix, const Tensor &g_mix, const Tensor &t_decay, const Tensor &t_first,
-           const Tensor &kw, const Tensor &vw, const Tensor &rw, const Tensor &gw,
-           const Tensor &ow) {
+             const Tensor &ln_w, const Tensor &ln_b, const Tensor &lx_w,
+             const Tensor &lx_b, const Tensor &k_mix, const Tensor &v_mix,
+             const Tensor &r_mix, const Tensor &g_mix, const Tensor &t_decay,
+             const Tensor &t_first, const Tensor &kw, const Tensor &vw,
+             const Tensor &rw, const Tensor &gw, const Tensor &ow) {
 
   auto [x_s1, x_s2] = split2(x);
   auto xx = layernorm(x_s1, ln_w, ln_b);
@@ -664,7 +764,7 @@ att_one_v5_1(const Tensor &x, const Tensor &sx, const Tensor &s,
   auto k = matmul(kx, kw).view({H, S, 1});
   auto v = matmul(vx, vw).view({H, 1, S});
   auto g = silu(matmul(gx, gw));
-  
+
   auto a = matmul(k, v);
   auto [a_s1, a_s2] = split2(a);
   auto [s_s1, s_s2] = split2(s);
@@ -672,7 +772,8 @@ att_one_v5_1(const Tensor &x, const Tensor &sx, const Tensor &s,
   auto decayed_s = a_s2 + s_s2 * t_decay;
 
   out = out.flatten();
-  // NOTE: ncnn groupnorm is different from pytorch groupnorm, so we use 1d input here
+  // NOTE: ncnn groupnorm is different from pytorch groupnorm, so we use 1d
+  // input here
   out = groupnorm(out, static_cast<int>(H), lx_w, lx_b).flatten();
   out = out * g;
   out = matmul(out, ow);

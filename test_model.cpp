@@ -22,9 +22,9 @@ TEST(Model, cuda_fp16) {
 #ifdef FR_ENABLE_NCNN
 TEST(Model, ncnn_fp16) {
   const std::string model_dir(std::getenv("FR_MODEL_DIR"));
-  rwkv::ncnnmeta::ExportModel(model_dir + "/RWKV-4-World-0.1B-v1-20230520-ctx4096-fp32.fr",
+  rwkv::ncnnmeta::ExportModel(model_dir + "/RWKV-4-World-0.1B-v1-20230520-ctx4096-fp32.fr", rwkv::DType::kFloat16,
                               "/tmp/rwkv-4-0.1b-ncnn");
-  rwkv::Model model("/tmp/rwkv-4-0.1b-ncnn", "ncnn fp16");
+  rwkv::Model model("/tmp/rwkv-4-0.1b-ncnn", "ncnn auto");
   auto output = rwkv::Copy(model.Run(0), rwkv::Device::kCPU);
   auto output_ptr = output.data_ptr<float>();
   // NOTE: different machines may have different results
@@ -42,9 +42,9 @@ TEST(Model, ncnn_fp16) {
 
 TEST(Model, ncnn_fp16_v5) {
   const std::string model_dir(std::getenv("FR_MODEL_DIR"));
-  rwkv::ncnnmeta::ExportModel(model_dir + "/RWKV-5-World-0.1B-v1-20230803-ctx4096-fp32.fr",
+  rwkv::ncnnmeta::ExportModel(model_dir + "/RWKV-5-World-0.1B-v1-20230803-ctx4096-fp32.fr", rwkv::DType::kFloat16,
                               "/tmp/rwkv-5-0.1b-ncnn");
-  rwkv::Model model("/tmp/rwkv-5-0.1b-ncnn", "ncnn fp16");
+  rwkv::Model model("/tmp/rwkv-5-0.1b-ncnn", "ncnn auto");
   auto output = rwkv::Copy(model.Run(0), rwkv::Device::kCPU);
   auto output_ptr = output.data_ptr<float>();
   EXPECT_LT(output_ptr[0], -7.0);
@@ -59,4 +59,25 @@ TEST(Model, ncnn_fp16_v5) {
   EXPECT_LT(output_ptr[9], -14.8);
   EXPECT_GT(output_ptr[9], -15.0);
 }
+
+TEST(Model, ncnn_int8) {
+  const std::string model_dir(std::getenv("FR_MODEL_DIR"));
+  rwkv::ncnnmeta::ExportModel(model_dir + "/RWKV-4-World-0.1B-v1-20230520-ctx4096-fp32.fr", rwkv::DType::kInt8,
+                              "/tmp/rwkv-4-0.1b-ncnn-int8");
+  rwkv::Model model("/tmp/rwkv-4-0.1b-ncnn-int8", "ncnn auto");
+  auto output = rwkv::Copy(model.Run(0), rwkv::Device::kCPU);
+  auto output_ptr = output.data_ptr<float>();
+  // NOTE: different machines may have different results
+  EXPECT_LT(output_ptr[0], -0.20);
+  EXPECT_GT(output_ptr[0], -0.30);
+  EXPECT_LT(output_ptr[9], -10.0);
+  EXPECT_GT(output_ptr[9], -10.5);
+  output = rwkv::Copy(model.Run(0), rwkv::Device::kCPU);
+  output_ptr = output.data_ptr<float>();
+  EXPECT_LT(output_ptr[0], -1.34);
+  EXPECT_GT(output_ptr[0], -1.39);
+  EXPECT_LT(output_ptr[9], -9.1);
+  EXPECT_GT(output_ptr[9], -9.4);
+}
+
 #endif

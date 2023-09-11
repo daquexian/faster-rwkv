@@ -43,6 +43,9 @@ Model::Model(const std::string &path, const std::string &strategy, std::any extr
       return {DType::kFloat16, DType::kFloat16};
     } else if (dtype_str == "fp32") {
       return {DType::kFloat32, DType::kFloat32};
+    } else if (dtype_str == "auto") {
+      // init them in backend
+      return {DType::kUndefined, DType::kUndefined};
     } else {
       RV_UNIMPLEMENTED();
     }
@@ -52,6 +55,8 @@ Model::Model(const std::string &path, const std::string &strategy, std::any extr
   if (kDebug) {
     std::cout << "Model inited" << std::endl;
     std::cout << "version: " << _version << std::endl;
+    std::cout << "activation dtype: " << dtype_to_string(_act_dtype) << std::endl;
+    std::cout << "weight dtype: " << dtype_to_string(_weight_dtype) << std::endl;
     std::cout << "head_size: " << _head_size << std::endl;
     std::cout << "n_embd: " << _n_embd << std::endl;
     std::cout << "n_layer: " << _n_layer << std::endl;
@@ -59,6 +64,8 @@ Model::Model(const std::string &path, const std::string &strategy, std::any extr
     std::cout << "n_ffn: " << _n_ffn << std::endl;
   }
   RV_CHECK(!_version.empty());
+  RV_CHECK(_act_dtype != DType::kUndefined);
+  RV_CHECK(_weight_dtype != DType::kUndefined);
   RV_CHECK(_n_layer > 0);
   RV_CHECK(_n_embd > 0);
   RV_CHECK(_n_att > 0);

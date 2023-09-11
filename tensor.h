@@ -18,6 +18,7 @@
 
 namespace rwkv {
 enum class DType {
+  kUndefined,
   kInt8,
   kFloat16,
   kFloat32,
@@ -39,6 +40,18 @@ template <> inline const DType dtype_v<int8_t> = DType::kInt8;
 
 using LengthType = int64_t;
 using Shape = std::vector<LengthType>;
+
+inline std::string dtype_to_string(DType dtype) {
+  if (dtype == DType::kFloat32) {
+    return "fp32";
+  } else if (dtype == DType::kFloat16) {
+    return "fp16";
+  } else if (dtype == DType::kInt8) {
+    return "int8";
+  } else {
+    RV_UNIMPLEMENTED();
+  }
+}
 
 inline LengthType num_elements(const std::vector<LengthType> &shape) {
   LengthType ret = 1;
