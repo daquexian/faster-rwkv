@@ -27,14 +27,14 @@ if (( $ARG >= 1 )); then
     aria2c -c -x16 -s16 https://huggingface.co/daquexian/fr-models/resolve/0549757/RWKV-5-World-0.1B-v1-20230803-ctx4096-ncnn-int8.bin -o RWKV-5-World-0.1B-v1-20230803-ctx4096-ncnn-int8.bin
     aria2c -c -x16 -s16 https://huggingface.co/daquexian/fr-models/resolve/0549757/RWKV-5-World-0.1B-v1-20230803-ctx4096-ncnn-int8.param -o RWKV-5-World-0.1B-v1-20230803-ctx4096-ncnn-int8.param
     aria2c -c -x16 -s16 https://huggingface.co/daquexian/fr-models/resolve/0549757/RWKV-5-World-0.1B-v1-20230803-ctx4096-ncnn-int8.config -o RWKV-5-World-0.1B-v1-20230803-ctx4096-ncnn-int8.config
-    echo 'FR_SHOW_SPEED=1 ./chat tokenizer_model RWKV-5-World-0.1B-v1-20230803-ctx4096-ncnn-int8 "ncnn auto"' > run_0.1b_int8.sh
+    echo 'chmod +x chat; FR_SHOW_SPEED=1 ./chat tokenizer_model RWKV-5-World-0.1B-v1-20230803-ctx4096-ncnn-int8 "ncnn auto"' > run_0.1b_int8.sh
     chmod +x run_0.1b_int8.sh
 fi
 if (( $ARG >= 2 )); then
     aria2c -c -x16 -s16 https://huggingface.co/daquexian/fr-models/resolve/0549757/RWKV-4-World-CHNtuned-1.5B-v1-20230620-ctx4096-ncnn-int8.bin -o RWKV-4-World-CHNtuned-1.5B-v1-20230620-ctx4096-ncnn-int8.bin
     aria2c -c -x16 -s16 https://huggingface.co/daquexian/fr-models/resolve/0549757/RWKV-4-World-CHNtuned-1.5B-v1-20230620-ctx4096-ncnn-int8.param -o RWKV-4-World-CHNtuned-1.5B-v1-20230620-ctx4096-ncnn-int8.param
     aria2c -c -x16 -s16 https://huggingface.co/daquexian/fr-models/resolve/0549757/RWKV-4-World-CHNtuned-1.5B-v1-20230620-ctx4096-ncnn-int8.config -o RWKV-4-World-CHNtuned-1.5B-v1-20230620-ctx4096-ncnn-int8.config
-    echo 'FR_SHOW_SPEED=1 ./chat tokenizer_model RWKV-4-World-CHNtuned-1.5B-v1-20230620-ctx4096-ncnn-int8 "ncnn auto"' > run_1.5b_int8.sh
+    echo 'chmod +x chat; FR_SHOW_SPEED=1 ./chat tokenizer_model RWKV-4-World-CHNtuned-1.5B-v1-20230620-ctx4096-ncnn-int8 "ncnn auto"' > run_1.5b_int8.sh
     chmod +x run_1.5b_int8.sh
 fi
 
