@@ -36,6 +36,7 @@ private:
   std::vector<Tensor> _params;
   Device _act_device;
   DType _act_dtype;
+  DType _weight_dtype;
   // inited in `init_model` and checked in constructor
   int _n_layer = 0;
   int _n_embd = 0;

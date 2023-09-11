@@ -94,7 +94,7 @@ void init_model(Model *model, Device device, const std::string &_path,
     }
   }
   if (!config.empty()) {
-    auto get_value = [&config](const std::string &key) {
+    const auto get_value = [&config](const std::string &key) {
       auto pos = config.find(key);
       RV_CHECK(pos != std::string::npos);
       auto pos2 = config.find(": ", pos);
@@ -103,8 +103,25 @@ void init_model(Model *model, Device device, const std::string &_path,
       RV_CHECK(pos3 != std::string::npos);
       return config.substr(pos2 + 2, pos3 - pos2 - 2);
     };
+    const auto str_to_dtype = [](const std::string &str) {
+      if (str == "fp32") {
+        return DType::kFloat32;
+      } else if (str == "fp16") {
+        return DType::kFloat16;
+      } else if (str == "int8") {
+        return DType::kInt8;
+      } else {
+        RV_UNIMPLEMENTED();
+      }
+    };
 
     model->_version = get_value("version");
+    try {
+      model->_act_dtype = str_to_dtype(get_value("act_dtype"));
+      model->_weight_dtype = str_to_dtype(get_value("weight_dtype"));
+    } catch (...) {
+      // do nothing
+    }
     model->_head_size = std::stoi(get_value("head_size"));
     // overwrite these fields if it is new model (having config file)
     model->_n_embd = std::stoi(get_value("n_embd"));
@@ -113,17 +130,25 @@ void init_model(Model *model, Device device, const std::string &_path,
     model->_n_ffn = std::stoi(get_value("n_ffn"));
   }
   auto net = std::make_shared<ncnn::Net>();
-  if (model->_act_dtype == DType::kFloat16) {
+  if (model->_weight_dtype == DType::kInt8) {
+    net->opt.use_fp16_packed = false;
+    net->opt.use_fp16_arithmetic = false;
+    net->opt.use_fp16_storage = false;
+    net->opt.use_bf16_storage = false;
+  } else if (model->_weight_dtype == DType::kFloat16) {
     net->opt.use_fp16_packed = false;
     net->opt.use_fp16_arithmetic = false;
     net->opt.use_fp16_storage = false;
     net->opt.use_bf16_storage = true;
   } else {
-    RV_CHECK(model->_act_dtype == DType::kFloat32);
+    RV_CHECK(model->_weight_dtype == DType::kFloat32);
     net->opt.use_fp16_packed = false;
     net->opt.use_fp16_arithmetic = false;
     net->opt.use_fp16_storage = false;
     net->opt.use_bf16_storage = false;
+  }
+  if (std::getenv("FR_THREADS")) {
+    net->opt.num_threads = std::stoi(std::getenv("FR_THREADS"));
   }
 #ifdef _FR_ENABLE_ANDROID_ASSET
   if (android_asset) {

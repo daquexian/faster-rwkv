@@ -37,10 +37,10 @@ endif()
 if (FR_ENABLE_NCNN)
     FetchContent_Declare(
         ncnn
-        GIT_REPOSITORY https://github.com/Tencent/ncnn
+        GIT_REPOSITORY https://github.com/daquexian/ncnn
         # This commit reduces peak memory usage
         # https://github.com/Tencent/ncnn/pull/4966
-        GIT_TAG 0829fa49d3d74e9e8d6b053cc0bef60a06c60bce
+        GIT_TAG 876ab05c
         SYSTEM
         )
     option(NCNN_BUILD_BENCHMARK "" OFF)
