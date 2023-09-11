@@ -73,19 +73,19 @@ Run one of the following commands in Termux to download prebuilt executables and
 Executables, 1.5B CHNtuned model and 0.1B world model:
 
 ```
-curl -L -s https://raw.githubusercontent.com/daquexian/faster-rwkv/v0.0.4/download_binaries_and_models_termux.sh | bash -s 2
+curl -L -s https://raw.githubusercontent.com/daquexian/faster-rwkv/master/download_binaries_and_models_termux.sh | bash -s 2
 ```
 
 Executables and 0.1B world model:
 
 ```
-curl -L -s https://raw.githubusercontent.com/daquexian/faster-rwkv/v0.0.4/download_binaries_and_models_termux.sh | bash -s 1
+curl -L -s https://raw.githubusercontent.com/daquexian/faster-rwkv/master/download_binaries_and_models_termux.sh | bash -s 1
 ```
 
 Executables only:
 
 ```
-curl -L -s https://raw.githubusercontent.com/daquexian/faster-rwkv/v0.0.4/download_binaries_and_models_termux.sh | bash -s 0
+curl -L -s https://raw.githubusercontent.com/daquexian/faster-rwkv/master/download_binaries_and_models_termux.sh | bash -s 0
 ```
 
 ### TODO
