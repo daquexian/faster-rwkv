@@ -4,7 +4,7 @@
 #include <kernels/ncnn-meta/kernels.h>
 
 int main(int argc, char **argv) {
-  if (argc != 3 || argc != 4) {
+  if (argc != 3 && argc != 4) {
     std::cerr
         << "Usage: ./export_ncnn <input path> <output prefix> [<weight_dtype>]"
         << std::endl;
