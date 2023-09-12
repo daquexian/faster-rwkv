@@ -42,6 +42,8 @@ int Sampler::Sample(const float *ptr, int len, float temperature, int top_k, flo
   if (top_k > 0) {
     len = std::min(len, top_k);
   }
+  
+  // top-p
   float cumsum = 0;
   for (int i = 0; i < len; i++) {
     cumsum += id_and_probs[i].second;

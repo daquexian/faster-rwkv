@@ -100,7 +100,7 @@ std::vector<int> MIDITokenizer::encode(std::string_view str) const {
     RV_UNIMPLEMENTED();
   }
   std::vector<std::string> pieces;
-  if (_pre_tokenizer == "Whitespace") {
+  if (_pre_tokenizer == "WhitespaceSplit") {
     std::string buf;
     std::stringstream ss{std::string(str)};
     while (ss >> buf) {
