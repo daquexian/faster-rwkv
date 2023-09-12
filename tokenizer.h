@@ -25,6 +25,22 @@ private:
   std::unordered_map<int, std::string> _idx2word;
 };
 
+class MIDITokenizer : public Tokenizer {
+public:
+  MIDITokenizer(const std::string &path);
+  std::vector<int> encode(std::string_view str) const;
+  std::string decode(const std::vector<int> &ids) const;
+  std::string decode(int id) const;
+
+  const int bos_token_id = 0;
+  const int eos_token_id = 0;
+private:
+  std::unordered_map<std::string, int> _word2idx;
+  std::unordered_map<int, std::string> _idx2word;
+  std::string _normalizer;
+  std::string _pre_tokenizer;
+};
+
 class ABCTokenizer : public Tokenizer {
 public:
   ABCTokenizer() = default;
