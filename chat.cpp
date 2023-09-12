@@ -88,10 +88,11 @@ int main(int argc, char **argv) {
     auto total_time = std::chrono::duration_cast<std::chrono::milliseconds>(
         end - start);
     if (kShowSpeed) {
-      std::cout << "time: " << total_time.count() << "ms" << std::endl;
-      std::cout << "num tokens: " << prompt_ids.size() + num_new_tokens << std::endl;
-      std::cout << "ms per token: " << 1. * total_time.count() / (prompt_ids.size() + num_new_tokens) << std::endl;
-      std::cout << "tokens per second: " << 1. * (prompt_ids.size() + num_new_tokens) / total_time.count() * 1000 << std::endl;
+      std::cout << "-- time: " << total_time.count() << "ms" << std::endl;
+      std::cout << "-- num tokens: " << prompt_ids.size() + num_new_tokens << std::endl;
+      std::cout << "-- ms per token: " << 1. * total_time.count() / (prompt_ids.size() + num_new_tokens) << std::endl;
+      std::cout << "-- tokens per second: " << 1. * (prompt_ids.size() + num_new_tokens) / total_time.count() * 1000 << std::endl;
+      std::cout << std::endl;
     }
     if (!kGlobalPenalty) {
       occurences.clear();

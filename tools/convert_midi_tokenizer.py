@@ -11,5 +11,7 @@ with open(sys.argv[1], "r", encoding="utf-8") as f:
 
 idx2token = {v: k for k, v in token2idx.items()}
 
+d = {'idx2word': idx2token, 'normalizer': j["normalizer"]["type"], "pre_tokenizer": j["pre_tokenizer"]["type"], "version": "1"}
+
 with open(sys.argv[2], "wb") as f:
-    msgpack.pack(idx2token, f)
+    msgpack.pack(d, f)

@@ -18,13 +18,14 @@ struct Model {
   Tensor Run(int id);
   void ResetStates();
   void set_states(const States &states);
-  States get_states() const;
+  const States& get_states() const;
   const int head_size() const { return _head_size; }
   const int n_layer() const { return _n_layer; }
   const int n_embd() const { return _n_embd; }
   const int n_att() const { return _n_att; }
   const int n_ffn() const { return _n_ffn; }
-  const std::string version() const { return _version; }
+  const std::string &version() const { return _version; }
+  const std::any& extra() const { return _extra; }
 
   // TODO:
   std::vector<Tensor> _embd_weights;
@@ -35,6 +36,7 @@ private:
   std::vector<Tensor> _params;
   Device _act_device;
   DType _act_dtype;
+  DType _weight_dtype;
   // inited in `init_model` and checked in constructor
   int _n_layer = 0;
   int _n_embd = 0;

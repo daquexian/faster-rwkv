@@ -19,6 +19,8 @@ int Sampler::Sample(const float *ptr, int len, float temperature, int top_k, flo
     std::cout << "Sample: len=" << len << ", temperature=" << temperature
               << ", top_k=" << top_k << ", top_p=" << top_p << std::endl;
   }
+
+  // softmax
   std::vector<std::pair<int, float>> id_and_probs;
   id_and_probs.reserve(len);
   const float max_logit = *std::max_element(ptr, ptr + len);
@@ -30,9 +32,13 @@ int Sampler::Sample(const float *ptr, int len, float temperature, int top_k, flo
   for (int i = 0; i < len; i++) {
     id_and_probs[i].second /= sum;
   }
+
+  // sort
   std::sort(id_and_probs.begin(), id_and_probs.end(), [&](auto p1, auto p2) {
     return p1.second > p2.second;
   });
+
+  // top-k
   if (top_k > 0) {
     len = std::min(len, top_k);
   }

@@ -13,14 +13,27 @@ else()
     option(FR_BUILD_JNI "" OFF)
     option(FR_ENABLE_NCNN "Enable NCNN" OFF)
 endif()
+option(FR_ENABLE_CUDA_ARCH "Specify the cuda arch yourself by CMAKE_CUDA_ARCHITECTURES" OFF)
 
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 if (FR_ENABLE_CUDA)
     enable_language(CUDA)
-    if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
-        set(CMAKE_CUDA_ARCHITECTURES native)
+    if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES OR NOT FR_ENABLE_CUDA_ARCH)
+        # find the largest cuda arch number compatible with the device.
+        include(FindCUDA/select_compute_arch)
+        CUDA_DETECT_INSTALLED_GPUS(INSTALLED_GPU_CCS_1)
+        string(STRIP "${INSTALLED_GPU_CCS_1}" INSTALLED_GPU_CCS_2)
+        string(REPLACE " " "\;" INSTALLED_GPU_CCS_3 "${INSTALLED_GPU_CCS_2}")
+        string(REPLACE "." "" CUDA_ARCH_LIST "${INSTALLED_GPU_CCS_3}")
+        STRING(FIND "${CUDA_ARCH_LIST}" "\;" LAST_SEMICOLON_INDEX REVERSE)
+        math(EXPR SPLIT_START_INDEX "${LAST_SEMICOLON_INDEX} + 1")
+        STRING(SUBSTRING "${CUDA_ARCH_LIST}" ${SPLIT_START_INDEX} -1 FILTERED_CUDA_ARCH_LIST)
+        set(CMAKE_CUDA_ARCHITECTURES ${FILTERED_CUDA_ARCH_LIST})
+    else()
+        message(${CMAKE_CUDA_ARCHITECTURES})
     endif()
+
     set(cuda_kernel_srcs
         kernels/cuda/matmul.cpp
         # kernels/cuda/cat.cu
@@ -39,10 +52,10 @@ endif()
 if (FR_ENABLE_NCNN)
     FetchContent_Declare(
         ncnn
-        GIT_REPOSITORY https://github.com/Tencent/ncnn
+        GIT_REPOSITORY https://github.com/daquexian/ncnn
         # This commit reduces peak memory usage
         # https://github.com/Tencent/ncnn/pull/4966
-        GIT_TAG 0829fa49d3d74e9e8d6b053cc0bef60a06c60bce
+        GIT_TAG 876ab05c
         SYSTEM
         )
     option(NCNN_BUILD_BENCHMARK "" OFF)
@@ -54,7 +67,7 @@ if (FR_ENABLE_NCNN)
     option(NCNN_PIXEL_AFFINE "" OFF)
     option(NCNN_PIXEL_DRAWING "" OFF)
     option(NCNN_DISABLE_EXCEPTION "" OFF)
-    if (NOT CMAKE_SYSTEM_NAME STREQUAL "Android")
+    if (NOT CMAKE_SYSTEM_NAME STREQUAL "Android" AND NOT CMAKE_CROSSCOMPILING)
         option(NCNN_OPENMP "" OFF)
         option(NCNN_SIMPLEOMP "" ON)
     endif()
@@ -128,19 +141,19 @@ enable_testing()
 add_executable(test_model test_model.cpp)
 target_link_libraries(test_model gtest_main faster_rwkv)
 include(GoogleTest)
-if (NOT CMAKE_SYSTEM_NAME STREQUAL "Android")
+if (NOT CMAKE_SYSTEM_NAME STREQUAL "Android" AND NOT CMAKE_CROSSCOMPILING)
     gtest_discover_tests(test_model)
 endif()
 
 add_executable(test_tokenizer test_tokenizer.cpp)
 target_link_libraries(test_tokenizer gtest_main faster_rwkv)
-if (NOT CMAKE_SYSTEM_NAME STREQUAL "Android")
+if (NOT CMAKE_SYSTEM_NAME STREQUAL "Android" AND NOT CMAKE_CROSSCOMPILING)
     gtest_discover_tests(test_tokenizer)
 endif()
 
 add_executable(test_ops test_ops.cpp)
 target_link_libraries(test_ops gtest_main faster_rwkv)
-if (NOT CMAKE_SYSTEM_NAME STREQUAL "Android")
+if (NOT CMAKE_SYSTEM_NAME STREQUAL "Android" AND NOT CMAKE_CROSSCOMPILING)
     gtest_discover_tests(test_ops)
 endif()
 
@@ -164,6 +177,9 @@ target_link_libraries(chat faster_rwkv)
 
 add_executable(abc_music abc_music.cpp)
 target_link_libraries(abc_music faster_rwkv)
+
+add_executable(midi_music midi_music.cpp)
+target_link_libraries(midi_music faster_rwkv)
 
 if (FR_BUILD_JNI)
     add_subdirectory(aar)

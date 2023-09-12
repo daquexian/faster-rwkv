@@ -1,10 +1,6 @@
 name: Build and Test
 
-on:
-  push:
-    branches: [ "master", "ci" ]
-  pull_request:
-    branches: [ "master" ]
+on: [push, pull_request]
 
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
@@ -87,6 +83,7 @@ jobs:
         path: |
           build_export_ncnn/export_ncnn
     - uses: "marvinpinto/action-automatic-releases@latest"
+      if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' }}
       with:
         repo_token: "${{ secrets.GH_TOKEN }}"
         automatic_release_tag: "latest"
@@ -95,3 +92,17 @@ jobs:
         files: |
           build_export_ncnn/export_ncnn
           aar/java/faster-rwkv-java/build/outputs/aar/faster-rwkv-java-release.aar
+          build-android/chat
+          build-android/abc_music
+
+    - uses: "marvinpinto/action-automatic-releases@latest"
+      if: ${{ github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags/v') }}
+      with:
+        repo_token: "${{ secrets.GH_TOKEN }}"
+        prerelease: false
+        files: |
+          build_export_ncnn/export_ncnn
+          aar/java/faster-rwkv-java/build/outputs/aar/faster-rwkv-java-release.aar
+          build-android/chat
+          build-android/abc_music
+

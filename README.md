@@ -96,6 +96,7 @@ curl -L -s https://raw.githubusercontent.com/daquexian/faster-rwkv/master/downlo
 - [x] CI
 - [ ] Raven models support
 - [ ] MIDI music models support
+- [ ] initial state support
 - [ ] seq mode
 - [ ] export ONNX
 - [ ] more backends..
