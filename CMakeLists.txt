@@ -13,14 +13,27 @@ else()
     option(FR_BUILD_JNI "" OFF)
     option(FR_ENABLE_NCNN "Enable NCNN" OFF)
 endif()
+option(FR_ENABLE_CUDA_ARCH "Specify the cuda arch yourself by CMAKE_CUDA_ARCHITECTURES" OFF)
 
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 if (FR_ENABLE_CUDA)
     enable_language(CUDA)
-    if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
-        set(CMAKE_CUDA_ARCHITECTURES native)
+    if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES OR NOT FR_ENABLE_CUDA_ARCH)
+        # find the largest cuda arch number compatible with the device.
+        include(FindCUDA/select_compute_arch)
+        CUDA_DETECT_INSTALLED_GPUS(INSTALLED_GPU_CCS_1)
+        string(STRIP "${INSTALLED_GPU_CCS_1}" INSTALLED_GPU_CCS_2)
+        string(REPLACE " " "\;" INSTALLED_GPU_CCS_3 "${INSTALLED_GPU_CCS_2}")
+        string(REPLACE "." "" CUDA_ARCH_LIST "${INSTALLED_GPU_CCS_3}")
+        STRING(FIND "${CUDA_ARCH_LIST}" "\;" LAST_SEMICOLON_INDEX REVERSE)
+        math(EXPR SPLIT_START_INDEX "${LAST_SEMICOLON_INDEX} + 1")
+        STRING(SUBSTRING "${CUDA_ARCH_LIST}" ${SPLIT_START_INDEX} -1 FILTERED_CUDA_ARCH_LIST)
+        set(CMAKE_CUDA_ARCHITECTURES ${FILTERED_CUDA_ARCH_LIST})
+    else()
+        message(${CMAKE_CUDA_ARCHITECTURES})
     endif()
+
     set(cuda_kernel_srcs
         kernels/cuda/matmul.cpp
         kernels/cuda/layer_norm.cu
