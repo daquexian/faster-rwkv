@@ -6,6 +6,7 @@ env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
   BUILD_TYPE: Release
   FR_MODEL_DIR: /tmp/models
+  CI: 1
 
 jobs:
   build-and-test:
