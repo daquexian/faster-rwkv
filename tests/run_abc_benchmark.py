@@ -36,3 +36,6 @@ for probs in probs_vec:
 
 assert np.allclose(sum/cnt, 0.2698, atol=1e-4)
 
+os.remove("eval_set")
+os.remove("abc_probs")
+

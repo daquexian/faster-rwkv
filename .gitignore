@@ -6,3 +6,5 @@ build-*/
 models/
 *.fr
 abc_music_input*.txt
+eval_set
+abc_probs
