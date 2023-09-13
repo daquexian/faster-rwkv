@@ -68,7 +68,7 @@ jobs:
     - name: Run ABC ppl test
       run: |
         pip install datasets msgpack
-        tests/run_abc_benchmark.py ${{github.workspace}}/build/tests/run_abc_benchmark ${{env.FR_MODEL_DIR}}/RWKV-5-ABC-82M-v1-20230901-ctx1024-ncnn
+        python3 tests/run_abc_benchmark.py ${{github.workspace}}/build/tests/run_abc_benchmark ${{env.FR_MODEL_DIR}}/RWKV-5-ABC-82M-v1-20230901-ctx1024-ncnn
 
     - name: Run tests
       working-directory: ${{github.workspace}}/build

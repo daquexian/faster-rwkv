@@ -103,7 +103,15 @@ Tensor possible_initializer(const Tensor &x) {
 }
 
 Tensor gather(const Tensor& x, const Tensor& index) {
-
+  RV_CHECK(x.shape().size() == 2);
+  RV_CHECK(index.shape().size() == 1);
+  auto output = Tensor::Empty({index.shape()[1]}, x.dtype(), x.device());
+  NodeProto *node = graph.add_node();
+  node->set_op_type("Gather");
+  node->add_input(x.name);
+  node->add_input(index.name);
+  node->add_output(output.name);
+  return output;
 }
 
 Tensor layernorm(const Tensor &x, const Tensor &weight, const Tensor &bias) {
