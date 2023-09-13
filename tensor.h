@@ -22,6 +22,7 @@ enum class DType {
   kInt8,
   kFloat16,
   kFloat32,
+  kInt64,
 };
 using float16 = half_float::half;
 enum class Device {

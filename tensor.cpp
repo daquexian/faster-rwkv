@@ -5,6 +5,7 @@
 #include <stdexcept>
 
 #include <kernels/ncnn-meta/kernels.h>
+#include <kernels/onnx-meta/kernels.h>
 
 namespace rwkv {
 
@@ -45,6 +46,13 @@ Tensor Copy(const Tensor &x, Device device, bool always_copy) {
   }
 #endif
 
+#ifdef FR_ENABLE_ONNX
+  if (device == Device::kONNXMeta && x.device() == Device::kCPU) {
+    y = onnxmeta::possible_initializer(x);
+    return y;
+  }
+#endif
+
   if (device == Device::kNCNNMeta && x.device() == Device::kCPU) {
     y = ncnnmeta::MemoryData(x);
     return y;
@@ -53,7 +61,8 @@ Tensor Copy(const Tensor &x, Device device, bool always_copy) {
     memcpy(y.data_ptr(), x.data_ptr(), x.numel() * x.elem_size());
     return y;
   }
-  throw std::runtime_error("unsupported device");
+
+  RV_UNIMPLEMENTED();
 }
 
 namespace {

@@ -152,6 +152,7 @@ inline void init_model(Model *model, Device device, const std::string &path,
 KernelRegister init_model_reg_1("init_model", Device::kCPU, init_model);
 KernelRegister init_model_reg_2("init_model", Device::kCUDA, init_model);
 KernelRegister init_model_reg_3("init_model", Device::kNCNNMeta, init_model);
+KernelRegister init_model_reg_4("init_model", Device::kONNXMeta, init_model);
 
 } // namespace def
 } // namespace rwkv

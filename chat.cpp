@@ -64,7 +64,7 @@ int main(int argc, char **argv) {
               std::min(3.0f, (num_new_tokens - kChatLenLong) * 0.25f);
         }
       }
-      auto output_id = sampler.Sample(output.data_ptr<float>(), output.numel(), 1.f, 1, 0.f);
+      auto output_id = sampler.Sample(output, 1.f, 1, 0.f);
       occurences[output_id]++;
       if (output_id == kEndOfSentence && !kQAMode) {
         break;
