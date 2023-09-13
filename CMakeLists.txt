@@ -36,12 +36,12 @@ if (FR_ENABLE_CUDA)
 
     set(cuda_kernel_srcs
         kernels/cuda/matmul.cpp
-        # kernels/cuda/cat.cu
+        kernels/cuda/cat.cu
         kernels/cuda/layer_norm.cu
         kernels/cuda/group_norm.cu
         kernels/cuda/cast_dtype.cu
         kernels/cuda/att.cu
-        # kernels/cuda/att_seq.cu
+        kernels/cuda/att_seq.cu
         kernels/cuda/ffn.cu
         kernels/cuda/fill.cu
         kernels/cuda/element_wise.cu
@@ -107,6 +107,7 @@ add_library(faster_rwkv_internal
         kernels/cpu/allocator.cpp
         kernels/cpu/fill.cpp
         kernels/cpu/cast_dtype.cpp
+        kernels/default/slice.cpp
         kernels/default/att.cpp
         kernels/default/ffn.cpp
         kernels/default/init_model.cpp

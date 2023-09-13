@@ -74,6 +74,17 @@ inline int32_t elem_size(DType dtype) {
   }
 }
 
+struct Range {
+  LengthType start;
+  LengthType interval;
+  LengthType end;
+
+  Range(LengthType start, LengthType interval, LengthType end)
+      : start(start), interval(interval), end(end) {}
+
+  static Range All;
+};
+
 class TensorStorage {
 public:
   TensorStorage(size_t nbytes, Device device);
@@ -116,16 +127,18 @@ public:
 
   Tensor unsqueeze(int dim);
 
+  Tensor slice(const std::vector<Range> &ranges);
+
+  Tensor slice(const std::initializer_list<Range> &ranges);
+
   static Tensor Empty(const Shape &shape, DType dtype, Device device);
   static Tensor FromPtr(void *ptr, const Shape &shape, DType dtype,
                         Device device);
-  static Tensor FromOther(const Tensor& other, const Shape &shape);
+  static Tensor FromOther(const Tensor &other, const Shape &shape);
 
-  template<typename T>
-  T FromTensor() const;
+  template <typename T> T FromTensor() const;
 
-  template<typename T>
-  static Tensor ToTensor(const T& x);
+  template <typename T> static Tensor ToTensor(const T &x);
 
   std::string name;
   bool is_constant = false;

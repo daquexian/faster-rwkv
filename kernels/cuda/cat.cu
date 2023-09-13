@@ -25,7 +25,7 @@ out_total: the total element number of the output tensor
 TODO(Rinne): optimize this kernel.
 */
 template <typename T>
-__global__ void _cat(T *a, T *b, T *out, int dim, int left, int right,
+__global__ void _cat(const T *a, const T *b, T *out, int dim, int left, int right,
                      int a_size, int b_size, int out_total) {
   int a_except_left = a_size * right;
   int b_except_left = b_size * right;
@@ -85,13 +85,12 @@ Tensor cat(const Tensor &a, const Tensor &b, int dim) {
   int total = out.numel();
 
 #define LAUNCH_KERNEL(type)                                                    \
-  RV_CHECK(total % 128 == 0);                                                  \
-  if (total % 256 == 0) {                                                      \
+  if (total >= 256) {                                                      \
     _cat<<<total / 256, 256>>>(                                       \
         a.data_ptr<type>(), b.data_ptr<type>(), out.data_ptr<type>(), dim,     \
         left_size, right_size, a_dim_size, b_dim_size, total);                 \
   } else {                                                                     \
-    _cat<<<total / 256, 256>>>(                                       \
+    _cat<<<total / 64, 64>>>(                                       \
         a.data_ptr<type>(), b.data_ptr<type>(), out.data_ptr<type>(), dim,     \
         left_size, right_size, a_dim_size, b_dim_size, total);                 \
   }
@@ -108,7 +107,7 @@ Tensor cat(const Tensor &a, const Tensor &b, int dim) {
   
 }
 
-KernelRegister inplace_scalar_div_reg("scalar_div_", Device::kCUDA, scalar_div_);
+KernelRegister inplace_cat_reg("cat", Device::kCUDA, cat);
 
 } // namespace cuda
 } // namespace rwkv

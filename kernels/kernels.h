@@ -89,11 +89,10 @@ inline Tensor matmul(const Tensor &a, const Tensor &b) {
                                                             a.device())(a, b);
 }
 
-// inline Tensor cat(const Tensor &a, const Tensor &b) {
-//   return KernelRegistry::Instance().Get<decltype(cat) *>("cat",
-//   a.device())(a,
-//                                                                             b);
-// }
+inline Tensor cat(const Tensor &a, const Tensor &b) {
+  return KernelRegistry::Instance().Get<decltype(cat) *>("cat", a.device())(a,
+                                                                            b);
+}
 
 // TODO:
 // REGISTER_KERNEL(Tensor, add, const Tensor&, x, const Tensor&, y);
@@ -147,10 +146,18 @@ inline Tensor reshape(const Tensor &x, const Shape &shape) {
       "reshape", x.device())(x, shape);
 }
 
+inline Tensor slice(const Tensor &x, const std::vector<Range> &ranges) {
+  return KernelRegistry::Instance().Get<decltype(slice) *>("slice", x.device())(
+      x, ranges);
+}
+
 inline Tensor flatten(const Tensor &x) { return reshape(x, {x.numel()}); }
 
 inline Tensor unsqueeze(const Tensor &x, int dim) {
   auto new_shape = x.shape();
+  if (dim < 0) {
+    dim += x.sizes().size();
+  }
   new_shape.insert(new_shape.begin() + dim, 1);
   return reshape(x, new_shape);
 }

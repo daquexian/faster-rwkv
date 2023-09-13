@@ -1,5 +1,6 @@
 #include "tensor.h"
 #include "check.h"
+#include <initializer_list>
 #include <iostream>
 #include <kernels/kernels.h>
 #include <stdexcept>
@@ -7,6 +8,7 @@
 #include <kernels/ncnn-meta/kernels.h>
 
 namespace rwkv {
+Range Range::All = Range(0, 0, 0);
 
 void print_tensor(const Tensor &t, const std::string &name) {
   std::cout << "Tensor " << name << std::endl;
@@ -100,6 +102,14 @@ Tensor Tensor::view(const Shape &shape) { return rwkv::reshape(*this, shape); }
 Tensor Tensor::flatten() { return rwkv::flatten(*this); }
 
 Tensor Tensor::unsqueeze(int dim) { return rwkv::unsqueeze(*this, dim); }
+
+Tensor Tensor::slice(const std::vector<Range> &ranges) {
+  return rwkv::slice(*this, ranges);
+}
+
+Tensor Tensor::slice(const std::initializer_list<Range> &ranges) {
+  return rwkv::slice(*this, std::vector<Range>(ranges));
+}
 
 Tensor operator+(const Tensor &lhs, const Tensor &rhs) { return add(lhs, rhs); }
 
