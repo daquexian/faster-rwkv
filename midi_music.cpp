@@ -49,9 +49,8 @@ int main(int argc, char **argv) {
           (i - 2000) / 500.;                      // not too short, not too long
       output_tensor.data_ptr<float>()[127] -= 1.; // avoid "t125"
 
-      auto output_id = sampler.Sample(output_tensor.data_ptr<float>(),
-                                      // output_tensor.numel(), 1.f, 1, 1.0f);
-                                      output_tensor.numel(), 1.f, 8, 0.8f);
+      auto output_id = sampler.Sample(output_tensor, 1.f, 8, 0.8f);
+                                      // output_tensor, 1.f, 1, 1.0f);
 
       // translated from ChatRWKV
       for (const auto &[id, occurence] : occurences) {

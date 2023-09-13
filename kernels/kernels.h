@@ -136,6 +136,11 @@ inline Tensor maximum(const Tensor &x, const Tensor &y) {
                                                              x.device())(x, y);
 }
 
+inline Tensor softmax(const Tensor &x, float temperature) {
+  return KernelRegistry::Instance().Get<decltype(softmax) *>("softmax",
+                                                             x.device())(x, temperature);
+}
+
 inline Tensor reshape(const Tensor &x, const Shape &shape) {
   return KernelRegistry::Instance().Get<decltype(reshape) *>("reshape",
                                                              x.device())(x, shape);

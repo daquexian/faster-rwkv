@@ -13,4 +13,16 @@ public:
   virtual void Deallocate(void *ptr) = 0;
   static const int kAlignSize = 512;
 };
+
+class NullAllocator : public rwkv::Allocator {
+public:
+  void *DoAllocate(size_t size) { return nullptr; }
+  void Deallocate(void *ptr) {}
+};
+
+inline rwkv::Allocator &null_allocator() {
+  static NullAllocator allocator;
+  return allocator;
+}
+
 } // namespace rwkv

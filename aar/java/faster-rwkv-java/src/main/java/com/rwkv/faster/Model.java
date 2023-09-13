@@ -15,6 +15,7 @@ public class Model {
     public float[] run(int[] inputIds) {
         return runSeq(inputIds);
     }
+    public native void resetState();
     private native void init(String path, String strategy);
     private native void initWithAssetManager(String path, String strategy, AssetManager mgr);
     private native float[] runSingle(int inputId);

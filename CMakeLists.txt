@@ -73,6 +73,9 @@ if (FR_ENABLE_ONNX)
         SYSTEM
     )
     FetchContent_MakeAvailable(onnx)
+    set(onnx_kernel_srcs
+        kernels/onnx-meta/kernels.cpp
+    )
 endif()
 
 FetchContent_Declare(
@@ -89,9 +92,11 @@ add_library(faster_rwkv_internal
         tensor.cpp
         tokenizer.cpp
         sampler.cpp
+        kernels/shape/shape_inference.cpp
         kernels/cpu/allocator.cpp
         kernels/cpu/fill.cpp
         kernels/cpu/cast_dtype.cpp
+        kernels/cpu/softmax.cpp
         kernels/default/att.cpp
         kernels/default/ffn.cpp
         kernels/default/init_model.cpp
@@ -99,6 +104,7 @@ add_library(faster_rwkv_internal
         kernels/ncnn-meta/kernels.cpp
         ${cuda_kernel_srcs}
         ${ncnn_kernel_srcs}
+        ${onnx_kernel_srcs}
         )
 target_link_libraries(faster_rwkv_internal PRIVATE msgpack-cxx)
 target_link_libraries(faster_rwkv_internal PUBLIC ${ncnn_deps})
@@ -112,35 +118,13 @@ endif()
 if (FR_ENABLE_NCNN)
     target_compile_definitions(faster_rwkv_internal PUBLIC FR_ENABLE_NCNN)
 endif()
+if (FR_ENABLE_ONNX)
+    target_compile_definitions(faster_rwkv_internal PUBLIC FR_ENABLE_ONNX)
+    target_link_libraries(faster_rwkv_internal PRIVATE onnx)
+endif()
 
 add_library(faster_rwkv INTERFACE)
 target_link_libraries(faster_rwkv INTERFACE "$<LINK_LIBRARY:WHOLE_ARCHIVE,faster_rwkv_internal>")
-FetchContent_Declare(
-        gtest
-        GIT_REPOSITORY https://github.com/google/googletest.git
-        GIT_TAG v1.14.0
-        SYSTEM
-        )
-FetchContent_MakeAvailable(gtest)
-enable_testing()
-add_executable(test_model test_model.cpp)
-target_link_libraries(test_model gtest_main faster_rwkv)
-include(GoogleTest)
-if (NOT CMAKE_SYSTEM_NAME STREQUAL "Android" AND NOT CMAKE_CROSSCOMPILING)
-    gtest_discover_tests(test_model)
-endif()
-
-add_executable(test_tokenizer test_tokenizer.cpp)
-target_link_libraries(test_tokenizer gtest_main faster_rwkv)
-if (NOT CMAKE_SYSTEM_NAME STREQUAL "Android" AND NOT CMAKE_CROSSCOMPILING)
-    gtest_discover_tests(test_tokenizer)
-endif()
-
-add_executable(test_ops test_ops.cpp)
-target_link_libraries(test_ops gtest_main faster_rwkv)
-if (NOT CMAKE_SYSTEM_NAME STREQUAL "Android" AND NOT CMAKE_CROSSCOMPILING)
-    gtest_discover_tests(test_ops)
-endif()
 
 add_executable(export_ncnn export_ncnn.cpp)
 target_link_libraries(export_ncnn faster_rwkv)
@@ -166,6 +150,13 @@ target_link_libraries(abc_music faster_rwkv)
 add_executable(midi_music midi_music.cpp)
 target_link_libraries(midi_music faster_rwkv)
 
+if (FR_ENABLE_ONNX)
+    add_executable(export_onnx export_onnx.cpp)
+    target_link_libraries(export_onnx faster_rwkv)
+endif()
+
 if (FR_BUILD_JNI)
     add_subdirectory(aar)
 endif()
+
+add_subdirectory(tests)

@@ -1,9 +1,11 @@
 #pragma once
 
+#include <tensor.h>
+
 namespace rwkv {
 class Sampler {
 public:
-  int Sample(const float *ptr, int len, float temperature=1.f, int top_k=0, float top_p=0.85f);
+  int Sample(const Tensor& logits, float temperature, int top_k, float top_p);
 };
 
 } // namespace rwkv
