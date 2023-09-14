@@ -19,6 +19,12 @@ if (NOT CMAKE_SYSTEM_NAME STREQUAL "Android" AND NOT CMAKE_CROSSCOMPILING)
     gtest_discover_tests(test_tokenizer)
 endif()
 
+add_executable(test_sampler test_sampler.cpp)
+target_link_libraries(test_sampler gtest_main faster_rwkv)
+if (NOT CMAKE_SYSTEM_NAME STREQUAL "Android" AND NOT CMAKE_CROSSCOMPILING)
+    gtest_discover_tests(test_sampler)
+endif()
+
 add_executable(test_ops test_ops.cpp)
 target_link_libraries(test_ops gtest_main faster_rwkv)
 if (NOT CMAKE_SYSTEM_NAME STREQUAL "Android" AND NOT CMAKE_CROSSCOMPILING)
