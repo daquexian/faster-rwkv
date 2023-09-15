@@ -1,7 +1,7 @@
 #include <fstream>
 #include <iostream>
 
-#include <kernels/onnx-meta/kernels.h>
+#include <kernels/export-onnx/kernels.h>
 
 int main(int argc, char **argv) {
   if (argc != 3) {

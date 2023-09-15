@@ -4,8 +4,10 @@
 #include <kernels/kernels.h>
 #include <stdexcept>
 
-#include <kernels/ncnn-meta/kernels.h>
-#include <kernels/onnx-meta/kernels.h>
+#include <kernels/export-ncnn/kernels.h>
+#ifdef FR_ENABLE_ONNX
+#include <kernels/export-onnx/kernels.h>
+#endif
 
 namespace rwkv {
 

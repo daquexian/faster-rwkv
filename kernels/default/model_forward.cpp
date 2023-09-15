@@ -4,9 +4,9 @@
 #include <msgpack.hpp>
 
 #include <kernels/kernels.h>
-#include <kernels/ncnn-meta/kernels.h>
+#include <kernels/export-ncnn/kernels.h>
 #ifdef FR_ENABLE_ONNX
-#include <kernels/onnx-meta/kernels.h>
+#include <kernels/export-onnx/kernels.h>
 #endif
 #include <kernels/registry.h>
 #include <string>

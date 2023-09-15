@@ -36,6 +36,7 @@ jobs:
         wget https://huggingface.co/BlinkDL/rwkv-4-world/resolve/main/RWKV-4-World-0.1B-v1-20230520-ctx4096.pth 
         wget https://huggingface.co/BlinkDL/rwkv-5-world/resolve/main/RWKV-5-World-0.1B-v1-20230803-ctx4096.pth
         wget https://huggingface.co/BlinkDL/rwkv-5-music/resolve/main/RWKV-5-ABC-82M-v1-20230901-ctx1024.pth
+        wget https://huggingface.co/BlinkDL/rwkv-5-music/resolve/main/world_tokenizer
     - name: Convert ChatRWKV Models
       run: |
         git clone https://github.com/BlinkDL/ChatRWKV
@@ -72,11 +73,11 @@ jobs:
         python3 tests/run_abc_benchmark.py ${{github.workspace}}/build/tests/run_abc_benchmark ${{env.FR_MODEL_DIR}}/RWKV-5-ABC-82M-v1-20230901-ctx1024-ncnn
 
     - name: Run tests
-      working-directory: ${{github.workspace}}/build
       # Execute tests defined by the CMake configuration.
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
       run: |
-        FR_MODEL_DIR=${{env.FR_MODEL_DIR}} ctest -C ${{env.BUILD_TYPE}} -vv --output-on-failure
+        FR_MODEL_DIR=${{env.FR_MODEL_DIR}} ctest -vv --output-on-failure --test-dir tests
+      working-directory: ${{github.workspace}}/build/
 
     - name: Upload Android AAR libraries
       uses: actions/upload-artifact@v3

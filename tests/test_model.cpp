@@ -1,4 +1,4 @@
-#include <kernels/ncnn-meta/kernels.h>
+#include <kernels/export-ncnn/kernels.h>
 #include <model.h>
 
 #include <gtest/gtest.h>

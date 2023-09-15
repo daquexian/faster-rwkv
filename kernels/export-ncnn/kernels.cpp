@@ -1,4 +1,4 @@
-#include <kernels/ncnn-meta/kernels.h>
+#include <kernels/export-ncnn/kernels.h>
 
 #include <array>
 #include <fstream>
@@ -100,7 +100,7 @@ void ExportModel(const std::string &input_path, DType weight_dtype,
 
   // NOTE: fp32 here is just a placeholder. The dtype used by ncnn is determined
   // by the weight_dtype parameter.
-  rwkv::Model model(input_path, "ncnn-meta fp32");
+  rwkv::Model model(input_path, "export-ncnn fp32");
   model.Run(0);
   rwkv::ncnnmeta::destroy(model);
 }

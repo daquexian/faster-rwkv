@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 include(FetchContent)
 
 option(FR_ENABLE_CUDA "Enable CUDA" OFF)
+# ONNX support is a WIP
 option(FR_ENABLE_ONNX "Enable ONNX" OFF)
 if (CMAKE_SYSTEM_NAME STREQUAL "Android")
     option(FR_BUILD_JNI "" ON)
@@ -84,7 +85,7 @@ if (FR_ENABLE_ONNX)
     # )
     # FetchContent_MakeAvailable(onnxruntime)
     set(onnx_kernel_srcs
-        kernels/onnx-meta/kernels.cpp
+        kernels/export-ncnn/kernels.cpp
     )
 endif()
 
@@ -111,7 +112,7 @@ add_library(faster_rwkv_internal
         kernels/default/ffn.cpp
         kernels/default/init_model.cpp
         kernels/default/model_forward.cpp
-        kernels/ncnn-meta/kernels.cpp
+        kernels/export-ncnn/kernels.cpp
         ${cuda_kernel_srcs}
         ${ncnn_kernel_srcs}
         ${onnx_kernel_srcs}

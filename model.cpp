@@ -20,9 +20,9 @@ Model::Model(const std::string &path, const std::string &strategy): Model(path, 
 Model::Model(const std::string &path, const std::string &strategy, std::any extra) {
   auto dev_str = strategy.substr(0, strategy.find(" "));
   Device act_device = [&]() {
-    if (dev_str == "ncnn-meta") {
+    if (dev_str == "export-ncnn") {
       return Device::kNCNNMeta;
-    } else if (dev_str == "onnx-meta") {
+    } else if (dev_str == "export-onnx") {
       return Device::kONNXMeta;
     } else if (dev_str == "cuda") {
       return Device::kCUDA;

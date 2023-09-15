@@ -58,7 +58,7 @@ void ExportModel(const std::string &input_path,
 
   // NOTE: fp32 here is just a placeholder. The dtype used by ncnn is determined
   // by the weight_dtype parameter.
-  Model model(input_path, "onnx-meta fp32");
+  Model model(input_path, "export-onnx fp32");
   model.Run(0);
   ModelProto model_proto = destory();
   // save model_proto to output_path

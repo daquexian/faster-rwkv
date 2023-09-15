@@ -3,11 +3,15 @@
 #include <gtest/gtest.h>
 
 TEST(WorldTokenizer, load) {
-  rwkv::WorldTokenizer tokenizer("../tokenizer_model");
+  const std::string model_dir(std::getenv("FR_MODEL_DIR"));
+
+  rwkv::WorldTokenizer tokenizer(model_dir + "/world_tokenizer");
 }
 
 TEST(WorldTokenizer, encode_decode) {
-  rwkv::WorldTokenizer tokenizer("../tokenizer_model");
+  const std::string model_dir(std::getenv("FR_MODEL_DIR"));
+
+  rwkv::WorldTokenizer tokenizer(model_dir + "/world_tokenizer");
   auto ids = tokenizer.encode("今天天气不错");
   EXPECT_EQ(ids.size(), 6);
   EXPECT_EQ(ids[0], 10381);
