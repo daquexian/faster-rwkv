@@ -1,0 +1,2 @@
+add_executable(generate_state generate_state.cpp)
+target_link_libraries(generate_state faster_rwkv)

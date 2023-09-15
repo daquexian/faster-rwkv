@@ -1,9 +1,10 @@
 #include "tensor.h"
-#include "check.h"
+
 #include <iostream>
+
+#include <check.h>
 #include <kernels/kernels.h>
 #include <stdexcept>
-
 #include <kernels/export-ncnn/kernels.h>
 #ifdef FR_ENABLE_ONNX
 #include <kernels/export-onnx/kernels.h>
@@ -107,6 +108,32 @@ Tensor Tensor::FromPtr(void *dptr, const Shape &shape, DType dtype,
   tensor._dtype = dtype;
   tensor.name = "tensor_" + std::to_string(unique_id());
   return tensor;
+}
+
+Tensor Tensor::FromMsgPack(const msgpack::object &obj) {
+  auto from_mp_dtype = [](const std::string &mp_dtype) -> DType {
+    if (mp_dtype == "torch.int8") {
+      return DType::kInt8;
+    } else if (mp_dtype == "torch.float16") {
+      return DType::kFloat16;
+    } else if (mp_dtype == "torch.float32") {
+      return DType::kFloat32;
+    } else {
+      RV_UNIMPLEMENTED();
+    }
+  };
+
+  auto mp_tensor_map =
+      obj.as<std::unordered_map<std::string, msgpack::object>>();
+  // NOTE: `mp_tensor_data` will be destroyed after this function returns
+  auto mp_tensor_data = mp_tensor_map["data"].as<std::vector<char>>();
+  auto mp_tensor_shape = mp_tensor_map["shape"].as<std::vector<int64_t>>();
+  auto mp_tensor_dtype = mp_tensor_map["dtype"].as<std::string>();
+  auto fr_cpu_tensor =
+      Tensor::FromPtr(mp_tensor_data.data(), Shape(mp_tensor_shape),
+                      from_mp_dtype(mp_tensor_dtype), Device::kCPU);
+  auto ret = Copy(fr_cpu_tensor, Device::kCPU, true);
+  return ret;
 }
 
 Tensor Tensor::FromOther(const Tensor &other, const Shape &shape) {

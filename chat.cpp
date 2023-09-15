@@ -28,6 +28,9 @@ int main(int argc, char **argv) {
   rwkv::WorldTokenizer tokenizer(argv[1]);
   rwkv::Sampler sampler;
   rwkv::Model model(argv[2], argv[3]);
+  if (argc == 5) {
+    model.LoadStateFile(argv[4]);
+  }
   std::map<int, float> occurences;
   while (true) {
     std::cout << kUserPrefix;

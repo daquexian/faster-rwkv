@@ -117,7 +117,7 @@ add_library(faster_rwkv_internal
         ${ncnn_kernel_srcs}
         ${onnx_kernel_srcs}
         )
-target_link_libraries(faster_rwkv_internal PRIVATE msgpack-cxx)
+target_link_libraries(faster_rwkv_internal PUBLIC msgpack-cxx)
 target_link_libraries(faster_rwkv_internal PUBLIC ${ncnn_deps})
 target_include_directories(faster_rwkv_internal PUBLIC ${PROJECT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
 
@@ -170,4 +170,5 @@ if (FR_BUILD_JNI)
     add_subdirectory(aar)
 endif()
 
+add_subdirectory(tools)
 add_subdirectory(tests)
