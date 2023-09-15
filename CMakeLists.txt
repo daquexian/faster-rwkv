@@ -73,6 +73,16 @@ if (FR_ENABLE_ONNX)
         SYSTEM
     )
     FetchContent_MakeAvailable(onnx)
+    # WIP
+    # option(onnxruntime_USE_FULL_PROTOBUF "" ON)
+    # FetchContent_Declare(
+    #     onnxruntime
+    #     GIT_REPOSITORY https://github.com/microsoft/onnxruntime
+    #     GIT_TAG 5af6279440a0db698b0afbfc3de655400562831f
+    #     SOURCE_SUBDIR cmake
+    #     SYSTEM
+    # )
+    # FetchContent_MakeAvailable(onnxruntime)
     set(onnx_kernel_srcs
         kernels/onnx-meta/kernels.cpp
     )

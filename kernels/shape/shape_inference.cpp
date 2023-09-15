@@ -1,5 +1,7 @@
 #include "shape_inference.h"
 
+#include <iostream>
+
 namespace rwkv {
 namespace shape {
 Shape matmul(const Shape &x, const Shape &y) {
@@ -38,27 +40,31 @@ Shape matmul(const Shape &x, const Shape &y) {
       }
     }
   }
+  std::cout << "matmul, x: " << x << ", y: " << y
+            << ", output_shape: " << output_shape << std::endl;
   return output_shape;
 }
 
 Shape broadcast_binary(const Shape &x, const Shape &y) {
   auto nrank = std::max(x.size(), y.size());
   Shape output_shape(nrank);
-  for (int i = nrank - 1; i >= 0; i--) {
-    if (i >= x.size()) {
-      output_shape[i] = y[i];
-    } else if (i >= y.size()) {
-      output_shape[i] = x[i];
-    } else if (x[i] == y[i]) {
-      output_shape[i] = x[i];
-    } else if (x[i] == 1) {
-      output_shape[i] = y[i];
-    } else if (y[i] == 1) {
-      output_shape[i] = x[i];
+  for (int i = nrank - 1, x_idx = x.size() - 1, y_idx = y.size() - 1; i >= 0; i--, x_idx--, y_idx--) {
+    if (x_idx < 0) {
+      output_shape[i] = y[y_idx];
+    } else if (y_idx < 0) {
+      output_shape[i] = x[x_idx];
+    } else if (x[x_idx] == y[y_idx]) {
+      output_shape[i] = x[x_idx];
+    } else if (x[x_idx] == 1) {
+      output_shape[i] = y[y_idx];
+    } else if (y[y_idx] == 1) {
+      output_shape[i] = x[x_idx];
     } else {
       RV_UNIMPLEMENTED();
     }
   }
+  std::cout << "broadcast_binary, x: " << x << ", y: " << y
+            << ", output_shape: " << output_shape << std::endl;
   return output_shape;
 }
 } // namespace shape

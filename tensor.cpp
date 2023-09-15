@@ -9,6 +9,19 @@
 
 namespace rwkv {
 
+// operator<< for Shape
+std::ostream &operator<<(std::ostream &os, const Shape &shape) {
+  os << "(";
+  for (int i = 0; i < shape.size(); i++) {
+    os << shape[i];
+    if (i != shape.size() - 1) {
+      os << ", ";
+    }
+  }
+  os << ")";
+  return os;
+}
+
 void print_tensor(const Tensor &t, const std::string &name) {
   std::cout << "Tensor " << name << std::endl;
   auto t_cpu = Copy(t, Device::kCPU);

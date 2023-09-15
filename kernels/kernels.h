@@ -93,6 +93,7 @@ inline Tensor matmul(const Tensor &a, const Tensor &b) {
 // REGISTER_KERNEL(Tensor, add, const Tensor&, x, const Tensor&, y);
 
 inline Tensor add(const Tensor &x, const Tensor &y) {
+  // TODO: global device
   return KernelRegistry::Instance().Get<decltype(add) *>(
       "add", Device::kNCNNMeta)(x, y);
 }

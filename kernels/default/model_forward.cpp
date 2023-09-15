@@ -24,7 +24,7 @@ Tensor ModelForward(const Model *model, Device device, int id,
   Tensor x = [&]() -> Tensor {
 #ifdef FR_ENABLE_ONNX
     if (model->_act_device == Device::kONNXMeta) {
-      Tensor input_id = onnxmeta::add_input({1}, "input_id");
+      Tensor input_id = onnxmeta::add_input({}, DType::kInt64, "input_id");
       Tensor embd_weights_cpu =
           Tensor::Empty({static_cast<long>(model->_embd_weights.size()),
                          model->_embd_weights[0].shape()[0]},
@@ -32,9 +32,10 @@ Tensor ModelForward(const Model *model, Device device, int id,
       {
         float *ptr = embd_weights_cpu.data_ptr<float>();
         for (int i = 0; i < model->_embd_weights.size(); i++) {
-          memcpy(ptr, model->_embd_weights[i].data_ptr<float>(),
-                 model->_n_embd * sizeof(float));
-          ptr += model->_n_embd;
+          for (int j = 0; j < model->_n_embd; j++) {
+            // embd weights in .fr are always fp16
+            *ptr++ = static_cast<float>(model->_embd_weights[i].data_ptr<float16>()[j]);
+          }
         }
       }
 
@@ -64,7 +65,7 @@ Tensor ModelForward(const Model *model, Device device, int id,
         auto state_name =
             "state_" + std::to_string(i) + "_" + std::to_string(j);
         auto &state_tensor = states[i][j];
-        state_tensor = onnxmeta::add_input(state_tensor.shape(), state_name);
+        state_tensor = onnxmeta::add_input(state_tensor.shape(), DType::kFloat32, state_name);
       }
     }
   }
