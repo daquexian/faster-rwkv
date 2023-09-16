@@ -37,7 +37,9 @@ Model::Model(const std::string &path, const std::string &strategy, std::any extr
   _act_device = act_device;
   std::tie(_act_dtype, _weight_dtype) = [&]() -> std::pair<DType, DType> {
     std::string dtype_str = strategy.substr(strategy.find(" ") + 1);
-    if (dtype_str == "int8") {
+    if (dtype_str == "int4") {
+      return {DType::kFloat32, DType::kInt4};
+    } else if (dtype_str == "int8") {
       return {DType::kFloat32, DType::kInt8};
     } else if (dtype_str == "fp16") {
       return {DType::kFloat16, DType::kFloat16};

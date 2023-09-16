@@ -21,6 +21,7 @@
 namespace rwkv {
 enum class DType {
   kUndefined,
+  kInt4,
   kInt8,
   kFloat16,
   kFloat32,

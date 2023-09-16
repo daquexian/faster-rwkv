@@ -49,8 +49,8 @@ std::string _pp_path;
 std::string _config_path;
 DType _weight_dtype;
 
-void init(DType weight_dtype, const std::string &bp_path, const std::string &pp_path,
-          const std::string &config_path) {
+void init(DType weight_dtype, const std::string &bp_path,
+          const std::string &pp_path, const std::string &config_path) {
   reset_blob_num();
   reset_unique_layer_id();
   bp = fopen(bp_path.c_str(), "wb");
@@ -80,8 +80,10 @@ void destroy(const Model &model) {
   {
     std::ofstream config_file(_config_path);
     config_file << "version: " << model.version() << std::endl;
-    config_file << "act_dtype: " << dtype_to_string(DType::kFloat32) << std::endl;
-    config_file << "weight_dtype: " << dtype_to_string(_weight_dtype) << std::endl;
+    config_file << "act_dtype: " << dtype_to_string(DType::kFloat32)
+                << std::endl;
+    config_file << "weight_dtype: " << dtype_to_string(_weight_dtype)
+                << std::endl;
     config_file << "head_size: " << model.head_size() << std::endl;
     config_file << "n_layer: " << model.n_layer() << std::endl;
     config_file << "n_embd: " << model.n_embd() << std::endl;
@@ -93,10 +95,11 @@ void destroy(const Model &model) {
 
 void ExportModel(const std::string &input_path, DType weight_dtype,
                  const std::string &output_prefix) {
-  RV_CHECK(weight_dtype == DType::kFloat16 || weight_dtype == DType::kInt8);
+  RV_CHECK(weight_dtype == DType::kFloat16 || weight_dtype == DType::kInt8 ||
+           weight_dtype == DType::kInt4);
 
-  rwkv::ncnnmeta::init(weight_dtype, output_prefix + ".bin", output_prefix + ".param",
-                       output_prefix + ".config");
+  rwkv::ncnnmeta::init(weight_dtype, output_prefix + ".bin",
+                       output_prefix + ".param", output_prefix + ".config");
 
   // NOTE: fp32 here is just a placeholder. The dtype used by ncnn is determined
   // by the weight_dtype parameter.
@@ -191,7 +194,7 @@ Tensor groupnorm(const Tensor &x, int num_groups, const Tensor &weight,
 
 Tensor batch_matmul(const Tensor &a, const Tensor &b) {
   Shape output_shape = shape::matmul(a.shape(), b.shape());
-  
+
   Tensor a_meta = a;
   if (a.device() == Device::kCPU) {
     a_meta = MemoryData(a);
@@ -236,6 +239,124 @@ Tensor reshape(const Tensor &x, const Shape &shape) {
   return output;
 }
 
+// The code here is highly coupled with the kernel implementation.
+Tensor gemv_a32w4(const Tensor &a, const Tensor &b) {
+  RV_CHECK(b.device() == Device::kCPU);
+  const float *const ptr0 = b.data_ptr<float>();
+  const int K = b.shape()[0];
+  RV_CHECK(K % 2 == 0);
+  const int N = b.shape()[1];
+  static const int KT = 64;
+  Tensor B_int4_t = Tensor::Empty({K / 2, N}, DType::kInt8, Device::kCPU);
+  Tensor scales_t =
+      Tensor::Empty({K * N / KT / 2}, DType::kFloat32, Device::kCPU);
+  float *scales = scales_t.data_ptr<float>();
+  Tensor zero_points_t =
+      Tensor::Empty({K * N / KT / 2}, DType::kFloat32, Device::kCPU);
+  float *zero_points = zero_points_t.data_ptr<float>();
+
+  // (K, N)
+  // (K / 64, N / 4, 64, 4)
+  for (int a = 0; a < K / KT; a++) {
+    uint8_t *ptr = static_cast<uint8_t *>(B_int4_t.data_ptr()) + a * KT * N;
+    int block_id = a * (N / 4);
+    for (int b = 0; b < N / 4; b++) {
+      std::array<float, KT * 4> block_data;
+      int index = 0;
+      // every (64, 1) block in (64, 4) superblock has a scale and a zero_point
+      for (int c = 0; c < KT; c++) {
+        for (int d = 0; d < 4; d++) {
+          int k = a * KT + c;
+          int n = b * 4 + d;
+          block_data[index++] = ptr0[k * N + n];
+        }
+      }
+
+      const auto [col_scales, col_zeropoints] =
+          [&]() -> std::pair<std::array<float, 4>, std::array<float, 4>> {
+        std::array<std::array<float, KT>, 4> col_datas;
+        std::array<float, 4> col_scales;
+        std::array<float, 4> col_zeropoints;
+
+        for (int i = 0; i < KT * 4; i++) {
+          col_datas[i % 4][i / 4] = block_data[i];
+        }
+
+        // calculate scale and zero point
+        // float[i] = int[i] * scale + zero_point
+        // int[i] = (float[i] - zero_point) / scale
+        // scale = (max - min) / 255
+        for (int col = 0; col < 4; col++) {
+          const auto &col_data = col_datas[col];
+          float scale;
+          float zero_point;
+          float max = col_data[0];
+          float min = col_data[0];
+          for (int i = 1; i < static_cast<int>(col_data.size()); i++) {
+            if (col_data[i] > max) {
+              max = col_data[i];
+            }
+            if (col_data[i] < min) {
+              min = col_data[i];
+            }
+          }
+          // std::cout << "max = " << max << std::endl;
+          // std::cout << "min = " << min << std::endl;
+          if (max == min) {
+            scale = 1.f;
+          } else {
+            scale = (max - min) / 15.f;
+          }
+          zero_point = min;
+          col_scales[col] = scale;
+          col_zeropoints[col] = zero_point;
+
+          scales[block_id * 4 + col] = scale;
+          zero_points[block_id * 4 + col] = zero_point;
+        }
+
+        return {col_scales, col_zeropoints};
+      }();
+
+      // std::cout << "scales[" << block_id << "] = " << scale << std::endl;
+      // std::cout << "zero_points[" << block_id << "] = " << zero_point <<
+      // std::endl;
+      block_id++;
+
+      for (int i = 0; i < KT / 8; i++) {
+        for (int j = 0; j < 16; j++) {
+          int idx1 = i * 32 + j;
+          int idx2 = idx1 + 16;
+          block_data[idx1] = (block_data[idx1] - col_zeropoints[idx1 % 4]) /
+                             col_scales[idx1 % 4];
+          RV_CHECK(idx1 < KT * 4);
+          RV_CHECK(block_data[idx1] >= 0 && block_data[idx1] <= 15);
+
+          block_data[idx2] = (block_data[idx2] - col_zeropoints[idx2 % 4]) /
+                             col_scales[idx2 % 4];
+          RV_CHECK(idx2 < KT * 4);
+          RV_CHECK(block_data[idx2] >= 0 && block_data[idx2] <= 15);
+
+          *ptr++ = (std::lround(block_data[idx2]) << 4) +
+                   std::lround(block_data[idx1]);
+        }
+      }
+    }
+  }
+
+  append_data_to_bin_file(B_int4_t, true);
+  append_data_to_bin_file(scales_t, false);
+  append_data_to_bin_file(zero_points_t, false);
+  PRINT_OP_TYPE_AND_NAME("GemvA32W4", 1, 1);
+  auto output = Tensor::Empty({N}, DType::kFloat32, Device::kNCNNMeta);
+  fprintf(pp, " %s", a.name.c_str());
+  fprintf(pp, " %s", output.name.c_str());
+  fprintf(pp, " 0=%d", N);
+  fprintf(pp, " 1=%d\n", K);
+  return output;
+}
+
+// The code here is highly coupled with the kernel implementation.
 Tensor gemv_a32w8(const Tensor &a, const Tensor &b) {
   RV_CHECK(b.device() == Device::kCPU);
   const float *const ptr0 = b.data_ptr<float>();
@@ -244,15 +365,15 @@ Tensor gemv_a32w8(const Tensor &a, const Tensor &b) {
   static const int KT = 64;
   Tensor B_int8_t = Tensor::Empty({K, N}, DType::kInt8, Device::kCPU);
   Tensor scales_t = Tensor::Empty({K * N / KT}, DType::kFloat32, Device::kCPU);
-  float* scales = scales_t.data_ptr<float>();
+  float *scales = scales_t.data_ptr<float>();
   Tensor zero_points_t =
       Tensor::Empty({K * N / KT}, DType::kFloat32, Device::kCPU);
-  float* zero_points = zero_points_t.data_ptr<float>();
+  float *zero_points = zero_points_t.data_ptr<float>();
 
   // (K, N)
   // (K / 64, N / 4, 64, 4)
   for (int a = 0; a < K / KT; a++) {
-    uint8_t *ptr = static_cast<uint8_t*>(B_int8_t.data_ptr()) + a * KT * N;
+    uint8_t *ptr = static_cast<uint8_t *>(B_int8_t.data_ptr()) + a * KT * N;
     int block_id = a * (N / 4);
     for (int b = 0; b < N / 4; b++) {
       std::array<float, KT * 4> block_data;
@@ -323,10 +444,10 @@ Tensor gemv_a32w8(const Tensor &a, const Tensor &b) {
         block_data[i] =
             (block_data[i] - col_zeropoints[i % 4]) / col_scales[i % 4];
         assert(block_data[i] >= 0 && block_data[i] <= 255);
-        *ptr++ = std::round(block_data[i]);
+        *ptr++ = std::lround(block_data[i]);
         // std::cout << "col_datas[" << i << "] = " << col_datas[i] <<
         // std::endl; std::cout << "(int)col_datas[" << i << "] = " <<
-        // std::round(col_datas[i]) << std::endl;
+        // std::lround(col_datas[i]) << std::endl;
       }
     }
   }
@@ -404,8 +525,11 @@ Tensor gemm(const Tensor &a, const Tensor &b) {
 }
 
 Tensor matmul(const Tensor &a, const Tensor &b) {
-  if (_weight_dtype == DType::kInt8 && a.shape().size() == 1 &&
+  if (_weight_dtype == DType::kInt4 && a.shape().size() == 1 &&
       b.shape().size() == 2 && b.device() == Device::kCPU) {
+    return gemv_a32w4(a, b);
+  } else if (_weight_dtype == DType::kInt8 && a.shape().size() == 1 &&
+             b.shape().size() == 2 && b.device() == Device::kCPU) {
     return gemv_a32w8(a, b);
   } else if (a.shape().size() <= 2 && b.shape().size() <= 2) {
     return gemm(a, b);
@@ -447,9 +571,8 @@ std::map<std::string, int> binary_op_ids{{"add", 0},     {"sub", 1},
     Tensor meta_x = x.device() == Device::kCPU ? MemoryData(x) : x;            \
     Tensor meta_y = y.device() == Device::kCPU ? MemoryData(y) : y;            \
     PRINT_OP_TYPE_AND_NAME("BinaryOp", 2, 1);                                  \
-    auto output =                                                              \
-        Tensor::Empty(shape::broadcast_binary(x.shape(), y.shape()),         \
-                      DType::kFloat32, Device::kNCNNMeta);                     \
+    auto output = Tensor::Empty(shape::broadcast_binary(x.shape(), y.shape()), \
+                                DType::kFloat32, Device::kNCNNMeta);           \
     fprintf(pp, " %s", meta_x.name.c_str());                                   \
     fprintf(pp, " %s", meta_y.name.c_str());                                   \
     fprintf(pp, " %s", output.name.c_str());                                   \
