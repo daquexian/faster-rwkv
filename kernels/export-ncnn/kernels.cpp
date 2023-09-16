@@ -327,18 +327,21 @@ Tensor gemv_a32w4(const Tensor &a, const Tensor &b) {
         for (int j = 0; j < 16; j++) {
           int idx1 = i * 32 + j;
           int idx2 = idx1 + 16;
+          RV_CHECK(idx1 < KT * 4);
           block_data[idx1] = (block_data[idx1] - col_zeropoints[idx1 % 4]) /
                              col_scales[idx1 % 4];
-          RV_CHECK(idx1 < KT * 4);
-          RV_CHECK(block_data[idx1] >= 0 && block_data[idx1] <= 15);
+          int tmp1 = std::lround(block_data[idx1]);
+          RV_CHECK(tmp1 >= 0 && tmp1 <= 15);
 
+          RV_CHECK(idx2 < KT * 4);
           block_data[idx2] = (block_data[idx2] - col_zeropoints[idx2 % 4]) /
                              col_scales[idx2 % 4];
-          RV_CHECK(idx2 < KT * 4);
-          RV_CHECK(block_data[idx2] >= 0 && block_data[idx2] <= 15);
+          int tmp2 = std::lround(block_data[idx2]);
+          RV_CHECK(tmp2 >= 0 && tmp2 <= 15);
 
-          *ptr++ = (std::lround(block_data[idx2]) << 4) +
-                   std::lround(block_data[idx1]);
+          RV_CHECK((ptr - static_cast<uint8_t *>(B_int4_t.data_ptr())) <
+                   B_int4_t.numel());
+          *ptr++ = (tmp2 << 4) + tmp1;
         }
       }
     }
