@@ -110,6 +110,8 @@ void init_model(Model *model, Device device, const std::string &_path,
         return DType::kFloat16;
       } else if (str == "int8") {
         return DType::kInt8;
+      } else if (str == "int4") {
+        return DType::kInt4;
       } else {
         RV_UNIMPLEMENTED();
       }
@@ -130,7 +132,7 @@ void init_model(Model *model, Device device, const std::string &_path,
     model->_n_ffn = std::stoi(get_value("n_ffn"));
   }
   auto net = std::make_shared<ncnn::Net>();
-  if (model->_weight_dtype == DType::kInt8) {
+  if (model->_weight_dtype == DType::kInt8 || model->_weight_dtype == DType::kInt4) {
     net->opt.use_fp16_packed = false;
     net->opt.use_fp16_arithmetic = false;
     net->opt.use_fp16_storage = false;

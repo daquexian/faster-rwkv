@@ -41,7 +41,7 @@ template <> inline const DType dtype_v<float16> = DType::kFloat16;
 #ifdef FR_ENABLE_CUDA
 template <> inline const DType dtype_v<half> = DType::kFloat16;
 #endif
-template <> inline const DType dtype_v<int8_t> = DType::kInt8;
+template <> inline const DType dtype_v<uint8_t> = DType::kInt8;
 
 using LengthType = int64_t;
 using Shape = std::vector<LengthType>;
@@ -56,6 +56,8 @@ inline std::string dtype_to_string(DType dtype) {
     return "fp16";
   } else if (dtype == DType::kInt8) {
     return "int8";
+  } else if (dtype == DType::kInt4) {
+    return "int4";
   } else {
     RV_UNIMPLEMENTED();
   }

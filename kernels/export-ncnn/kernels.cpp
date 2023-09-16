@@ -247,18 +247,20 @@ Tensor gemv_a32w4(const Tensor &a, const Tensor &b) {
   RV_CHECK(K % 2 == 0);
   const int N = b.shape()[1];
   static const int KT = 64;
+  // static const int effective_KT = KT / 2;
   Tensor B_int4_t = Tensor::Empty({K / 2, N}, DType::kInt8, Device::kCPU);
   Tensor scales_t =
-      Tensor::Empty({K * N / KT / 2}, DType::kFloat32, Device::kCPU);
+      Tensor::Empty({K * N / KT}, DType::kFloat32, Device::kCPU);
   float *scales = scales_t.data_ptr<float>();
   Tensor zero_points_t =
-      Tensor::Empty({K * N / KT / 2}, DType::kFloat32, Device::kCPU);
+      Tensor::Empty({K * N / KT}, DType::kFloat32, Device::kCPU);
   float *zero_points = zero_points_t.data_ptr<float>();
 
   // (K, N)
   // (K / 64, N / 4, 64, 4)
+  // int4
   for (int a = 0; a < K / KT; a++) {
-    uint8_t *ptr = static_cast<uint8_t *>(B_int4_t.data_ptr()) + a * KT * N;
+    uint8_t *ptr = static_cast<uint8_t *>(B_int4_t.data_ptr()) + a * (KT / 2) * N;
     int block_id = a * (N / 4);
     for (int b = 0; b < N / 4; b++) {
       std::array<float, KT * 4> block_data;
@@ -339,7 +341,11 @@ Tensor gemv_a32w4(const Tensor &a, const Tensor &b) {
           int tmp2 = std::lround(block_data[idx2]);
           RV_CHECK(tmp2 >= 0 && tmp2 <= 15);
 
-          RV_CHECK((ptr - static_cast<uint8_t *>(B_int4_t.data_ptr())) <
+          // std::cout << "ptr: " << (int*)ptr << std::endl;
+          // std::cout << "B_int4_t: " << (int*)B_int4_t.data_ptr<uint8_t>() << std::endl;
+          // std::cout << "B_int4_t.numel(): " << B_int4_t.numel() << std::endl;
+          // std::cout << "diff: " << ptr - B_int4_t.data_ptr<uint8_t>() << std::endl;
+          RV_CHECK((ptr - B_int4_t.data_ptr<uint8_t>()) <
                    B_int4_t.numel());
           *ptr++ = (tmp2 << 4) + tmp1;
         }
@@ -375,6 +381,7 @@ Tensor gemv_a32w8(const Tensor &a, const Tensor &b) {
 
   // (K, N)
   // (K / 64, N / 4, 64, 4)
+  // int8
   for (int a = 0; a < K / KT; a++) {
     uint8_t *ptr = static_cast<uint8_t *>(B_int8_t.data_ptr()) + a * KT * N;
     int block_id = a * (N / 4);
