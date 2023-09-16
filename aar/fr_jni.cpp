@@ -170,3 +170,9 @@ extern "C" JNIEXPORT jint JNICALL Java_com_rwkv_faster_Sampler_sample(
   auto output = sampler->Sample(tensor, temperature, top_k, top_p);
   return static_cast<jint>(output);
 }
+
+extern "C" JNIEXPORT void JNICALL Java_com_rwkv_faster_Sampler_setSeed(
+    JNIEnv *env, jobject obj /* this */, jint seed) {
+  auto sampler = getHandle<Sampler>(env, obj);
+  sampler->set_seed(seed);
+}

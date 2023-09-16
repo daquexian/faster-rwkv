@@ -15,6 +15,26 @@ namespace rwkv {
 
 static const bool kDebug = std::getenv("FR_DEBUG") != nullptr;
 
+// hand-made distribution to get the same result on different platforms
+// https://stackoverflow.com/questions/48730363/if-we-seed-c11-mt19937-as-the-same-on-different-machines-will-we-get-the-same
+int distribution(std::vector<float> probs, std::minstd_rand0 &generator) {
+  float sum = std::accumulate(probs.begin(), probs.end(), 0.f);
+  float random_value = 1. * (generator() - generator.min()) /
+                       (generator.max() - generator.min()) * sum;
+  float cumsum = 0;
+  for (int i = 0; i < probs.size(); i++) {
+    cumsum += probs[i];
+    if (cumsum >= random_value) {
+      return i;
+    }
+  }
+  RV_UNIMPLEMENTED();
+}
+
+Sampler::Sampler() {
+  _generator.seed(std::random_device()());
+}
+
 int Sampler::Sample(const Tensor &logits, float temperature, int top_k,
                     float top_p) {
   if (kDebug) {
@@ -65,7 +85,6 @@ int Sampler::Sample(const Tensor &logits, float temperature, int top_k,
     std::cout << "]" << std::endl;
   }
 
-  static std::default_random_engine generator(time(nullptr));
   std::vector<float> top_probs;
   top_probs.reserve(len);
   for (int i = 0; i < len; i++) {
@@ -73,12 +92,14 @@ int Sampler::Sample(const Tensor &logits, float temperature, int top_k,
   }
 
   // random choice
-  std::discrete_distribution<> distribution(top_probs.begin(), top_probs.end());
-  int idx = distribution(generator);
+  int idx = distribution(top_probs, _generator);
   if (kDebug) {
     std::cout << "Sample: idx=" << idx << ", id=" << id_and_probs[idx].first
               << std::endl;
   }
   return id_and_probs[idx].first;
 }
+
+void Sampler::set_seed(int seed) { _generator.seed(seed); }
+
 } // namespace rwkv
