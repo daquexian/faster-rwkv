@@ -14,6 +14,7 @@ static const std::string kDoubleNewLine = "\n\n";
 static const int kNewLineId = 11;
 static const int kChatLenShort = 40;
 static const int kChatLenLong = 150;
+static const float kTopP = 0.3;
 static const float kPresencePenalty = 0.8;
 static const float kFrequencyPenalty = 0.8;
 static const float kPenaltyDecay = 0.996;
@@ -67,7 +68,7 @@ int main(int argc, char **argv) {
               std::min(3.0f, (num_new_tokens - kChatLenLong) * 0.25f);
         }
       }
-      auto output_id = sampler.Sample(output, 1.f, 1, 0.f);
+      auto output_id = sampler.Sample(output, /*temperature=*/ 1.f, /*top_k=*/ 1, kTopP);
       occurences[output_id]++;
       if (output_id == kEndOfSentence && !kQAMode) {
         break;
