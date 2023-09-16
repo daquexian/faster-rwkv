@@ -10,7 +10,7 @@
 
 static const bool kShowSpeed = std::getenv("FR_SHOW_SPEED") != nullptr;
 
-// ./midi_music <tokenizer> <model> <strategy> <sample>
+// ./midi_music <tokenizer> <model> <strategy>
 // Example: ./midi_music midi_tokenizer midi_model "ncnn fp16"
 int main(int argc, char **argv) {
   std::cout.setf(std::ios::unitbuf);
