@@ -97,18 +97,49 @@ Tensor Tensor::FromOther(const Tensor &other, const Shape &shape) {
   return tensor;
 }
 
-Tensor Tensor::view(const Shape &shape) { return rwkv::reshape(*this, shape); }
+Tensor Tensor::view(const Shape &shape) const {
+  return rwkv::reshape(*this, shape);
+}
 
-Tensor Tensor::flatten() { return rwkv::flatten(*this); }
+Tensor Tensor::flatten() const { return rwkv::flatten(*this); }
 
-Tensor Tensor::unsqueeze(int dim) { return rwkv::unsqueeze(*this, dim); }
+Tensor Tensor::cat(const Tensor &other, int dim) const {
+  return rwkv::cat(*this, other, dim);
+}
 
-Tensor Tensor::slice(const std::vector<Range> &ranges) {
+Tensor Tensor::unsqueeze(int dim) const { return rwkv::unsqueeze(*this, dim); }
+
+Tensor Tensor::slice(const std::vector<Range> &ranges) const {
   return rwkv::slice(*this, ranges);
 }
 
-Tensor Tensor::slice(const std::initializer_list<Range> &ranges) {
+Tensor Tensor::slice(const std::initializer_list<Range> &ranges) const {
   return rwkv::slice(*this, std::vector<Range>(ranges));
+}
+
+Tensor Tensor::repeat(const std::initializer_list<LengthType> &repeats) const {
+  return ::rwkv::repeat(*this, repeats);
+}
+
+Tensor Tensor::repeat(LengthType repeats) const {
+  return ::rwkv::repeat(*this, repeats);
+}
+
+Tensor Tensor::pad(const std::initializer_list<LengthType> &paddings,
+                   const std::string &mode) const {
+  return ::rwkv::pad(*this, paddings, mode);
+}
+
+Tensor Tensor::reshape(const Shape &shape) const {
+  return ::rwkv::reshape(*this, shape);
+}
+
+Tensor Tensor::transpose(int dim_a, int dim_b) const {
+  return ::rwkv::transpose(*this, dim_a, dim_b);
+}
+
+Tensor Tensor::flip(const std::initializer_list<LengthType> &dims) const {
+  return ::rwkv::flip(*this, dims);
 }
 
 Tensor operator+(const Tensor &lhs, const Tensor &rhs) { return add(lhs, rhs); }

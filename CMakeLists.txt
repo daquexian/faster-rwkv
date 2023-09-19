@@ -43,6 +43,7 @@ if (FR_ENABLE_CUDA)
         kernels/cuda/att.cu
         kernels/cuda/att_seq.cu
         kernels/cuda/ffn.cu
+        kernels/cuda/ffn_seq.cu
         kernels/cuda/fill.cu
         kernels/cuda/element_wise.cu
         kernels/cuda/allocator.cpp
@@ -100,6 +101,7 @@ option(MSGPACK_USE_BOOST "" OFF)
 FetchContent_MakeAvailable(msgpack)
 
 add_library(faster_rwkv_internal
+        utils.cpp
         model.cpp 
         tensor.cpp
         tokenizer.cpp
@@ -107,11 +109,15 @@ add_library(faster_rwkv_internal
         kernels/cpu/allocator.cpp
         kernels/cpu/fill.cpp
         kernels/cpu/cast_dtype.cpp
+        kernels/default/transpose.cpp
         kernels/default/slice.cpp
+        kernels/default/flip.cpp
+        kernels/default/pad.cpp
         kernels/default/att.cpp
         kernels/default/ffn.cpp
         kernels/default/init_model.cpp
         kernels/default/model_forward.cpp
+        kernels/default/model_forward_seq.cpp
         kernels/ncnn-meta/kernels.cpp
         ${cuda_kernel_srcs}
         ${ncnn_kernel_srcs}

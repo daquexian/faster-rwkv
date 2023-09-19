@@ -1,4 +1,5 @@
 #include "check.h"
+#include "utils.h"
 #include <bits/stdint-intn.h>
 #include <bits/stdint-uintn.h>
 #include <functional>
@@ -10,28 +11,6 @@
 
 namespace rwkv {
 namespace def {
-
-LengthType indices_to_offset(const Shape &shape,
-                             const std::vector<LengthType> &indices) {
-  LengthType offset = 0;
-  LengthType base = 1;
-  for (LengthType i = 0; i < shape.size(); i++) {
-    auto reversed_index = shape.size() - i - 1;
-    offset += indices[reversed_index] * base;
-    base *= shape[reversed_index];
-  }
-  return offset;
-}
-
-void offset_to_indices(LengthType offset, const Shape &shape,
-                       std::vector<LengthType> &indices) {
-  for (LengthType i = 0; i < shape.size(); i++) {
-    auto reversed_index = shape.size() - i - 1;
-    indices[i] = offset % shape[reversed_index];
-    offset /= shape[reversed_index];
-  }
-}
-
 Shape slice_deduce_shape(const Shape &input_shape,
                          const std::vector<Range> &ranges) {
   Shape output_shape;
@@ -62,12 +41,12 @@ void slice_copy_value(const T *input, T *output, const Shape &input_shape,
                                       1, std::multiplies<LengthType>());
   std::vector<LengthType> indices(input_shape.size());
   for (LengthType i = 0; i < output_total; i++) {
-    offset_to_indices(i, output_shape, indices);
+    utils::offset_to_indices(i, output_shape, indices);
     for (int j = 0; j < indices.size(); j++) {
       auto [start, interval, end] = ranges[j];
       indices[j] = start + interval * indices[j];
     }
-    auto input_offset = indices_to_offset(input_shape, indices);
+    auto input_offset = utils::indices_to_offset(input_shape, indices);
     output[i] = input[input_offset];
   }
 }

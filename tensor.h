@@ -121,16 +121,47 @@ public:
   LengthType numel() const { return num_elements(_shape); }
   int32_t elem_size() const { return ::rwkv::elem_size(_dtype); }
 
-  Tensor view(const Shape &shape);
+  Tensor view(const Shape &shape) const;
 
-  Tensor flatten();
+  Tensor flatten() const;
 
-  Tensor unsqueeze(int dim);
+  Tensor cat(const Tensor &other, int dim) const;
 
-  Tensor slice(const std::vector<Range> &ranges);
+  Tensor unsqueeze(int dim) const;
 
-  Tensor slice(const std::initializer_list<Range> &ranges);
+  Tensor slice(const std::vector<Range> &ranges) const;
 
+  Tensor slice(const std::initializer_list<Range> &ranges) const;
+
+  Tensor repeat(const std::initializer_list<LengthType> &repeats) const;
+
+  Tensor repeat(LengthType repeats) const;
+
+  Tensor transpose(int dim_a, int dim_b) const;
+
+  Tensor reshape(const Shape &shape) const;
+
+  Tensor pad(const std::initializer_list<LengthType> &paddings,
+             const std::string &mode) const;
+
+  Tensor flip(const std::initializer_list<LengthType> &dims) const;
+
+  Tensor flip(LengthType dim) const { return flip({dim}); }
+
+  template <typename T>
+  static Tensor Arange(T start, T interval, T end, DType dtype, Device device) {
+    RV_CHECK(start < end && interval > 0 || start > end && interval < 0);
+    auto numel = static_cast<LengthType>((end - start) / interval);
+    if ((end - start) % interval != 0) {
+      numel++;
+    }
+    auto ret = Tensor::Empty({numel}, dtype, device);
+    auto *data = ret.data_ptr<T>();
+    for (LengthType i = 0; i < numel; i++) {
+      data[i] = start + i * interval;
+    }
+    return ret;
+  }
   static Tensor Empty(const Shape &shape, DType dtype, Device device);
   static Tensor FromPtr(void *ptr, const Shape &shape, DType dtype,
                         Device device);

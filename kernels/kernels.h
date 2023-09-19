@@ -1,7 +1,9 @@
 #pragma once
 
+#include <initializer_list>
 #include <kernels/allocator.h>
 #include <kernels/registry.h>
+#include <string>
 #include <tensor.h>
 
 namespace rwkv {
@@ -89,9 +91,9 @@ inline Tensor matmul(const Tensor &a, const Tensor &b) {
                                                             a.device())(a, b);
 }
 
-inline Tensor cat(const Tensor &a, const Tensor &b) {
-  return KernelRegistry::Instance().Get<decltype(cat) *>("cat", a.device())(a,
-                                                                            b);
+inline Tensor cat(const Tensor &a, const Tensor &b, int dim) {
+  return KernelRegistry::Instance().Get<decltype(cat) *>("cat",
+                                                         a.device())(a, b, dim);
 }
 
 // TODO:
@@ -160,6 +162,36 @@ inline Tensor unsqueeze(const Tensor &x, int dim) {
   }
   new_shape.insert(new_shape.begin() + dim, 1);
   return reshape(x, new_shape);
+}
+
+inline Tensor transpose(const Tensor &x, int dim_a, int dim_b) {
+  return KernelRegistry::Instance().Get<decltype(transpose) *>(
+      "transpose", x.device())(x, dim_a, dim_b);
+}
+
+inline Tensor flip(const Tensor &x,
+                   const std::initializer_list<LengthType> &dims) {
+  return KernelRegistry::Instance().Get<decltype(flip) *>("flip",
+                                                          x.device())(x, dims);
+}
+
+inline Tensor flip(const Tensor &x, LengthType dim) { return flip(x, {dim}); }
+
+inline Tensor pad(const Tensor &x,
+                  const std::initializer_list<LengthType> &paddings,
+                  const std::string &mode) {
+  return KernelRegistry::Instance().Get<decltype(pad) *>("pad", x.device())(
+      x, paddings, mode);
+}
+
+inline Tensor repeat(const Tensor &x,
+                     const std::initializer_list<LengthType> &repeats) {
+  return KernelRegistry::Instance().Get<decltype(repeat) *>(
+      "repeat", x.device())(x, repeats);
+}
+
+inline Tensor repeat(const Tensor &x, LengthType repeats) {
+  return repeat(x, {repeats});
 }
 
 inline Tensor mark_as_output(const Tensor &x, const std::string &name) {
