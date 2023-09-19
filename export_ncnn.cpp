@@ -1,7 +1,7 @@
 #include <fstream>
 #include <iostream>
 
-#include <kernels/ncnn-meta/kernels.h>
+#include <kernels/export-ncnn/kernels.h>
 
 int main(int argc, char **argv) {
   if (argc != 3 && argc != 4) {

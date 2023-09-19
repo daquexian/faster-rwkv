@@ -2,13 +2,30 @@
 #include "check.h"
 #include <initializer_list>
 #include <iostream>
+
+#include <check.h>
+#include <kernels/export-ncnn/kernels.h>
 #include <kernels/kernels.h>
 #include <stdexcept>
-
-#include <kernels/ncnn-meta/kernels.h>
+#ifdef FR_ENABLE_ONNX
+#include <kernels/export-onnx/kernels.h>
+#endif
 
 namespace rwkv {
 Range Range::All = Range(0, 0, 0);
+
+// operator<< for Shape
+std::ostream &operator<<(std::ostream &os, const Shape &shape) {
+  os << "(";
+  for (int i = 0; i < shape.size(); i++) {
+    os << shape[i];
+    if (i != shape.size() - 1) {
+      os << ", ";
+    }
+  }
+  os << ")";
+  return os;
+}
 
 void print_tensor(const Tensor &t, const std::string &name) {
   std::cout << "Tensor " << name << std::endl;
@@ -47,6 +64,13 @@ Tensor Copy(const Tensor &x, Device device, bool always_copy) {
   }
 #endif
 
+#ifdef FR_ENABLE_ONNX
+  if (device == Device::kONNXMeta && x.device() == Device::kCPU) {
+    y = onnxmeta::possible_initializer(x);
+    return y;
+  }
+#endif
+
   if (device == Device::kNCNNMeta && x.device() == Device::kCPU) {
     y = ncnnmeta::MemoryData(x);
     return y;
@@ -55,7 +79,8 @@ Tensor Copy(const Tensor &x, Device device, bool always_copy) {
     memcpy(y.data_ptr(), x.data_ptr(), x.numel() * x.elem_size());
     return y;
   }
-  throw std::runtime_error("unsupported device");
+
+  RV_UNIMPLEMENTED();
 }
 
 namespace {
@@ -85,6 +110,32 @@ Tensor Tensor::FromPtr(void *dptr, const Shape &shape, DType dtype,
   tensor._dtype = dtype;
   tensor.name = "tensor_" + std::to_string(unique_id());
   return tensor;
+}
+
+Tensor Tensor::FromMsgPack(const msgpack::object &obj) {
+  auto from_mp_dtype = [](const std::string &mp_dtype) -> DType {
+    if (mp_dtype == "torch.int8") {
+      return DType::kInt8;
+    } else if (mp_dtype == "torch.float16") {
+      return DType::kFloat16;
+    } else if (mp_dtype == "torch.float32") {
+      return DType::kFloat32;
+    } else {
+      RV_UNIMPLEMENTED();
+    }
+  };
+
+  auto mp_tensor_map =
+      obj.as<std::unordered_map<std::string, msgpack::object>>();
+  // NOTE: `mp_tensor_data` will be destroyed after this function returns
+  auto mp_tensor_data = mp_tensor_map["data"].as<std::vector<char>>();
+  auto mp_tensor_shape = mp_tensor_map["shape"].as<std::vector<int64_t>>();
+  auto mp_tensor_dtype = mp_tensor_map["dtype"].as<std::string>();
+  auto fr_cpu_tensor =
+      Tensor::FromPtr(mp_tensor_data.data(), Shape(mp_tensor_shape),
+                      from_mp_dtype(mp_tensor_dtype), Device::kCPU);
+  auto ret = Copy(fr_cpu_tensor, Device::kCPU, true);
+  return ret;
 }
 
 Tensor Tensor::FromOther(const Tensor &other, const Shape &shape) {

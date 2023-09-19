@@ -100,6 +100,7 @@ inline Tensor cat(const Tensor &a, const Tensor &b, int dim) {
 // REGISTER_KERNEL(Tensor, add, const Tensor&, x, const Tensor&, y);
 
 inline Tensor add(const Tensor &x, const Tensor &y) {
+  // TODO: global device
   return KernelRegistry::Instance().Get<decltype(add) *>(
       "add", Device::kNCNNMeta)(x, y);
 }
@@ -141,6 +142,11 @@ inline Tensor sigmoid(const Tensor &x) {
 inline Tensor maximum(const Tensor &x, const Tensor &y) {
   return KernelRegistry::Instance().Get<decltype(maximum) *>("maximum",
                                                              x.device())(x, y);
+}
+
+inline Tensor softmax(const Tensor &x, float temperature) {
+  return KernelRegistry::Instance().Get<decltype(softmax) *>("softmax",
+                                                             x.device())(x, temperature);
 }
 
 inline Tensor reshape(const Tensor &x, const Shape &shape) {

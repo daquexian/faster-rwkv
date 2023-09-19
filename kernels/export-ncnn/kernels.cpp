@@ -1,4 +1,4 @@
-#include <kernels/ncnn-meta/kernels.h>
+#include <kernels/export-ncnn/kernels.h>
 
 #include <array>
 #include <fstream>
@@ -9,6 +9,7 @@
 
 #include <kernels/allocator.h>
 #include <kernels/registry.h>
+#include <kernels/shape/shape_inference.h>
 #include <model.h>
 #include <tensor.h>
 
@@ -99,7 +100,7 @@ void ExportModel(const std::string &input_path, DType weight_dtype,
 
   // NOTE: fp32 here is just a placeholder. The dtype used by ncnn is determined
   // by the weight_dtype parameter.
-  rwkv::Model model(input_path, "ncnn-meta fp32");
+  rwkv::Model model(input_path, "export-ncnn fp32");
   model.Run(0);
   rwkv::ncnnmeta::destroy(model);
 }
@@ -189,41 +190,8 @@ Tensor groupnorm(const Tensor &x, int num_groups, const Tensor &weight,
 }
 
 Tensor batch_matmul(const Tensor &a, const Tensor &b) {
-  int batch, m, n, k;
-  const int a_ranks = a.shape().size();
-  const int b_ranks = b.shape().size();
-  Shape output_shape;
-  if (a_ranks == 3 && b_ranks == 3) {
-    batch = a.shape()[0];
-    RV_CHECK(batch == b.shape()[0]);
-    m = a.shape()[1];
-    k = a.shape()[2];
-    RV_CHECK(k == b.shape()[1]);
-    n = b.shape()[2];
-    output_shape = {batch, m, n};
-  } else {
-    RV_CHECK(a_ranks <= 2 && b_ranks <= 2);
-    if (a_ranks == 1) {
-      RV_CHECK(b_ranks == 2);
-      m = 1;
-      k = a.shape()[0];
-      n = b.shape()[1];
-      output_shape = {n};
-    } else if (a_ranks == 2) {
-      m = a.shape()[0];
-      k = a.shape()[1];
-      if (b_ranks == 1) {
-        RV_CHECK(a_ranks == 2);
-        RV_CHECK(k == b.shape()[0]);
-        n = 1;
-        output_shape = {m};
-      } else {
-        RV_CHECK(k == b.shape()[0]);
-        n = b.shape()[1];
-        output_shape = {m, n};
-      }
-    }
-  }
+  Shape output_shape = shape::matmul(a.shape(), b.shape());
+  
   Tensor a_meta = a;
   if (a.device() == Device::kCPU) {
     a_meta = MemoryData(a);
@@ -470,27 +438,6 @@ Tensor MemoryData(const Tensor &x) {
   return output;
 }
 
-Shape BroadcastBinaryShapeInfer(const Shape &s1, const Shape &s2) {
-  auto nrank = std::max(s1.size(), s2.size());
-  Shape output_shape(nrank);
-  for (int i = nrank - 1; i >= 0; i--) {
-    if (i >= s1.size()) {
-      output_shape[i] = s2[i];
-    } else if (i >= s2.size()) {
-      output_shape[i] = s1[i];
-    } else if (s1[i] == s2[i]) {
-      output_shape[i] = s1[i];
-    } else if (s1[i] == 1) {
-      output_shape[i] = s2[i];
-    } else if (s2[i] == 1) {
-      output_shape[i] = s1[i];
-    } else {
-      RV_UNIMPLEMENTED();
-    }
-  }
-  return output_shape;
-}
-
 std::map<std::string, int> binary_op_ids{{"add", 0},     {"sub", 1},
                                          {"mul", 2},     {"div", 3},
                                          {"maximum", 4}, {"rsub", 7}};
@@ -501,7 +448,7 @@ std::map<std::string, int> binary_op_ids{{"add", 0},     {"sub", 1},
     Tensor meta_y = y.device() == Device::kCPU ? MemoryData(y) : y;            \
     PRINT_OP_TYPE_AND_NAME("BinaryOp", 2, 1);                                  \
     auto output =                                                              \
-        Tensor::Empty(BroadcastBinaryShapeInfer(x.shape(), y.shape()),         \
+        Tensor::Empty(shape::broadcast_binary(x.shape(), y.shape()),         \
                       DType::kFloat32, Device::kNCNNMeta);                     \
     fprintf(pp, " %s", meta_x.name.c_str());                                   \
     fprintf(pp, " %s", meta_y.name.c_str());                                   \
@@ -807,18 +754,7 @@ std::tuple<Tensor, Tensor> ffn(const Tensor &x, const Tensor &sx,
 
 KernelRegister ffn_reg("ffn", Device::kNCNNMeta, ffn);
 
-class NullAllocator : public rwkv::Allocator {
-public:
-  void *DoAllocate(size_t size) { return nullptr; }
-  void Deallocate(void *ptr) {}
-};
-
-rwkv::Allocator &allocator() {
-  static NullAllocator allocator;
-  return allocator;
-}
-
-KernelRegister allocator_reg("allocator", Device::kNCNNMeta, allocator);
+KernelRegister allocator_reg("allocator", Device::kNCNNMeta, null_allocator);
 
 KernelRegister layernorm_reg("layernorm", Device::kNCNNMeta, layernorm);
 KernelRegister groupnorm_reg("groupnorm", Device::kNCNNMeta, groupnorm);

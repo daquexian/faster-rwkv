@@ -20,9 +20,9 @@ Model::Model(const std::string &path, const std::string &strategy): Model(path, 
 Model::Model(const std::string &path, const std::string &strategy, std::any extra) {
   auto dev_str = strategy.substr(0, strategy.find(" "));
   Device act_device = [&]() {
-    if (dev_str == "ncnn-meta") {
+    if (dev_str == "export-ncnn") {
       return Device::kNCNNMeta;
-    } else if (dev_str == "onnx-meta") {
+    } else if (dev_str == "export-onnx") {
       return Device::kONNXMeta;
     } else if (dev_str == "cuda") {
       return Device::kCUDA;
@@ -74,6 +74,32 @@ Model::Model(const std::string &path, const std::string &strategy, std::any extr
     RV_CHECK(_n_ffn > 0);
   }
   ResetStates();
+}
+
+void Model::LoadStateFile(const std::string &path) {
+  std::ifstream infile;
+  infile.open(path, std::ios::binary | std::ios::in);
+  infile.seekg(0, std::ios::end);
+  int64_t length = infile.tellg();
+  infile.seekg(0, std::ios::beg);
+  std::vector<char> data;
+  data.resize(length);
+  infile.read(data.data(), length);
+  infile.close();
+
+  auto unpacker = msgpack::unpack(data.data(), length);
+  auto obj = unpacker.get();
+  auto states_mp = obj.as<std::vector<std::vector<msgpack::object>>>();
+  RV_CHECK(states_mp.size() == _states.size());
+  for (int i = 0; i < states_mp.size(); i++) {
+    RV_CHECK(states_mp[i].size() == _states[i].size());
+    for (int j = 0; j < states_mp[i].size(); j++) {
+      const auto &state_mp = states_mp[i][j];
+      auto new_state = Tensor::FromMsgPack(state_mp);
+      RV_CHECK(new_state.shape() == _states[i][j].shape());
+      _states[i][j] = new_state;
+    }
+  }
 }
 
 void Model::ResetStates() {

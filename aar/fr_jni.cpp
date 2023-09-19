@@ -24,6 +24,9 @@ using rwkv::Model;
 using rwkv::WorldTokenizer;
 using rwkv::ABCTokenizer;
 using rwkv::Sampler;
+using rwkv::Tensor;
+using rwkv::DType;
+using rwkv::Device;
 
 std::string to_cpp_string(JNIEnv *env, jstring jstr) {
   const char *ptr = env->GetStringUTFChars(jstr, nullptr);
@@ -52,6 +55,12 @@ extern "C" JNIEXPORT void JNICALL Java_com_rwkv_faster_Model_initWithAssetManage
   auto *model =
       new std::shared_ptr<Model>(new Model(path, strategy, asset_manager));
   setHandle(env, obj, model);
+}
+
+extern "C" JNIEXPORT void JNICALL Java_com_rwkv_faster_Model_resetStates(
+    JNIEnv *env, jobject obj /* this */) {
+  auto model = getHandle<Model>(env, obj);
+  model->ResetStates();
 }
 
 extern "C" JNIEXPORT jfloatArray JNICALL Java_com_rwkv_faster_Model_runSingle(
@@ -157,6 +166,13 @@ extern "C" JNIEXPORT jint JNICALL Java_com_rwkv_faster_Sampler_sample(
     JNIEnv *env, jobject obj /* this */, jfloatArray jProbs, jfloat temperature, jint top_k, jfloat top_p) {
   auto sampler = getHandle<Sampler>(env, obj);
   jfloat *arr = env->GetFloatArrayElements(jProbs, nullptr);
-  auto output = sampler->Sample(arr, env->GetArrayLength(jProbs), temperature, top_k, top_p);
+  Tensor tensor = Tensor::FromPtr(arr, {env->GetArrayLength(jProbs)}, DType::kFloat32, Device::kCPU);
+  auto output = sampler->Sample(tensor, temperature, top_k, top_p);
   return static_cast<jint>(output);
+}
+
+extern "C" JNIEXPORT void JNICALL Java_com_rwkv_faster_Sampler_setSeed(
+    JNIEnv *env, jobject obj /* this */, jint seed) {
+  auto sampler = getHandle<Sampler>(env, obj);
+  sampler->set_seed(seed);
 }

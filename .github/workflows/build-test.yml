@@ -6,6 +6,7 @@ env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
   BUILD_TYPE: Release
   FR_MODEL_DIR: /tmp/models
+  CI: 1
 
 jobs:
   build-and-test:
@@ -28,12 +29,14 @@ jobs:
       run: |
         ./aar/build_aar.sh
 
-    - name: Download ChatRWKV Models
+    - name: Download Tokenizer and ChatRWKV Models
       run: |
         mkdir ${{env.FR_MODEL_DIR}}
         cd ${{env.FR_MODEL_DIR}}
         wget https://huggingface.co/BlinkDL/rwkv-4-world/resolve/main/RWKV-4-World-0.1B-v1-20230520-ctx4096.pth 
         wget https://huggingface.co/BlinkDL/rwkv-5-world/resolve/main/RWKV-5-World-0.1B-v1-20230803-ctx4096.pth
+        wget https://huggingface.co/BlinkDL/rwkv-5-music/resolve/main/RWKV-5-ABC-82M-v1-20230901-ctx1024.pth
+        wget https://huggingface.co/daquexian/fr-models/resolve/main/world_tokenizer
     - name: Convert ChatRWKV Models
       run: |
         git clone https://github.com/BlinkDL/ChatRWKV
@@ -47,28 +50,34 @@ jobs:
         python3 v2/convert_model.py --in ${{env.FR_MODEL_DIR}}/RWKV-4-World-0.1B-v1-20230520-ctx4096.pth  --out ${{env.FR_MODEL_DIR}}/RWKV-4-World-0.1B-v1-20230520-ctx4096-fp32-converted.pth --strategy "cuda fp32"
         python3 v2/convert_model.py --in ${{env.FR_MODEL_DIR}}/RWKV-4-World-0.1B-v1-20230520-ctx4096.pth  --out ${{env.FR_MODEL_DIR}}/RWKV-4-World-0.1B-v1-20230520-ctx4096-fp16-converted.pth --strategy "cuda fp16"
         python3 v2/convert_model.py --in ${{env.FR_MODEL_DIR}}/RWKV-5-World-0.1B-v1-20230803-ctx4096.pth  --out ${{env.FR_MODEL_DIR}}/RWKV-5-World-0.1B-v1-20230803-ctx4096-fp32-converted.pth --strategy "cuda fp32"
+        python3 v2/convert_model.py --in ${{env.FR_MODEL_DIR}}/RWKV-5-ABC-82M-v1-20230901-ctx1024.pth  --out ${{env.FR_MODEL_DIR}}/RWKV-5-ABC-82M-v1-20230901-ctx1024-fp32-converted.pth --strategy "cuda fp32"
         cd ..
         pip install -r tools/requirements.txt
         python3 tools/convert_weight.py ${{env.FR_MODEL_DIR}}/RWKV-4-World-0.1B-v1-20230520-ctx4096-fp32-converted.pth ${{env.FR_MODEL_DIR}}/RWKV-4-World-0.1B-v1-20230520-ctx4096-fp32.fr
         python3 tools/convert_weight.py ${{env.FR_MODEL_DIR}}/RWKV-4-World-0.1B-v1-20230520-ctx4096-fp16-converted.pth ${{env.FR_MODEL_DIR}}/RWKV-4-World-0.1B-v1-20230520-ctx4096-fp16.fr
         python3 tools/convert_weight.py ${{env.FR_MODEL_DIR}}/RWKV-5-World-0.1B-v1-20230803-ctx4096-fp32-converted.pth ${{env.FR_MODEL_DIR}}/RWKV-5-World-0.1B-v1-20230803-ctx4096-fp32.fr
+        python3 tools/convert_weight.py ${{env.FR_MODEL_DIR}}/RWKV-5-ABC-82M-v1-20230901-ctx1024-fp32-converted.pth ${{env.FR_MODEL_DIR}}/RWKV-5-ABC-82M-v1-20230901-ctx1024-fp32.fr
 
     - name: Build
       run: |
         cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DFR_ENABLE_NCNN=ON -GNinja
         cmake --build ${{github.workspace}}/build
 
-    - name: Test
-      working-directory: ${{github.workspace}}/build
+    - name: Convert the v5 ABC model to ncnn
+      run: |
+        ${{github.workspace}}/build/export_ncnn ${{env.FR_MODEL_DIR}}/RWKV-5-ABC-82M-v1-20230901-ctx1024-fp32.fr ${{env.FR_MODEL_DIR}}/RWKV-5-ABC-82M-v1-20230901-ctx1024-ncnn fp16
+
+    - name: Run ABC ppl test
+      run: |
+        pip install datasets msgpack
+        python3 tests/run_abc_benchmark.py ${{github.workspace}}/build/tests/run_abc_benchmark ${{env.FR_MODEL_DIR}}/RWKV-5-ABC-82M-v1-20230901-ctx1024-ncnn
+
+    - name: Run tests
       # Execute tests defined by the CMake configuration.
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
       run: |
-        FR_MODEL_DIR=${{env.FR_MODEL_DIR}} ctest -C ${{env.BUILD_TYPE}} -vv --output-on-failure
-
-    - name: Build pure export_ncnn
-      run: |
-        cmake -B ${{github.workspace}}/build_export_ncnn -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -GNinja
-        cmake --build ${{github.workspace}}/build_export_ncnn
+        FR_MODEL_DIR=${{env.FR_MODEL_DIR}} ctest -vv --output-on-failure --test-dir tests
+      working-directory: ${{github.workspace}}/build/
 
     - name: Upload Android AAR libraries
       uses: actions/upload-artifact@v3
@@ -81,7 +90,7 @@ jobs:
       with:
         name: export_ncnn
         path: |
-          build_export_ncnn/export_ncnn
+          build/export_ncnn
     - uses: "marvinpinto/action-automatic-releases@latest"
       if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' }}
       with:
@@ -90,7 +99,7 @@ jobs:
         prerelease: true
         title: "Development Build"
         files: |
-          build_export_ncnn/export_ncnn
+          build/export_ncnn
           aar/java/faster-rwkv-java/build/outputs/aar/faster-rwkv-java-release.aar
           build-android/chat
           build-android/abc_music
@@ -101,7 +110,7 @@ jobs:
         repo_token: "${{ secrets.GH_TOKEN }}"
         prerelease: false
         files: |
-          build_export_ncnn/export_ncnn
+          build/export_ncnn
           aar/java/faster-rwkv-java/build/outputs/aar/faster-rwkv-java-release.aar
           build-android/chat
           build-android/abc_music

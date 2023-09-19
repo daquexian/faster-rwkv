@@ -1,9 +1,17 @@
 #pragma once
 
+#include <random>
+
+#include <tensor.h>
+
 namespace rwkv {
 class Sampler {
 public:
-  int Sample(const float *ptr, int len, float temperature=1.f, int top_k=0, float top_p=0.85f);
+  Sampler();
+  int Sample(const Tensor& logits, float temperature, int top_k, float top_p);
+  void set_seed(int seed);
+private:
+  std::minstd_rand0 _generator;
 };
 
 } // namespace rwkv

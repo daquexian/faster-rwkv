@@ -16,7 +16,7 @@ namespace rwkv {
 namespace def {
 
 inline void init_model(Model *model, Device device, const std::string &path,
-                       const std::string &strategy, const std::any& extra) {
+                       const std::string &strategy, const std::any &extra) {
   std::ifstream infile;
   infile.open(path, std::ios::binary | std::ios::in);
   infile.seekg(0, std::ios::end);
@@ -32,32 +32,18 @@ inline void init_model(Model *model, Device device, const std::string &path,
   auto weights = map["weights"].as<std::map<std::string, msgpack::object>>();
   auto embd_weights = map["embd_weights"].as<std::vector<msgpack::object>>();
 
-  auto from_mp_dtype = [](const std::string &mp_dtype) -> DType {
-    if (mp_dtype == "torch.int8") {
-      return DType::kInt8;
-    } else if (mp_dtype == "torch.float16") {
-      return DType::kFloat16;
-    } else if (mp_dtype == "torch.float32") {
-      return DType::kFloat32;
-    } else {
-      throw std::runtime_error("unknown dtype " + mp_dtype);
-    }
-  };
-
   Device weight_device = device == Device::kCUDA ? Device::kCUDA : Device::kCPU;
 
-  auto from_mp_tensor = [from_mp_dtype,
-                         weight_device](msgpack::object mp_tensor,
+  auto from_mp_tensor = [weight_device](msgpack::object mp_tensor,
                                         const std::string &name) -> Tensor {
-    auto mp_tensor_map =
-        mp_tensor.as<std::unordered_map<std::string, msgpack::object>>();
-    // NOTE: `mp_tensor_data` will be destroyed after this function returns
-    auto mp_tensor_data = mp_tensor_map["data"].as<std::vector<char>>();
-    auto mp_tensor_shape = mp_tensor_map["shape"].as<std::vector<int64_t>>();
-    auto mp_tensor_dtype = mp_tensor_map["dtype"].as<std::string>();
-    auto fr_cpu_tensor =
-        Tensor::FromPtr(mp_tensor_data.data(), Shape(mp_tensor_shape),
-                        from_mp_dtype(mp_tensor_dtype), Device::kCPU);
+    // // NOTE: `mp_tensor_data` will be destroyed after this function returns
+    // auto mp_tensor_data = mp_tensor_map["data"].as<std::vector<char>>();
+    // auto mp_tensor_shape = mp_tensor_map["shape"].as<std::vector<int64_t>>();
+    // auto mp_tensor_dtype = mp_tensor_map["dtype"].as<std::string>();
+    // auto fr_cpu_tensor =
+    //     Tensor::FromPtr(mp_tensor_data.data(), Shape(mp_tensor_shape),
+    //                     from_mp_dtype(mp_tensor_dtype), Device::kCPU);
+    auto fr_cpu_tensor = Tensor::FromMsgPack(mp_tensor);
     auto ret = Copy(fr_cpu_tensor, weight_device, true);
     ret.name = name;
     ret.is_constant = true;
@@ -152,6 +138,7 @@ inline void init_model(Model *model, Device device, const std::string &path,
 KernelRegister init_model_reg_1("init_model", Device::kCPU, init_model);
 KernelRegister init_model_reg_2("init_model", Device::kCUDA, init_model);
 KernelRegister init_model_reg_3("init_model", Device::kNCNNMeta, init_model);
+KernelRegister init_model_reg_4("init_model", Device::kONNXMeta, init_model);
 
 } // namespace def
 } // namespace rwkv

@@ -23,6 +23,7 @@ WorldTokenizer::WorldTokenizer(const std::string &path) {
   auto unpacker = msgpack::unpack(data, length);
   auto obj = unpacker.get();
   _idx2word = obj.as<std::unordered_map<int, std::string>>();
+  delete[] data;
   for (auto &pair : _idx2word) {
     _word2idx[pair.second] = pair.first;
   }
@@ -88,6 +89,7 @@ MIDITokenizer::MIDITokenizer(const std::string &path) {
   }
   _normalizer = dict["normalizer"].as<std::string>();
   _pre_tokenizer = dict["pre_tokenizer"].as<std::string>();
+  delete[] data;
 }
 
 std::vector<int> MIDITokenizer::encode(std::string_view str) const {
@@ -100,7 +102,7 @@ std::vector<int> MIDITokenizer::encode(std::string_view str) const {
     RV_UNIMPLEMENTED();
   }
   std::vector<std::string> pieces;
-  if (_pre_tokenizer == "Whitespace") {
+  if (_pre_tokenizer == "WhitespaceSplit") {
     std::string buf;
     std::stringstream ss{std::string(str)};
     while (ss >> buf) {

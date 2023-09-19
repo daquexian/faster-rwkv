@@ -9,9 +9,11 @@
 #include <cuda_fp16.h>
 #include <cuda_runtime.h>
 #endif
+
 #ifdef FR_ENABLE_NCNN
 #include <mat.h>
 #endif
+#include <msgpack.hpp>
 
 #include <check.h>
 #include <half.hpp>
@@ -22,6 +24,7 @@ enum class DType {
   kInt8,
   kFloat16,
   kFloat32,
+  kInt64,
 };
 using float16 = half_float::half;
 enum class Device {
@@ -30,6 +33,7 @@ enum class Device {
   kNCNNMeta,
   kONNXMeta,
   kNCNN,
+  kONNX,
 };
 template <typename T> inline const DType dtype_v = DType::kFloat32;
 template <> inline const DType dtype_v<float16> = DType::kFloat16;
@@ -40,6 +44,9 @@ template <> inline const DType dtype_v<int8_t> = DType::kInt8;
 
 using LengthType = int64_t;
 using Shape = std::vector<LengthType>;
+
+// operator<< for Shape
+std::ostream &operator<<(std::ostream &os, const Shape &shape);
 
 inline std::string dtype_to_string(DType dtype) {
   if (dtype == DType::kFloat32) {
@@ -69,6 +76,8 @@ inline int32_t elem_size(DType dtype) {
     return 2;
   case DType::kFloat32:
     return 4;
+  case DType::kInt64:
+    return 8;
   default:
     RV_UNIMPLEMENTED();
   }
@@ -165,6 +174,7 @@ public:
   static Tensor Empty(const Shape &shape, DType dtype, Device device);
   static Tensor FromPtr(void *ptr, const Shape &shape, DType dtype,
                         Device device);
+  static Tensor FromMsgPack(const msgpack::object &obj);
   static Tensor FromOther(const Tensor &other, const Shape &shape);
 
   template <typename T> T FromTensor() const;
