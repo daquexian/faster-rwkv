@@ -134,7 +134,6 @@ add_library(faster_rwkv_internal
         kernels/default/init_model.cpp
         kernels/default/model_forward.cpp
         kernels/default/model_forward_seq.cpp
-        kernels/ncnn-meta/kernels.cpp
         kernels/export-ncnn/kernels.cpp
         ${cuda_kernel_srcs}
         ${ncnn_kernel_srcs}
