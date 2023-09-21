@@ -103,7 +103,7 @@ curl -L -s https://raw.githubusercontent.com/daquexian/faster-rwkv/master/downlo
 - [x] ARM NEON int8 (~2x speedup compared to fp16)
 - [x] ARM NEON int4 (>2x speedup compared to fp16)
 - [x] MIDI music models support
-- [x] initial state support
+- [x] custom initial state support
 - [ ] Raven models support
 - [ ] seq mode
 - [ ] export ONNX

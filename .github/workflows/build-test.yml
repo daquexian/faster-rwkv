@@ -27,6 +27,8 @@ jobs:
 
     - name: Build Android AAR
       run: |
+        # android toolchain cmake file hardcode '-g', making the binary bigger
+        sed -i 's/ -g$//' $ANDROID_NDK/build/cmake/android-legacy.toolchain.cmake
         ./aar/build_aar.sh
 
     - name: Download Tokenizer and ChatRWKV Models
