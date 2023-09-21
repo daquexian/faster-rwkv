@@ -22,7 +22,7 @@ else
     exit 1
 fi
 sleep 1
-aria2c -c -x16 -s16 https://github.com/daquexian/faster-rwkv/releases/download/v0.0.5/chat -o chat
+aria2c -c -x16 -s16 https://github.com/daquexian/faster-rwkv/releases/download/latest/chat -o chat
 chmod +x chat
 aria2c -c -x16 -s16 https://huggingface.co/daquexian/fr-models/resolve/main/world_tokenizer -o world_tokenizer
 
@@ -34,9 +34,9 @@ if (( $ARG >= 1 )); then
     chmod +x run_0.1b_int8.sh
 fi
 if (( $ARG >= 2 )); then
-    aria2c -c -x16 -s16 
-    aria2c -c -x16 -s16
-    aria2c -c -x16 -s16
+    aria2c -c -x16 -s16 https://huggingface.co/daquexian/fr-models/raw/46059b9/RWKV-4-World-CHNtuned-1.5B-v1-20230620-ctx4096-ncnn-int4.param
+    aria2c -c -x16 -s16 https://huggingface.co/daquexian/fr-models/raw/46059b9/RWKV-4-World-CHNtuned-1.5B-v1-20230620-ctx4096-ncnn-int4.config
+    aria2c -c -x16 -s16 https://huggingface.co/daquexian/fr-models/resolve/46059b9/RWKV-4-World-CHNtuned-1.5B-v1-20230620-ctx4096-ncnn-int4.bin
     echo 'FR_SHOW_SPEED=1 ./chat world_tokenizer RWKV-4-World-CHNtuned-1.5B-v1-20230620-ctx4096-ncnn-int4 "ncnn auto"' > run_1.5b_int4.sh
     chmod +x run_1.5b_int4.sh
 fi
@@ -54,6 +54,6 @@ elif (( $ARG == 1 )); then
     echo "Done! Now you can run the chatbot by entering into directory 'rwkv' and running './run_0.1b_int8.sh'"
 elif (( $ARG == 2 )); then
     echo "Done! Now you can run the chatbot by entering into directory 'rwkv' and running './run_1.5b_int4.sh' or './run_0.1b_int8.sh'"
-elif (( $ARG == 2 )); then
+elif (( $ARG == 3 )); then
     echo "Done! Now you can run the chatbot by entering into directory 'rwkv' and running './run_1.5b_int4.sh',  './run_1.5b_int8.sh' or './run_0.1b_int8.sh'"
 fi
