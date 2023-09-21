@@ -95,9 +95,10 @@ curl -L -s https://raw.githubusercontent.com/daquexian/faster-rwkv/master/downlo
 - [x] ABC music models support (models are published at https://huggingface.co/daquexian/fr-models/tree/main)
 - [x] CI
 - [x] ARM NEON int8 (~2x speedup compared to fp16)
+- [x] ARM NEON int4 (>2x speedup compared to fp16)
 - [x] MIDI music models support
+- [x] initial state support
 - [ ] Raven models support
-- [ ] initial state support
 - [ ] seq mode
 - [ ] export ONNX
 - [ ] more backends..
