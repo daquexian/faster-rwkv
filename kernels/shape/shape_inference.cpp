@@ -40,8 +40,6 @@ Shape matmul(const Shape &x, const Shape &y) {
       }
     }
   }
-  std::cout << "matmul, x: " << x << ", y: " << y
-            << ", output_shape: " << output_shape << std::endl;
   return output_shape;
 }
 
@@ -63,8 +61,6 @@ Shape broadcast_binary(const Shape &x, const Shape &y) {
       RV_UNIMPLEMENTED();
     }
   }
-  std::cout << "broadcast_binary, x: " << x << ", y: " << y
-            << ", output_shape: " << output_shape << std::endl;
   return output_shape;
 }
 } // namespace shape
