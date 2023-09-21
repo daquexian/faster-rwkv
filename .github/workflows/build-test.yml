@@ -91,6 +91,11 @@ jobs:
         name: export_ncnn
         path: |
           build/export_ncnn
+    - name: Rename files to upload
+      run: |
+        mv build-android-aar/chat build-android-aar/chat-android
+        mv build-android-aar/abc_music build-android-aar/abc_music-android
+        mv build-android-aar/midi_music build-android-aar/midi_music-android
     - uses: "marvinpinto/action-automatic-releases@latest"
       if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' }}
       with:
@@ -101,8 +106,9 @@ jobs:
         files: |
           build/export_ncnn
           aar/java/faster-rwkv-java/build/outputs/aar/faster-rwkv-java-release.aar
-          build-android/chat
-          build-android/abc_music
+          build-android-aar/chat-android
+          build-android-aar/abc_music-android
+          build-android-aar/midi_music-android
 
     - uses: "marvinpinto/action-automatic-releases@latest"
       if: ${{ github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags/v') }}
@@ -112,6 +118,6 @@ jobs:
         files: |
           build/export_ncnn
           aar/java/faster-rwkv-java/build/outputs/aar/faster-rwkv-java-release.aar
-          build-android/chat
-          build-android/abc_music
-
+          build-android-aar/chat-android
+          build-android-aar/abc_music-android
+          build-android-aar/midi_music-android
