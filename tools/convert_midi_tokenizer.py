@@ -1,4 +1,3 @@
-# WIP, do not use it.
 import msgpack
 import sys
 import json

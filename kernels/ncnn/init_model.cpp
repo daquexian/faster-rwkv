@@ -133,6 +133,13 @@ void init_model(Model *model, Device device, const std::string &_path,
   }
   auto net = std::make_shared<ncnn::Net>();
   if (model->_weight_dtype == DType::kInt8 || model->_weight_dtype == DType::kInt4) {
+    if (model->_weight_dtype == DType::kInt4) {
+      // We only support A16W4
+      if (!ncnn::cpu_support_arm_asimdhp()) {
+        std::cerr << "int4 needs fp16 support" << std::endl;
+        RV_UNIMPLEMENTED();
+      }
+    }
     net->opt.use_fp16_packed = false;
     net->opt.use_fp16_arithmetic = false;
     net->opt.use_fp16_storage = false;

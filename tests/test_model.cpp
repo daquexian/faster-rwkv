@@ -79,4 +79,25 @@ TEST(Model, ncnn_int8) {
   EXPECT_GT(output_ptr[9], -9.4);
 }
 
+// TODO: add int4 reference implementation
+// TEST(Model, ncnn_int4) {
+//   const std::string model_dir(std::getenv("FR_MODEL_DIR"));
+//   rwkv::ncnnmeta::ExportModel(model_dir + "/RWKV-4-World-0.1B-v1-20230520-ctx4096-fp32.fr", rwkv::DType::kInt4,
+//                               "/tmp/rwkv-4-0.1b-ncnn-int4");
+//   rwkv::Model model("/tmp/rwkv-4-0.1b-ncnn-int4", "ncnn auto");
+//   auto output = rwkv::Copy(model.Run(0), rwkv::Device::kCPU);
+//   auto output_ptr = output.data_ptr<float>();
+//   // NOTE: different machines may have different results
+//   EXPECT_LT(output_ptr[0], -0.20);
+//   EXPECT_GT(output_ptr[0], -0.30);
+//   EXPECT_LT(output_ptr[9], -10.0);
+//   EXPECT_GT(output_ptr[9], -10.5);
+//   output = rwkv::Copy(model.Run(0), rwkv::Device::kCPU);
+//   output_ptr = output.data_ptr<float>();
+//   EXPECT_LT(output_ptr[0], -1.34);
+//   EXPECT_GT(output_ptr[0], -1.39);
+//   EXPECT_LT(output_ptr[9], -9.1);
+//   EXPECT_GT(output_ptr[9], -9.4);
+// }
+
 #endif
