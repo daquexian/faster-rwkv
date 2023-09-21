@@ -306,10 +306,7 @@ Tensor gemv_a32w4(const Tensor &a, const Tensor &b) {
   Tensor scales_t =
       Tensor::Empty({K * N * 2 / KT}, DType::kFloat16, Device::kCPU);
   float16 *scales = scales_t.data_ptr<float16>();
-  // a column --> two scales/zero_points
-  Tensor zero_points_t =
-      Tensor::Empty({K * N * 2 / KT}, DType::kFloat16, Device::kCPU);
-  float16 *zero_points = zero_points_t.data_ptr<float16>();
+  // a column --> two scales
 
   const int kBlockCols = 8;
 
@@ -332,11 +329,10 @@ Tensor gemv_a32w4(const Tensor &a, const Tensor &b) {
         }
       }
 
-      const auto [col_scales, col_zeropoints] =
-          [&]() -> std::pair<std::array<std::array<float, 2>, kBlockCols>, std::array<std::array<float, 2>, kBlockCols>> {
+      const auto col_scales =
+          [&]() -> std::array<std::array<float, 2>, kBlockCols> {
         std::array<std::array<float, KT>, kBlockCols> col_datas;
         std::array<std::array<float, 2>, kBlockCols> col_scales;
-        std::array<std::array<float, 2>, kBlockCols> col_zeropoints;
 
         for (int i = 0; i < KT * kBlockCols; i++) {
           col_datas[i % kBlockCols][i / kBlockCols] = block_data[i];
@@ -373,21 +369,20 @@ Tensor gemv_a32w4(const Tensor &a, const Tensor &b) {
             }
             // zero_point = (min + max) / 2.f;
             col_scales[col][xx] = scale;
-            col_zeropoints[col][xx] = zero_point;
           }
         }
 
-        return {col_scales, col_zeropoints};
+        return col_scales;
       }();
 
+      // NOTE(daquexian): we do not need zero_point because we assume the distribution is 
+      // already normal distribution, needed by nf4.
       for (int col = 0; col < kBlockCols; col++) {
         // we maintain nf4 table as int8, [-127, 127], instead of [-1, 1], so we need to divide 127 here
         scales[block_id * kBlockCols * 2 + col] = col_scales[col][0] / 127.f;
-        zero_points[block_id * kBlockCols * 2 + col] = col_zeropoints[col][0];
       }
       for (int col = 0; col < kBlockCols; col++) {
         scales[block_id * kBlockCols * 2 + kBlockCols + col] = col_scales[col][1] / 127.f;
-        zero_points[block_id * kBlockCols * 2 + kBlockCols + col] = col_zeropoints[col][1];
       }
 
       // std::cout << "scales[" << block_id << "] = " << scale << std::endl;
@@ -404,7 +399,6 @@ Tensor gemv_a32w4(const Tensor &a, const Tensor &b) {
           int idx1 = i * kSubBlockSize * 2 + j;
           int idx2 = idx1 + kSubBlockSize;
           RV_CHECK(idx1 < KT * kBlockCols);
-          float zeropoint = col_zeropoints[idx1 % kBlockCols][(idx1 / kBlockCols) / 32];
           float scale = col_scales[idx1 % kBlockCols][(idx1 / kBlockCols) / 32];
           // block_data[idx1] = (block_data[idx1] - zeropoint) / scale;
           block_data[idx1] = block_data[idx1] / scale;
@@ -412,7 +406,6 @@ Tensor gemv_a32w4(const Tensor &a, const Tensor &b) {
           RV_CHECK(tmp1 >= 0 && tmp1 <= 15);
 
           RV_CHECK(idx2 < KT * kBlockCols);
-          zeropoint = col_zeropoints[idx2 % kBlockCols][(idx2 / kBlockCols) / 32];
           scale = col_scales[idx2 % kBlockCols][(idx2 / kBlockCols) / 32];
           // block_data[idx2] = (block_data[idx2] - zeropoint) / scale;
           block_data[idx2] = block_data[idx2] / scale;
@@ -431,10 +424,9 @@ Tensor gemv_a32w4(const Tensor &a, const Tensor &b) {
     }
   }
 
+  PRINT_OP_TYPE_AND_NAME("GemvA32W4", 1, 1);
   append_data_to_bin_file(B_int4_t, true);
   append_data_to_bin_file(scales_t, false);
-  append_data_to_bin_file(zero_points_t, false);
-  PRINT_OP_TYPE_AND_NAME("GemvA32W4", 1, 1);
   auto output = Tensor::Empty({N}, DType::kFloat32, Device::kNCNNMeta);
   fprintf(pp, " %s", a.name.c_str());
   fprintf(pp, " %s", output.name.c_str());
@@ -540,10 +532,10 @@ Tensor gemv_a32w8(const Tensor &a, const Tensor &b) {
     }
   }
 
+  PRINT_OP_TYPE_AND_NAME("GemvA32W8", 1, 1);
   append_data_to_bin_file(B_int8_t, true);
   append_data_to_bin_file(scales_t, false);
   append_data_to_bin_file(zero_points_t, false);
-  PRINT_OP_TYPE_AND_NAME("GemvA32W8", 1, 1);
   auto output = Tensor::Empty({N}, DType::kFloat32, Device::kNCNNMeta);
   fprintf(pp, " %s", a.name.c_str());
   fprintf(pp, " %s", output.name.c_str());
@@ -645,8 +637,10 @@ Tensor MemoryData(const Tensor &x) {
   } else {
     RV_UNIMPLEMENTED();
   }
+  // 21 for load_type arg, 0 means write_tag
+  fprintf(pp, " 21=0");
   fprintf(pp, "\n");
-  append_data_to_bin_file(cpu::cast_dtype(x, DType::kFloat32), false);
+  append_data_to_bin_file(x, true);
   return output;
 }
 

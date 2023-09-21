@@ -11,10 +11,10 @@
 #include <cpu.h>
 #include <net.h>
 
+#include "extra.h"
 #include <kernels/kernels.h>
 #include <kernels/registry.h>
 #include <tensor.h>
-#include "extra.h"
 #define private public
 #include <model.h>
 #undef private
@@ -24,14 +24,19 @@ namespace _ncnn {
 
 static const bool kDebug = std::getenv("FR_DEBUG") != nullptr;
 
+static bool file_exists(const std::string &path) {
+  std::ifstream file(path);
+  return file.good();
+}
+
 void init_model(Model *model, Device device, const std::string &_path,
-                const std::string &strategy, const std::any& extra) {
+                const std::string &strategy, const std::any &extra) {
   // use all big cores
 #ifdef __ANDROID__
   ncnn::set_cpu_powersave(2);
 #endif
 
-  const auto [path, android_asset] = [&]() {
+  auto [path, android_asset] = [&]() {
     if (_path.substr(0, 6) == "asset:") {
       return std::make_pair(_path.substr(6), true);
     }
@@ -45,10 +50,30 @@ void init_model(Model *model, Device device, const std::string &_path,
     RV_CHECK(extra.has_value());
   }
 #endif
-  
-  auto param_path = path + ".param";
-  auto bin_path = path + ".bin";
-  auto config_path = path + ".config";
+
+  auto remove_suffix = [](const std::string &str, const std::string &suffix) {
+    if (str.size() < suffix.size()) {
+      return str;
+    }
+    if (str.substr(str.size() - suffix.size()) == suffix) {
+      return str.substr(0, str.size() - suffix.size());
+    }
+    return str;
+  };
+
+  path = remove_suffix(path, ".bin");
+  path = remove_suffix(path, ".param");
+  path = remove_suffix(path, ".config");
+
+  const auto bin_path = path + ".bin";
+  const auto param_path = path + ".param";
+  const auto config_path = path + ".config";
+  RV_CHECK(file_exists(bin_path))
+      << "File \"" << bin_path << "\" does not exist";
+  RV_CHECK(file_exists(param_path))
+      << "File \"" << param_path << "\" does not exist";
+  RV_CHECK(file_exists(config_path))
+      << "File \"" << config_path << "\" does not exist";
 
   // legacy model compatibility
   // asset support is added in v0.0.3, which ncnn config is already added,
@@ -74,10 +99,12 @@ void init_model(Model *model, Device device, const std::string &_path,
   std::string config;
 #ifdef _FR_ENABLE_ANDROID_ASSET
   if (android_asset) {
-    auto* mgr = std::any_cast<AAssetManager*>(extra);
-    AAsset *asset = AAssetManager_open(mgr, config_path.c_str(), AASSET_MODE_BUFFER);
+    auto *mgr = std::any_cast<AAssetManager *>(extra);
+    AAsset *asset =
+        AAssetManager_open(mgr, config_path.c_str(), AASSET_MODE_BUFFER);
     if (asset) {
-      const char* config_data = static_cast<const char*>(AAsset_getBuffer(asset));
+      const char *config_data =
+          static_cast<const char *>(AAsset_getBuffer(asset));
       auto config_size = AAsset_getLength(asset);
       config = std::string(config_data, config_data + config_size);
       AAsset_close(asset);
@@ -113,7 +140,7 @@ void init_model(Model *model, Device device, const std::string &_path,
       } else if (str == "int4") {
         return DType::kInt4;
       } else {
-        RV_UNIMPLEMENTED();
+        RV_UNIMPLEMENTED() << "unsupported dtype: " << str;
       }
     };
 
@@ -132,13 +159,12 @@ void init_model(Model *model, Device device, const std::string &_path,
     model->_n_ffn = std::stoi(get_value("n_ffn"));
   }
   auto net = std::make_shared<ncnn::Net>();
-  if (model->_weight_dtype == DType::kInt8 || model->_weight_dtype == DType::kInt4) {
+  if (model->_weight_dtype == DType::kInt8 ||
+      model->_weight_dtype == DType::kInt4) {
     if (model->_weight_dtype == DType::kInt4) {
       // We only support A16W4
-      if (!ncnn::cpu_support_arm_asimdhp()) {
-        std::cerr << "int4 needs fp16 support" << std::endl;
-        RV_UNIMPLEMENTED();
-      }
+      RV_CHECK(ncnn::cpu_support_arm_asimdhp())
+          << "int4 needs fp16 but your cpu does not support it";
     }
     net->opt.use_fp16_packed = false;
     net->opt.use_fp16_arithmetic = false;
@@ -161,7 +187,7 @@ void init_model(Model *model, Device device, const std::string &_path,
   }
 #ifdef _FR_ENABLE_ANDROID_ASSET
   if (android_asset) {
-    auto* mgr = std::any_cast<AAssetManager*>(extra);
+    auto *mgr = std::any_cast<AAssetManager *>(extra);
     RV_CHECK(!net->load_param(mgr, param_path.c_str()));
     RV_CHECK(!net->load_model(mgr, bin_path.c_str()));
   } else {
@@ -198,7 +224,8 @@ void init_model(Model *model, Device device, const std::string &_path,
     }
   }
 
-  model->_extra = std::make_shared<NcnnExtra>(net, input_blob_id, state_ids, output_blob_id, output_state_ids);
+  model->_extra = std::make_shared<NcnnExtra>(net, input_blob_id, state_ids,
+                                              output_blob_id, output_state_ids);
 }
 
 KernelRegister init_model_reg("init_model", Device::kNCNN, init_model);
