@@ -1,20 +1,24 @@
+#include <chrono>
 #include <iostream>
 #include <map>
-#include <chrono>
 
 #include <model.h>
 #include <sampler.h>
 #include <tokenizer.h>
 
 static const std::string kUserPrefix = "User: ";
+// no space after "Assistant:"
 static const std::string kAssistantPrefix = "Assistant:";
-static const int kMaxOutputLength = 999;
+static const int kMaxOutputLength =
+    std::getenv("FR_MAX_OUTPUT_LEN") != nullptr
+        ? std::stoi(std::getenv("FR_MAX_OUTPUT_LEN"))
+        : 999;
 static const int kEndOfSentence = 0;
 static const std::string kDoubleNewLine = "\n\n";
 static const int kNewLineId = 11;
 static const int kChatLenShort = 40;
 static const int kChatLenLong = 150;
-static const float kTopP = 0.3;
+static const float kTopP = 0.0;
 static const float kPresencePenalty = 0.8;
 static const float kFrequencyPenalty = 0.8;
 static const float kPenaltyDecay = 0.996;
@@ -60,7 +64,8 @@ int main(int argc, char **argv) {
         if (num_new_tokens == 0) {
           output.data_ptr<float>()[kNewLineId] += -1e-30;
         } else if (num_new_tokens <= kChatLenShort) {
-          output.data_ptr<float>()[kNewLineId] += (num_new_tokens - kChatLenShort) / 10.;
+          output.data_ptr<float>()[kNewLineId] +=
+              (num_new_tokens - kChatLenShort) / 10.;
         } else if (num_new_tokens <= kChatLenLong) {
           output.data_ptr<float>()[kNewLineId] += 0;
         } else {
@@ -68,7 +73,8 @@ int main(int argc, char **argv) {
               std::min(3.0f, (num_new_tokens - kChatLenLong) * 0.25f);
         }
       }
-      auto output_id = sampler.Sample(output, /*temperature=*/ 1.f, /*top_k=*/ 1, kTopP);
+      auto output_id =
+          sampler.Sample(output, /*temperature=*/1.f, /*top_k=*/1, kTopP);
       occurences[output_id]++;
       if (output_id == kEndOfSentence && !kQAMode) {
         break;
@@ -89,13 +95,20 @@ int main(int argc, char **argv) {
     auto model_time = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::system_clock::now() - tmp);
     auto end = std::chrono::system_clock::now();
-    auto total_time = std::chrono::duration_cast<std::chrono::milliseconds>(
-        end - start);
+    auto total_time =
+        std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     if (kShowSpeed) {
       std::cout << "-- time: " << total_time.count() << "ms" << std::endl;
-      std::cout << "-- num tokens: " << prompt_ids.size() + num_new_tokens << std::endl;
-      std::cout << "-- ms per token: " << 1. * total_time.count() / (prompt_ids.size() + num_new_tokens) << std::endl;
-      std::cout << "-- tokens per second: " << 1. * (prompt_ids.size() + num_new_tokens) / total_time.count() * 1000 << std::endl;
+      std::cout << "-- num tokens: " << prompt_ids.size() + num_new_tokens
+                << std::endl;
+      std::cout << "-- ms per token: "
+                << 1. * total_time.count() /
+                       (prompt_ids.size() + num_new_tokens)
+                << std::endl;
+      std::cout << "-- tokens per second: "
+                << 1. * (prompt_ids.size() + num_new_tokens) /
+                       total_time.count() * 1000
+                << std::endl;
       std::cout << std::endl;
     }
     if (!kGlobalPenalty) {
