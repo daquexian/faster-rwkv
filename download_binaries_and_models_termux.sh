@@ -25,7 +25,7 @@ sleep 1
 rm -f chat
 aria2c -c -x16 -s16 https://github.com/daquexian/faster-rwkv/releases/download/v0.0.5/chat-android -o chat
 chmod +x chat
-aria2c -c -x16 -s16 https://huggingface.co/daquexian/fr-models/resolve/main/world_tokenizer -o world_tokenizer
+aria2c -c -x16 -s16 https://huggingface.co/daquexian/fr-models/resolve/02382cd/tokenizers/world_tokenizer -o world_tokenizer
 
 if (( $ARG >= 1 )); then
     aria2c -c -x16 -s16 https://huggingface.co/daquexian/fr-models/resolve/0549757/RWKV-5-World-0.1B-v1-20230803-ctx4096-ncnn-int8.bin -o RWKV-5-World-0.1B-v1-20230803-ctx4096-ncnn-int8.bin
