@@ -21,9 +21,9 @@
 jint throwException(JNIEnv *env, std::string message);
 
 using rwkv::Model;
+using rwkv::Tokenizer;
 using rwkv::NormalTokenizer;
 using rwkv::ABCTokenizer;
-using rwkv::TokenizerBase;
 using rwkv::Sampler;
 using rwkv::Tensor;
 using rwkv::DType;

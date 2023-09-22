@@ -41,6 +41,8 @@ Tokenizer::Tokenizer(const std::string &path) {
   }();
   if (type == "NormalTokenizer") {
     _impl = std::make_shared<NormalTokenizer>(path);
+  } else if (type == "SimpleABCTokenizer") {
+    _impl = std::make_shared<ABCTokenizer>();
   } else {
     RV_UNIMPLEMENTED() << "Unsupported tokenizer type: " << type;
   }

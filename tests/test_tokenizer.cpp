@@ -7,13 +7,13 @@
 using namespace rwkv;
 
 TEST(Tokenizer, load) {
-  const std::string filename = TEST_FILE("/world_tokenizer");
+  const std::string filename = TEST_FILE("world_tokenizer");
 
   Tokenizer tokenizer(filename);
 }
 
 TEST(Tokenizer, encode_decode) {
-  const std::string filename = TEST_FILE("/world_tokenizer");
+  const std::string filename = TEST_FILE("world_tokenizer");
 
   Tokenizer tokenizer(filename);
   auto ids = tokenizer.encode("今天天气不错");
@@ -70,7 +70,22 @@ TEST(ABCTokenizerFromEmptyPath, encode_decode) {
   EXPECT_EQ(str, "S:2");
 }
 
-TEST(ABCTokenizer, encode_decode) {
+TEST(SimpleTokenizer, encode_decode) {
+  const std::string filename = TEST_FILE("simple_abc_tokenizer");
+
+  Tokenizer tokenizer(filename);
+  auto ids = tokenizer.encode("S:2");
+  EXPECT_EQ(ids.size(), 3);
+  EXPECT_EQ(ids[0], 52);
+  EXPECT_EQ(ids[1], 27);
+  EXPECT_EQ(ids[2], 19);
+
+  auto str = tokenizer.decode(ids);
+  EXPECT_EQ(str, "S:2");
+}
+
+
+TEST(NewABCTokenizer, encode_decode) {
   const std::string filename = TEST_FILE("abc_tokenizer_v20230913");
 
   Tokenizer tokenizer(filename);
