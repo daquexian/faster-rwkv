@@ -1,7 +1,10 @@
 package com.rwkv.faster;
 
+import android.util.Log;
+
 public class WorldTokenizer {
     public WorldTokenizer(String path) {
+        Log.i("faster-rwkv", "`WorldTokenizer` is deprecated. Use `Tokenizer` instead.");
         init(path);
     }
     public String decode(int id) {

@@ -34,7 +34,8 @@ int main(int argc, char **argv) {
     } else if (weight_dtype_str == "fp16") {
       weight_dtype = rwkv::DType::kFloat16;
     } else {
-      RV_UNIMPLEMENTED();
+      RV_UNIMPLEMENTED() << "Only int4, int8, and fp16 are supported. But got "
+                         << weight_dtype_str << ".";
     }
   }
   rwkv::ncnnmeta::ExportModel(argv[1], weight_dtype, argv[2]);

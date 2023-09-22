@@ -68,7 +68,7 @@ ninja
 
 ### Android Demo
 
-Run one of the following commands in Termux to download prebuilt executables and models automatically. The download script supports continuely downloading partially downloaded files, so feel free to ctrl-C and restart it if the speed is too slow.
+Run one of the following commands in Termux to download prebuilt executables and models automatically. The download script supports continuely downloading partially downloaded files, so feel free to Ctrl-C and restart it if the speed is too slow.
 
 Executables, 1.5B CHNtuned int8 model, 1.5B CHNtuned int4 model and 0.1B world int8 model:
 

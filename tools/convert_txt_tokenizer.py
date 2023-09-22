@@ -14,6 +14,8 @@ for l in lines:
     assert len(x) == int(l[l.rindex(' '):])
     idx2token[idx] = x
 
-with open(sys.argv[2], "wb") as f:
-    msgpack.pack(idx2token, f)
+d = {'idx2word': idx2token, 'normalizer': "", "pre_tokenizer": "",
+     "version": "1", "type": "NormalTokenizer"}
 
+with open(sys.argv[2], "wb") as f:
+    msgpack.pack(d, f)

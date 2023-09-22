@@ -18,16 +18,12 @@
 #define private public
 #include <model.h>
 #undef private
+#include <utils.h>
 
 namespace rwkv {
 namespace _ncnn {
 
 static const bool kDebug = std::getenv("FR_DEBUG") != nullptr;
-
-static bool file_exists(const std::string &path) {
-  std::ifstream file(path);
-  return file.good();
-}
 
 void init_model(Model *model, Device device, const std::string &_path,
                 const std::string &strategy, const std::any &extra) {

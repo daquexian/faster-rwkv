@@ -1,11 +1,9 @@
 package com.rwkv.faster;
 
-public class ABCTokenizer {
-    public ABCTokenizer() {
-        Log.i("faster-rwkv", "`ABCTokenizer` is deprecated. Use `Tokenizer` instead.");
-        init();
+public class Tokenizer {
+    public Tokenizer(String path) {
+        init(path);
     }
-
     public String decode(int id) {
         return decodeSingle(id);
     }
@@ -14,9 +12,9 @@ public class ABCTokenizer {
     }
     public native int[] encode(String str);
 
-    private native void init();
+    private native void init(String path);
+
     private native String decodeSingle(int id);
     private native String decodeSeq(int[] ids);
-
-    private long nativeHandle;
 }
+

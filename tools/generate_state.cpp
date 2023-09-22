@@ -22,7 +22,7 @@ std::string dtype_to_string_in_msgpack(DType dtype) {
 }
 
 int main(int argc, char** argv) {
-  WorldTokenizer tokenizer(argv[1]);
+  Tokenizer tokenizer(argv[1]);
   Model model(argv[2], argv[3]);
   // It is recommended to preprocess the init prompt by tools/preprocess_init_prompt.py
   std::ifstream ifs(argv[4]);

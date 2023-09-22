@@ -30,7 +30,7 @@ static const bool kShowSpeed = std::getenv("FR_SHOW_SPEED") != nullptr;
 int main(int argc, char **argv) {
   std::cout.setf(std::ios::unitbuf);
 
-  rwkv::WorldTokenizer tokenizer(argv[1]);
+  rwkv::Tokenizer tokenizer(argv[1]);
   rwkv::Sampler sampler;
   rwkv::Model model(argv[2], argv[3]);
   if (argc == 5) {
