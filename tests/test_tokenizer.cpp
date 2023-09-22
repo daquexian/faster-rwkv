@@ -76,9 +76,9 @@ TEST(SimpleTokenizer, encode_decode) {
   Tokenizer tokenizer(filename);
   auto ids = tokenizer.encode("S:2");
   EXPECT_EQ(ids.size(), 3);
-  EXPECT_EQ(ids[0], 52);
-  EXPECT_EQ(ids[1], 27);
-  EXPECT_EQ(ids[2], 19);
+  EXPECT_EQ(ids[0], 83);
+  EXPECT_EQ(ids[1], 58);
+  EXPECT_EQ(ids[2], 50);
 
   auto str = tokenizer.decode(ids);
   EXPECT_EQ(str, "S:2");
