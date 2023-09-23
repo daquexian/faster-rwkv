@@ -5,6 +5,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include <msgpack.hpp>
+
 namespace rwkv {
 class TokenizerBase {
 public:
@@ -22,7 +24,10 @@ public:
 
 class Tokenizer {
 public:
-  Tokenizer(const std::string &path);
+  // use void* to erase dependency on AAssetManager (we cannot depend on it in
+  // non-Android builds)
+  Tokenizer(const std::string &path, void *asset_manager);
+  Tokenizer(const std::string &path) : Tokenizer(path, nullptr) {}
   std::vector<int> encode(std::string_view str) const {
     return _impl->encode(str);
   }
@@ -41,7 +46,7 @@ private:
 
 class NormalTokenizer : public TokenizerBase {
 public:
-  NormalTokenizer(const std::string &path);
+  NormalTokenizer(msgpack::object obj);
   std::vector<int> encode(std::string_view str) const;
   std::string decode(const std::vector<int> &ids) const;
   std::string decode(int id) const;
@@ -55,7 +60,9 @@ private:
 
 class ABCTokenizer : public TokenizerBase {
 public:
-  ABCTokenizer() : TokenizerBase(/*pad_token_id*/ 0, /*bos_token_id*/ 2, /*eos_token_id*/ 3) {}
+  ABCTokenizer()
+      : TokenizerBase(/*pad_token_id*/ 0, /*bos_token_id*/ 2,
+                      /*eos_token_id*/ 3) {}
   std::vector<int> encode(std::string_view str) const;
   std::string decode(const std::vector<int> &ids) const;
   std::string decode(int id) const;

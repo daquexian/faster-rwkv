@@ -22,8 +22,6 @@ jint throwException(JNIEnv *env, std::string message);
 
 using rwkv::Model;
 using rwkv::Tokenizer;
-using rwkv::NormalTokenizer;
-using rwkv::ABCTokenizer;
 using rwkv::Sampler;
 using rwkv::Tensor;
 using rwkv::DType;
@@ -89,13 +87,13 @@ extern "C" JNIEXPORT void JNICALL Java_com_rwkv_faster_WorldTokenizer_init(
     JNIEnv *env, jobject obj /* this */, jstring jPath) {
   std::string path(to_cpp_string(env, jPath));
   auto *tokenizer =
-      new std::shared_ptr<NormalTokenizer>(new NormalTokenizer(path));
+      new std::shared_ptr<Tokenizer>(new Tokenizer(path));
   setHandle(env, obj, tokenizer);
 }
 
 extern "C" JNIEXPORT jintArray JNICALL Java_com_rwkv_faster_WorldTokenizer_encode(
     JNIEnv *env, jobject obj /* this */, jstring jStr) {
-  auto tokenizer = getHandle<NormalTokenizer>(env, obj);
+  auto tokenizer = getHandle<Tokenizer>(env, obj);
   std::string str(to_cpp_string(env, jStr));
   auto output = tokenizer->encode(str);
   jintArray result = env->NewIntArray(output.size());
@@ -105,7 +103,7 @@ extern "C" JNIEXPORT jintArray JNICALL Java_com_rwkv_faster_WorldTokenizer_encod
 
 extern "C" JNIEXPORT jstring JNICALL Java_com_rwkv_faster_WorldTokenizer_decodeSingle(
     JNIEnv *env, jobject obj /* this */, jint jId) {
-  auto tokenizer = getHandle<NormalTokenizer>(env, obj);
+  auto tokenizer = getHandle<Tokenizer>(env, obj);
   int id = static_cast<int>(jId);
   auto output = tokenizer->decode(id);
   return env->NewStringUTF(output.c_str());
@@ -113,7 +111,7 @@ extern "C" JNIEXPORT jstring JNICALL Java_com_rwkv_faster_WorldTokenizer_decodeS
 
 extern "C" JNIEXPORT jstring JNICALL Java_com_rwkv_faster_WorldTokenizer_decodeSeq(
     JNIEnv *env, jobject obj /* this */, jintArray jIds) {
-  auto tokenizer = getHandle<NormalTokenizer>(env, obj);
+  auto tokenizer = getHandle<Tokenizer>(env, obj);
   jint *arr = env->GetIntArrayElements(jIds, nullptr);
   std::vector<int> ids(arr, arr + env->GetArrayLength(jIds));
   env->ReleaseIntArrayElements(jIds, arr, 0);
@@ -124,13 +122,13 @@ extern "C" JNIEXPORT jstring JNICALL Java_com_rwkv_faster_WorldTokenizer_decodeS
 extern "C" JNIEXPORT void JNICALL Java_com_rwkv_faster_ABCTokenizer_init(
     JNIEnv *env, jobject obj /* this */) {
   auto *tokenizer =
-      new std::shared_ptr<ABCTokenizer>(new ABCTokenizer());
+      new std::shared_ptr<Tokenizer>(new Tokenizer(""));
   setHandle(env, obj, tokenizer);
 }
 
 extern "C" JNIEXPORT jintArray JNICALL Java_com_rwkv_faster_ABCTokenizer_encode(
     JNIEnv *env, jobject obj /* this */, jstring jStr) {
-  auto tokenizer = getHandle<ABCTokenizer>(env, obj);
+  auto tokenizer = getHandle<Tokenizer>(env, obj);
   std::string str(to_cpp_string(env, jStr));
   auto output = tokenizer->encode(str);
   jintArray result = env->NewIntArray(output.size());
@@ -140,7 +138,7 @@ extern "C" JNIEXPORT jintArray JNICALL Java_com_rwkv_faster_ABCTokenizer_encode(
 
 extern "C" JNIEXPORT jstring JNICALL Java_com_rwkv_faster_ABCTokenizer_decodeSingle(
     JNIEnv *env, jobject obj /* this */, jint jId) {
-  auto tokenizer = getHandle<ABCTokenizer>(env, obj);
+  auto tokenizer = getHandle<Tokenizer>(env, obj);
   int id = static_cast<int>(jId);
   auto output = tokenizer->decode(id);
   return env->NewStringUTF(output.c_str());
@@ -148,7 +146,7 @@ extern "C" JNIEXPORT jstring JNICALL Java_com_rwkv_faster_ABCTokenizer_decodeSin
 
 extern "C" JNIEXPORT jstring JNICALL Java_com_rwkv_faster_ABCTokenizer_decodeSeq(
     JNIEnv *env, jobject obj /* this */, jintArray jIds) {
-  auto tokenizer = getHandle<ABCTokenizer>(env, obj);
+  auto tokenizer = getHandle<Tokenizer>(env, obj);
   jint *arr = env->GetIntArrayElements(jIds, nullptr);
   std::vector<int> ids(arr, arr + env->GetArrayLength(jIds));
   env->ReleaseIntArrayElements(jIds, arr, 0);
@@ -183,6 +181,15 @@ extern "C" JNIEXPORT void JNICALL Java_com_rwkv_faster_Tokenizer_init(
   std::string path(to_cpp_string(env, jPath));
   auto *tokenizer =
       new std::shared_ptr<Tokenizer>(new Tokenizer(path));
+  setHandle(env, obj, tokenizer);
+}
+
+extern "C" JNIEXPORT void JNICALL Java_com_rwkv_faster_Tokenizer_initWithAssetManager(
+    JNIEnv *env, jobject obj /* this */, jstring jPath, jobject jAssetManager) {
+  std::string path(to_cpp_string(env, jPath));
+  AAssetManager *asset_manager = AAssetManager_fromJava(env, jAssetManager);
+  auto *tokenizer =
+      new std::shared_ptr<Tokenizer>(new Tokenizer(path, asset_manager));
   setHandle(env, obj, tokenizer);
 }
 

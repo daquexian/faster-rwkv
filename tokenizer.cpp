@@ -1,7 +1,5 @@
 #include "tokenizer.h"
 
-#include "check.h"
-
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -9,23 +7,18 @@
 
 #include <msgpack.hpp>
 
+#include <utils.h>
+
 namespace rwkv {
 
-Tokenizer::Tokenizer(const std::string &path) {
+Tokenizer::Tokenizer(const std::string &path, void* asset_manager) {
   if (path.empty()) {
     _impl = std::make_shared<ABCTokenizer>();
     return;
   }
-  std::ifstream infile;
-  infile.open(path, std::ios::binary | std::ios::in);
-  infile.seekg(0, std::ios::end);
-  int64_t length = infile.tellg();
-  infile.seekg(0, std::ios::beg);
-  std::unique_ptr<char[]> data(new char[length]);
-  infile.read(data.get(), length);
-  infile.close();
+  const std::string data = read_file(path, asset_manager);
 
-  auto unpacker = msgpack::unpack(data.get(), length);
+  auto unpacker = msgpack::unpack(data.data(), data.size());
   auto obj = unpacker.get();
   const std::string type = [&]() -> std::string {
     try {
@@ -40,7 +33,7 @@ Tokenizer::Tokenizer(const std::string &path) {
     return "NormalTokenizer";
   }();
   if (type == "NormalTokenizer") {
-    _impl = std::make_shared<NormalTokenizer>(path);
+    _impl = std::make_shared<NormalTokenizer>(obj);
   } else if (type == "SimpleABCTokenizer") {
     _impl = std::make_shared<ABCTokenizer>();
   } else {
@@ -48,19 +41,8 @@ Tokenizer::Tokenizer(const std::string &path) {
   }
 }
 
-NormalTokenizer::NormalTokenizer(const std::string &path)
+NormalTokenizer::NormalTokenizer(msgpack::object obj)
     : TokenizerBase(0, 0, 0) {
-  std::ifstream infile;
-  infile.open(path, std::ios::binary | std::ios::in);
-  infile.seekg(0, std::ios::end);
-  int64_t length = infile.tellg();
-  infile.seekg(0, std::ios::beg);
-  char *data = new char[length];
-  infile.read(data, length);
-  infile.close();
-
-  auto unpacker = msgpack::unpack(data, length);
-  auto obj = unpacker.get();
   try {
     auto dict = obj.as<std::unordered_map<std::string, msgpack::object>>();
     if (dict.find("type") != dict.end()) {
@@ -80,7 +62,6 @@ NormalTokenizer::NormalTokenizer(const std::string &path)
   for (auto &pair : _idx2word) {
     _word2idx[pair.second] = pair.first;
   }
-  delete[] data;
 }
 
 std::vector<int> NormalTokenizer::encode(std::string_view _str) const {
