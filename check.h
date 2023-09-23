@@ -20,8 +20,7 @@ struct FRException : public std::runtime_error {
 #define CUBLAS_CHECK(...)                                                      \
   for (cublasStatus_t _cublas_check_status = (__VA_ARGS__);                    \
        _cublas_check_status != CUBLAS_STATUS_SUCCESS;)                         \
-  throw FRException() << ("\"" + std::string(STRINGIFY(__VA_ARGS__)) +         \
-                          "\" failed as " +                                    \
+  throw FRException() << ("\"" STRINGIFY(__VA_ARGS__) "\" failed as " +        \
                           std::to_string(_cublas_check_status) + " at " +      \
                           std::to_string(__LINE__) +                           \
                           " in " __FILE__ "\n  > Error msg: ")
@@ -29,15 +28,16 @@ struct FRException : public std::runtime_error {
 #define CUDA_CHECK(...)                                                        \
   for (cudaError_t _cuda_check_status = (__VA_ARGS__);                         \
        _cuda_check_status != cudaSuccess;)                                     \
-  throw FRException()                                                          \
-      << ("\"" + std::string(STRINGIFY(__VA_ARGS__)) + "\" failed as " +       \
-          std::string(cudaGetErrorString(_cuda_check_status)) + " at " +       \
-          std::to_string(__LINE__) + " in " __FILE__ "\n  > Error msg: ")
+  throw FRException() << ("\"" STRINGIFY(__VA_ARGS__) "\" failed as " +        \
+                          std::string(                                         \
+                              cudaGetErrorString(_cuda_check_status)) +        \
+                          " at " + std::to_string(__LINE__) +                  \
+                          " in " __FILE__ "\n  > Error msg: ")
 
 #define RV_CHECK(...)                                                          \
   for (bool _rv_check_status = (__VA_ARGS__); !_rv_check_status;)              \
-  throw FRException() << ("Check \"" + std::string(STRINGIFY(__VA_ARGS__)) +   \
-                          "\" failed at " + std::to_string(__LINE__) +         \
+  throw FRException() << ("Check \"" STRINGIFY(__VA_ARGS__) "\" failed at " +  \
+                          std::to_string(__LINE__) +                           \
                           " in " __FILE__ "\n  > Error msg: ")
 
 #define RV_UNIMPLEMENTED()                                                     \

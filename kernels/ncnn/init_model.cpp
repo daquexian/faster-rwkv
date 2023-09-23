@@ -123,7 +123,9 @@ void init_model(Model *model, Device device, const std::string &_path,
       auto pos2 = config.find(": ", pos);
       RV_CHECK(pos2 != std::string::npos);
       auto pos3 = config.find("\n", pos2);
-      RV_CHECK(pos3 != std::string::npos);
+      if (pos3 == std::string::npos) {
+        pos3 = config.size();
+      }
       return config.substr(pos2 + 2, pos3 - pos2 - 2);
     };
     const auto str_to_dtype = [](const std::string &str) {
