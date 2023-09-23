@@ -13,9 +13,6 @@
 #include <model.h>
 #include <tensor.h>
 
-#define STRINGIFY(x) STRINGIFY_(x)
-#define STRINGIFY_(x) #x
-
 namespace rwkv {
 namespace cpu {
 Tensor cast_dtype(const Tensor &x, DType dtype);
