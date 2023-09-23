@@ -20,5 +20,6 @@ public class Model {
     private native void initWithAssetManager(String path, String strategy, AssetManager mgr);
     private native float[] runSingle(int inputId);
     private native float[] runSeq(int[] inputIds);
+
     private long nativeHandle;
 }

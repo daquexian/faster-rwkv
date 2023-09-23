@@ -16,5 +16,7 @@ public class Tokenizer {
 
     private native String decodeSingle(int id);
     private native String decodeSeq(int[] ids);
+
+    private long nativeHandle;
 }
 
