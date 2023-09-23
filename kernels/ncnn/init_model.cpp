@@ -64,17 +64,13 @@ void init_model(Model *model, Device device, const std::string &_path,
   const auto bin_path = path + ".bin";
   const auto param_path = path + ".param";
   const auto config_path = path + ".config";
-  RV_CHECK(file_exists(bin_path))
-      << "File \"" << bin_path << "\" does not exist";
-  RV_CHECK(file_exists(param_path))
-      << "File \"" << param_path << "\" does not exist";
-  RV_CHECK(file_exists(config_path))
-      << "File \"" << config_path << "\" does not exist";
 
   // legacy model compatibility
   // asset support is added in v0.0.3, which ncnn config is already added,
   // so no need to read and parse the param file when android_asset == true.
   if (!android_asset) {
+    RV_CHECK(file_exists(param_path))
+        << "File \"" << param_path << "\" does not exist";
     auto n_layer = 0;
     std::ifstream param_file(param_path);
     int i;
@@ -186,12 +182,18 @@ void init_model(Model *model, Device device, const std::string &_path,
 #ifdef _FR_ENABLE_ANDROID_ASSET
   if (android_asset) {
     auto *mgr = std::any_cast<AAssetManager *>(extra);
+    AAsset *asset =
+        AAssetManager_open(mgr, param_path.c_str(), AASSET_MODE_BUFFER);
     RV_CHECK(!net->load_param(mgr, param_path.c_str()));
     RV_CHECK(!net->load_model(mgr, bin_path.c_str()));
   } else {
 #else
   {
 #endif
+    RV_CHECK(file_exists(param_path))
+        << "File \"" << param_path << "\" does not exist";
+    RV_CHECK(file_exists(bin_path))
+        << "File \"" << bin_path << "\" does not exist";
     RV_CHECK(!net->load_param(param_path.c_str()));
     RV_CHECK(!net->load_model(bin_path.c_str()));
   }
