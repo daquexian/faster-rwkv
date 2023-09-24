@@ -12,7 +12,8 @@
 namespace rwkv {
 namespace def {
 Shape slice_deduce_shape(const Shape &input_shape,
-                         const std::vector<Range> &ranges) {
+                         const std::vector<Range> &ranges,
+                         std::vector<Range> &no_negative_ranges) {
   Shape output_shape;
   for (int i = 0; i < input_shape.size(); i++) {
     LengthType input_dim = input_shape[i];
@@ -28,6 +29,7 @@ Shape slice_deduce_shape(const Shape &input_shape,
     RV_CHECK(interval > 0);
     RV_CHECK(start <= end && end <= input_dim);
     output_shape.push_back((end - start) / interval);
+    no_negative_ranges.push_back({start, interval, end});
   }
   return output_shape;
 }
@@ -54,13 +56,14 @@ void slice_copy_value(const T *input, T *output, const Shape &input_shape,
 Tensor slice(const Tensor &x, const std::vector<Range> &ranges) {
   // currently slice with dim reduction has not been supported.
   RV_CHECK(x.sizes().size() == ranges.size());
+  std::vector<Range> no_negative_ranges;
 
-  auto output_shape = slice_deduce_shape(x.shape(), ranges);
+  auto output_shape = slice_deduce_shape(x.shape(), ranges, no_negative_ranges);
   Tensor output = Tensor::Empty(output_shape, x.dtype(), x.device());
 
 #define LAUNCH_SLICE_VALUE_COPY(type)                                          \
   slice_copy_value(x.data_ptr<type>(), output.data_ptr<type>(), x.shape(),     \
-                   output_shape, ranges);                                      \
+                   output_shape, no_negative_ranges);                          \
   return output;
 
   if (x.dtype() == DType::kFloat32) {
@@ -77,7 +80,6 @@ Tensor slice(const Tensor &x, const std::vector<Range> &ranges) {
 }
 
 KernelRegister slice_reg_cpu("slice", Device::kCPU, slice);
-KernelRegister slice_reg_cuda("slice", Device::kCUDA, slice);
 
 } // namespace def
 } // namespace rwkv

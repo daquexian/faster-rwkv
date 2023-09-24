@@ -19,20 +19,21 @@ struct Model {
   void LoadStateFile(const std::string &path);
   void ResetStates();
   void set_states(const States &states);
-  const States& states() const { return _states; }
+  const States &states() const { return _states; }
   const int head_size() const { return _head_size; }
   const int n_layer() const { return _n_layer; }
   const int n_embd() const { return _n_embd; }
   const int n_att() const { return _n_att; }
   const int n_ffn() const { return _n_ffn; }
   const std::string &version() const { return _version; }
-  const std::any& extra() const { return _extra; }
+  const std::any &extra() const { return _extra; }
 
   // TODO:
   std::vector<Tensor> _embd_weights;
 
 private:
   Tensor _Run(int id);
+  Tensor _Run(const std::vector<int> &id);
   // _params is not a map because we know the exact order of the parameters
   std::vector<Tensor> _params;
   Device _act_device;

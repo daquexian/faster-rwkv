@@ -1,5 +1,8 @@
 #include "tensor.h"
+#include <iostream>
 #include <vector>
+
+#define LOG_INFO(msg) std::cout << "[INFO] " << msg << std::endl;
 
 namespace rwkv {
 namespace utils {

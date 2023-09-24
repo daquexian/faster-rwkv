@@ -18,10 +18,12 @@ template <typename Func> __global__ void _element_wise(Func func, int n) {
 template <typename Func>
 void element_wise(Func func, int n) {
   // 256 is good enough on most GPUs
-  RV_CHECK(n % 128 == 0);
+  // RV_CHECK(n % 128 == 0);
   if (n % 256 == 0) {
     _element_wise<<<n / 256, 256>>>(func, n);
-  } else {
+  } else if (n % 128 == 0) {
     _element_wise<<<n / 128, 128>>>(func, n);
+  } else {
+    _element_wise<<<1, n>>>(func, n);
   }
 }

@@ -18,7 +18,15 @@
 #include <check.h>
 #include <half.hpp>
 
+#include "kernels/allocator.h"
+
+#include <iostream>
+
 namespace rwkv {
+
+class Tensor;
+void print_n(const rwkv::Tensor &x, const std::string &name, int cnt = 20);
+
 enum class DType {
   kUndefined,
   kInt8,
@@ -84,11 +92,11 @@ inline int32_t elem_size(DType dtype) {
 }
 
 struct Range {
-  LengthType start;
-  LengthType interval;
-  LengthType end;
+  int start;
+  int interval;
+  int end;
 
-  Range(LengthType start, LengthType interval, LengthType end)
+  Range(int start, int interval, int end)
       : start(start), interval(interval), end(end) {}
 
   static Range All;
@@ -138,6 +146,8 @@ public:
 
   Tensor unsqueeze(int dim) const;
 
+  Tensor squeeze(int dim) const;
+
   Tensor slice(const std::vector<Range> &ranges) const;
 
   Tensor slice(const std::initializer_list<Range> &ranges) const;
@@ -160,17 +170,43 @@ public:
   template <typename T>
   static Tensor Arange(T start, T interval, T end, DType dtype, Device device) {
     RV_CHECK(start < end && interval > 0 || start > end && interval < 0);
-    auto numel = static_cast<LengthType>((end - start) / interval);
-    if ((end - start) % interval != 0) {
-      numel++;
+    RV_CHECK(device == Device::kCPU || device == Device::kCUDA);
+    // T *host_data = (T *)malloc(numel * sizeof(T));
+    std::vector<T> host_data;
+    if (start < end) {
+      for (T i = start; i < end; i += interval) {
+        host_data.push_back(i);
+      }
+    } else {
+      for (T i = start; i > end; i += interval) {
+        host_data.push_back(i);
+      }
     }
+    LengthType numel = host_data.size();
+
     auto ret = Tensor::Empty({numel}, dtype, device);
-    auto *data = ret.data_ptr<T>();
-    for (LengthType i = 0; i < numel; i++) {
-      data[i] = start + i * interval;
+    T *data = ret.template data_ptr<T>();
+    if (device == Device::kCPU) {
+      for (LengthType i = 0; i < numel; i++) {
+        data[i] = start + i * interval;
+      }
+    } else {
+#ifdef FR_ENABLE_CUDA
+      std::vector<T> host_data;
+      for (LengthType i = 0; i < numel; i++) {
+        host_data.push_back(start + i * interval);
+      }
+      auto err = cudaMemcpy(data, host_data.data(), numel * sizeof(T),
+                            cudaMemcpyHostToDevice);
+      // std::cout << "err: " << cudaGetErrorString(err) << std::endl;
+      rwkv::print_n(ret, "ret");
+#else
+      RV_UNIMPLEMENTED();
+#endif
     }
     return ret;
   }
+
   static Tensor Empty(const Shape &shape, DType dtype, Device device);
   static Tensor FromPtr(void *ptr, const Shape &shape, DType dtype,
                         Device device);

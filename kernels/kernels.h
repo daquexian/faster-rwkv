@@ -1,5 +1,6 @@
 #pragma once
 
+#include "check.h"
 #include <initializer_list>
 #include <kernels/allocator.h>
 #include <kernels/registry.h>
@@ -36,6 +37,19 @@ att_one_v5(const Tensor &x, const Tensor &sx, const Tensor &s,
 }
 
 inline std::tuple<Tensor, Tensor, Tensor>
+att_seq_v5(const Tensor &x, const Tensor &sx, const Tensor &s,
+           const Tensor &ln_w, const Tensor &ln_b, const Tensor &lx_w,
+           const Tensor &lx_b, const Tensor &k_mix, const Tensor &v_mix,
+           const Tensor &r_mix, const Tensor &t_decay, const Tensor &t_first,
+           const Tensor &kw, const Tensor &vw, const Tensor &rw,
+           const Tensor &ow) {
+  auto tmp = KernelRegistry::Instance().Get<decltype(att_one_v5) *>(
+      "att_seq_v5", x.device());
+  return tmp(x, sx, s, ln_w, ln_b, lx_w, lx_b, k_mix, v_mix, r_mix, t_decay,
+             t_first, kw, vw, rw, ow);
+}
+
+inline std::tuple<Tensor, Tensor, Tensor>
 att_one_v5_1(const Tensor &x, const Tensor &sx, const Tensor &s,
              const Tensor &ln_w, const Tensor &ln_b, const Tensor &lx_w,
              const Tensor &lx_b, const Tensor &k_mix, const Tensor &v_mix,
@@ -56,6 +70,15 @@ inline std::tuple<Tensor, Tensor> ffn(const Tensor &x, const Tensor &sx,
                                       const Tensor &kw, const Tensor &vw,
                                       const Tensor &rw) {
   auto tmp = KernelRegistry::Instance().Get<decltype(ffn) *>("ffn", x.device());
+  return tmp(x, sx, ln_w, ln_b, k_mix, r_mix, kw, vw, rw);
+}
+
+inline std::tuple<Tensor, Tensor>
+ffn_seq(const Tensor &x, const Tensor &sx, const Tensor &ln_w,
+        const Tensor &ln_b, const Tensor &k_mix, const Tensor &r_mix,
+        const Tensor &kw, const Tensor &vw, const Tensor &rw) {
+  auto tmp =
+      KernelRegistry::Instance().Get<decltype(ffn) *>("ffn_seq", x.device());
   return tmp(x, sx, ln_w, ln_b, k_mix, r_mix, kw, vw, rw);
 }
 
@@ -145,8 +168,8 @@ inline Tensor maximum(const Tensor &x, const Tensor &y) {
 }
 
 inline Tensor softmax(const Tensor &x, float temperature) {
-  return KernelRegistry::Instance().Get<decltype(softmax) *>("softmax",
-                                                             x.device())(x, temperature);
+  return KernelRegistry::Instance().Get<decltype(softmax) *>(
+      "softmax", x.device())(x, temperature);
 }
 
 inline Tensor reshape(const Tensor &x, const Shape &shape) {
@@ -167,6 +190,16 @@ inline Tensor unsqueeze(const Tensor &x, int dim) {
     dim += x.sizes().size();
   }
   new_shape.insert(new_shape.begin() + dim, 1);
+  return ::rwkv::reshape(x, new_shape);
+}
+
+inline Tensor squeeze(const Tensor &x, int dim) {
+  RV_CHECK(dim < x.sizes().size());
+  auto new_shape = x.shape();
+  if (dim < 0) {
+    dim += x.sizes().size();
+  }
+  new_shape.erase(new_shape.begin() + dim);
   return reshape(x, new_shape);
 }
 
@@ -175,29 +208,32 @@ inline Tensor transpose(const Tensor &x, int dim_a, int dim_b) {
       "transpose", x.device())(x, dim_a, dim_b);
 }
 
-inline Tensor flip(const Tensor &x,
-                   const std::initializer_list<LengthType> &dims) {
+/*
+When using this api, please ensure that shape of x are all the same.
+*/
+inline Tensor vgather(const std::vector<Tensor> &x,
+                      const std::vector<int> &idx) {
+  RV_CHECK(x.size() > 0)
+  return KernelRegistry::Instance().Get<decltype(vgather) *>(
+      "vgather", x[0].device())(x, idx);
+}
+
+inline Tensor flip(const Tensor &x, const std::vector<LengthType> &dims) {
   return KernelRegistry::Instance().Get<decltype(flip) *>("flip",
                                                           x.device())(x, dims);
 }
 
 inline Tensor flip(const Tensor &x, LengthType dim) { return flip(x, {dim}); }
 
-inline Tensor pad(const Tensor &x,
-                  const std::initializer_list<LengthType> &paddings,
+inline Tensor pad(const Tensor &x, const std::vector<LengthType> &paddings,
                   const std::string &mode) {
   return KernelRegistry::Instance().Get<decltype(pad) *>("pad", x.device())(
       x, paddings, mode);
 }
 
-inline Tensor repeat(const Tensor &x,
-                     const std::initializer_list<LengthType> &repeats) {
+inline Tensor repeat(const Tensor &x, const std::vector<LengthType> &repeats) {
   return KernelRegistry::Instance().Get<decltype(repeat) *>(
       "repeat", x.device())(x, repeats);
-}
-
-inline Tensor repeat(const Tensor &x, LengthType repeats) {
-  return repeat(x, {repeats});
 }
 
 inline Tensor mark_as_output(const Tensor &x, const std::string &name) {
@@ -217,6 +253,14 @@ inline Tensor ModelForward(const Model *model, Device device, int id,
                            std::vector<std::vector<Tensor>> &states) {
   return KernelRegistry::Instance().Get<decltype(ModelForward) *>(
       "model_forward", device)(model, device, id, states);
+}
+
+inline Tensor ModelForwardSeq(const Model *model, Device device,
+                              const std::vector<int> &id,
+                              std::vector<std::vector<Tensor>> &states,
+                              bool full_output /*= false*/) {
+  return KernelRegistry::Instance().Get<decltype(ModelForwardSeq) *>(
+      "model_forward_seq", device)(model, device, id, states, full_output);
 }
 
 inline Allocator &allocator(Device device) {

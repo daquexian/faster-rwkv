@@ -67,7 +67,6 @@ Tensor transpose(const Tensor &x, int dim_a, int dim_b) {
 }
 
 KernelRegister transpose_reg_cpu("transpose", Device::kCPU, transpose);
-KernelRegister transpose_reg_cuda("transpose", Device::kCUDA, transpose);
 
 } // namespace def
 } // namespace rwkv

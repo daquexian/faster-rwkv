@@ -30,7 +30,7 @@ void flip_internal(const T *src, T *dst, const Shape &shape,
   }
 }
 
-Tensor flip(const Tensor &x, const std::initializer_list<LengthType> &dims) {
+Tensor flip(const Tensor &x, const std::vector<LengthType> &dims) {
   Shape shape = Shape(x.shape());
   Tensor dst = Tensor::Empty(shape, x.dtype(), x.device());
   auto total_elems = x.numel();
@@ -53,7 +53,6 @@ Tensor flip(const Tensor &x, const std::initializer_list<LengthType> &dims) {
 }
 
 KernelRegister flip_reg_cpu("flip", Device::kCPU, flip);
-KernelRegister flip_reg_cuda("flip", Device::kCUDA, flip);
 
 } // namespace def
 } // namespace rwkv

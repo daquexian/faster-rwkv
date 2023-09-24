@@ -56,6 +56,7 @@ d['n_embd'] = w['emb.weight'].shape[1]
 # weight has been transposed in chatrwkv conversion
 d['n_att'] = w['blocks.0.att.key.weight'].shape[1]
 d['n_ffn'] = w['blocks.0.ffn.key.weight'].shape[1]
+print('>>>>>>>>>>>>>>>>>> version: ', d['version'])
 
 def pack(x):
     if isinstance(x, torch.Tensor):
