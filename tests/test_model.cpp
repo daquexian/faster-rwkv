@@ -71,12 +71,19 @@ TEST(Model, ncnn_int8) {
   EXPECT_GT(output_ptr[0], -0.30);
   EXPECT_LT(output_ptr[9], -10.0);
   EXPECT_GT(output_ptr[9], -10.5);
+  float old_output_0 = output_ptr[0];
+  float old_output_9 = output_ptr[9];
   output = rwkv::Copy(model.Run(0), rwkv::Device::kCPU);
   output_ptr = output.data_ptr<float>();
   EXPECT_LT(output_ptr[0], -1.34);
   EXPECT_GT(output_ptr[0], -1.39);
   EXPECT_LT(output_ptr[9], -9.1);
   EXPECT_GT(output_ptr[9], -9.4);
+  model.ResetStates();
+  output = rwkv::Copy(model.Run(0), rwkv::Device::kCPU);
+  output_ptr = output.data_ptr<float>();
+  EXPECT_FLOAT_EQ(output_ptr[0], old_output_0);
+  EXPECT_FLOAT_EQ(output_ptr[9], old_output_9);
 }
 
 // TODO: add int4 reference implementation
