@@ -20,17 +20,6 @@ jobs:
       run: |
         sudo apt-get install ninja-build
 
-    - uses: actions/setup-java@v3
-      with:
-        distribution: 'zulu'
-        java-version: '17'
-
-    - name: Build Android AAR
-      run: |
-        # android toolchain cmake file hardcode '-g', making the binary bigger
-        sed -i 's/ -g$//' $ANDROID_NDK/build/cmake/android-legacy.toolchain.cmake
-        ./aar/build_aar.sh
-
     - name: Download Tokenizer and ChatRWKV Models
       run: |
         mkdir ${{env.FR_MODEL_DIR}}
@@ -42,6 +31,13 @@ jobs:
         wget https://huggingface.co/daquexian/fr-models/resolve/main/tokenizers/world_tokenizer
         wget https://huggingface.co/daquexian/fr-models/resolve/main/tokenizers/simple_abc_tokenizer
         wget https://huggingface.co/daquexian/fr-models/resolve/main/tokenizers/abc_tokenizer_v20230913
+        mkdir -p RWKV-5-World-0.1B-v1-20230803-ctx4096/ncnn/fp16
+        cd RWKV-5-World-0.1B-v1-20230803-ctx4096/ncnn/fp16
+        wget https://huggingface.co/daquexian/fr-models/resolve/02382cd/RWKV-5-World-0.1B-v1-20230803-ctx4096/ncnn/fp16/RWKV-5-World-0.1B-v1-20230803-ctx4096-ncnn.bin
+        wget https://huggingface.co/daquexian/fr-models/resolve/02382cd/RWKV-5-World-0.1B-v1-20230803-ctx4096/ncnn/fp16/RWKV-5-World-0.1B-v1-20230803-ctx4096-ncnn.param
+        wget https://huggingface.co/daquexian/fr-models/resolve/02382cd/RWKV-5-World-0.1B-v1-20230803-ctx4096/ncnn/fp16/RWKV-5-World-0.1B-v1-20230803-ctx4096-ncnn.config
+        wget https://huggingface.co/daquexian/fr-models/resolve/main/RWKV-5-World-0.1B-v1-20230803-ctx4096/ncnn/fp16/tokenizer
+
     - name: Convert ChatRWKV Models
       run: |
         git clone https://github.com/BlinkDL/ChatRWKV
@@ -63,6 +59,28 @@ jobs:
         python3 tools/convert_weight.py ${{env.FR_MODEL_DIR}}/RWKV-5-World-0.1B-v1-20230803-ctx4096-fp32-converted.pth ${{env.FR_MODEL_DIR}}/RWKV-5-World-0.1B-v1-20230803-ctx4096-fp32.fr
         python3 tools/convert_weight.py ${{env.FR_MODEL_DIR}}/RWKV-5-ABC-82M-v1-20230901-ctx1024-fp32-converted.pth ${{env.FR_MODEL_DIR}}/RWKV-5-ABC-82M-v1-20230901-ctx1024-fp32.fr
 
+    - name: Build Python package
+      run: |
+        pip wheel .
+        pip install fasterrwkv*.whl
+      working-directory: ${{github.workspace}}/python
+
+    - name: Run Python tests
+      run: |
+        FR_MODEL_DIR=${{env.FR_MODEL_DIR}} pytest tests
+      working-directory: ${{github.workspace}}/python
+
+    - uses: actions/setup-java@v3
+      with:
+        distribution: 'zulu'
+        java-version: '17'
+
+    - name: Build Android AAR
+      run: |
+        # android toolchain cmake file hardcode '-g', making the binary bigger
+        sed -i 's/ -g$//' $ANDROID_NDK/build/cmake/android-legacy.toolchain.cmake
+        ./aar/build_aar.sh
+
     - name: Build
       run: |
         cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DFR_ENABLE_NCNN=ON -GNinja
@@ -77,7 +95,7 @@ jobs:
         pip install datasets msgpack
         python3 tests/run_abc_benchmark.py ${{github.workspace}}/build/tests/run_abc_benchmark ${{env.FR_MODEL_DIR}}/RWKV-5-ABC-82M-v1-20230901-ctx1024-ncnn
 
-    - name: Run tests
+    - name: Run C++ tests
       # Execute tests defined by the CMake configuration.
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
       run: |

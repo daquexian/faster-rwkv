@@ -7,12 +7,17 @@ include(FetchContent)
 option(FR_ENABLE_CUDA "Enable CUDA" OFF)
 # ONNX support is a WIP
 option(FR_ENABLE_ONNX "Enable ONNX" OFF)
+option(FR_ENABLE_NCNN "Enable NCNN" ON)
 if (CMAKE_SYSTEM_NAME STREQUAL "Android")
     option(FR_BUILD_JNI "" ON)
-    option(FR_ENABLE_NCNN "Enable NCNN" ON)
+    option(FR_BUILD_PYTHON "" OFF)
 else()
     option(FR_BUILD_JNI "" OFF)
-    option(FR_ENABLE_NCNN "Enable NCNN" OFF)
+    option(FR_BUILD_PYTHON "" ON)
+endif()
+
+if(NOT DEFINED CMAKE_POSITION_INDEPENDENT_CODE)
+  set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 endif()
 
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
@@ -168,6 +173,10 @@ endif()
 
 if (FR_BUILD_JNI)
     add_subdirectory(aar)
+endif()
+
+if (FR_BUILD_PYTHON)
+    add_subdirectory(python)
 endif()
 
 add_subdirectory(tools)

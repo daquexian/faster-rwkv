@@ -11,10 +11,13 @@
 
 namespace rwkv {
 
-Tokenizer::Tokenizer(const std::string &path, void* asset_manager) {
+Tokenizer::Tokenizer(std::filesystem::path path, void* asset_manager) {
   if (path.empty()) {
     _impl = std::make_shared<ABCTokenizer>();
     return;
+  }
+  if (std::filesystem::is_directory(path)) {
+    path /= "tokenizer";
   }
   const std::string data = read_file(path, asset_manager);
 

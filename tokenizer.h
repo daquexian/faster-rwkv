@@ -4,6 +4,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <filesystem>
 
 #include <msgpack.hpp>
 
@@ -26,8 +27,8 @@ class Tokenizer {
 public:
   // use void* to erase dependency on AAssetManager (we cannot depend on it in
   // non-Android builds)
-  Tokenizer(const std::string &path, void *asset_manager);
-  Tokenizer(const std::string &path) : Tokenizer(path, nullptr) {}
+  Tokenizer(std::filesystem::path path, void* asset_manager);
+  Tokenizer(std::filesystem::path path) : Tokenizer(path, nullptr) {}
   std::vector<int> encode(std::string_view str) const {
     return _impl->encode(str);
   }

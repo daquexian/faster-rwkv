@@ -150,7 +150,7 @@ Tensor Model::Run(const std::vector<int> &ids) {
     auto id = ids[i];
     auto out = _Run(id);
     if (i == ids.size() - 1) {
-      return out;
+      return Copy(out, Device::kCPU);
     }
   }
   RV_UNIMPLEMENTED();
@@ -160,7 +160,7 @@ Tensor Model::Run(int id) {
   if (kDebug) {
     std::cout << "Model::Run(" << id << ")" << std::endl;
   }
-  return _Run(id);
+  return Copy(_Run(id), Device::kCPU);
 }
 
 Tensor Model::_Run(int id) {
