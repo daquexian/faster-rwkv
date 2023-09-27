@@ -69,6 +69,7 @@ jobs:
 
     - name: Run Python tests
       run: |
+        python3 -m pip install pytest
         FR_MODEL_DIR=${{env.FR_MODEL_DIR}} pytest tests
       working-directory: ${{github.workspace}}/python
 
