@@ -59,7 +59,7 @@ jobs:
         python3 tools/convert_weight.py ${{env.FR_MODEL_DIR}}/RWKV-5-World-0.1B-v1-20230803-ctx4096-fp32-converted.pth ${{env.FR_MODEL_DIR}}/RWKV-5-World-0.1B-v1-20230803-ctx4096-fp32.fr
         python3 tools/convert_weight.py ${{env.FR_MODEL_DIR}}/RWKV-5-ABC-82M-v1-20230901-ctx1024-fp32-converted.pth ${{env.FR_MODEL_DIR}}/RWKV-5-ABC-82M-v1-20230901-ctx1024-fp32.fr
 
-    - name: Build Python package
+    - name: Build Python wheel
       run: |
         # Ubuntu 20.04's pip is old
         python3 -m pip install -U pip
@@ -73,6 +73,13 @@ jobs:
         FR_MODEL_DIR=${{env.FR_MODEL_DIR}} pytest tests
       working-directory: ${{github.workspace}}/python
 
+    - name: Upload Python wheel
+      uses: actions/upload-artifact@v3
+      with:
+        name: python-package-distributions
+        path: |
+          fasterrwkv*.whl
+
     - uses: actions/setup-java@v3
       with:
         distribution: 'zulu'
@@ -84,10 +91,39 @@ jobs:
         sed -i 's/ -g$//' $ANDROID_NDK/build/cmake/android-legacy.toolchain.cmake
         ./aar/build_aar.sh
 
+    - name: Upload Android AAR libraries
+      uses: actions/upload-artifact@v3
+      with:
+        name: Android AAR Packages
+        path: |
+          aar/java/faster-rwkv-java/build/outputs/aar/*
+
+    - name: Rename Android binaries to upload
+      run: |
+        mv build-android-aar/chat build-android-aar/chat-android
+        mv build-android-aar/abc_music build-android-aar/abc_music-android
+        mv build-android-aar/midi_music build-android-aar/midi_music-android
+
+    - name: Upload Android binaries
+      uses: actions/upload-artifact@v3
+      with:
+        name: Android binaries
+        path: |
+          build-android-aar/chat-android
+          build-android-aar/abc_music-android
+          build-android-aar/midi_music-android
+
     - name: Build
       run: |
         cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DFR_ENABLE_NCNN=ON -GNinja
         cmake --build ${{github.workspace}}/build
+
+    - name: Upload Executables
+      uses: actions/upload-artifact@v3
+      with:
+        name: export_ncnn
+        path: |
+          build/export_ncnn
 
     - name: Convert the v5 ABC model to ncnn
       run: |
@@ -105,23 +141,6 @@ jobs:
         FR_MODEL_DIR=${{env.FR_MODEL_DIR}} ctest -vv --output-on-failure --test-dir tests
       working-directory: ${{github.workspace}}/build/
 
-    - name: Upload Android AAR libraries
-      uses: actions/upload-artifact@v3
-      with:
-        name: Android AAR Packages
-        path: |
-          aar/java/faster-rwkv-java/build/outputs/aar/*
-    - name: Upload Executables
-      uses: actions/upload-artifact@v3
-      with:
-        name: export_ncnn
-        path: |
-          build/export_ncnn
-    - name: Rename files to upload
-      run: |
-        mv build-android-aar/chat build-android-aar/chat-android
-        mv build-android-aar/abc_music build-android-aar/abc_music-android
-        mv build-android-aar/midi_music build-android-aar/midi_music-android
     - uses: "marvinpinto/action-automatic-releases@latest"
       if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' }}
       with:
@@ -147,3 +166,28 @@ jobs:
           build-android-aar/chat-android
           build-android-aar/abc_music-android
           build-android-aar/midi_music-android
+
+  publish-to-testpypi:
+    name: Publish Python 🐍 distribution 📦 to TestPyPI
+    needs:
+    - build-and-test
+    runs-on: ubuntu-latest
+
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/<package-name>
+
+    permissions:
+      id-token: write  # IMPORTANT: mandatory for trusted publishing
+
+    steps:
+    - name: Download all the dists
+      uses: actions/download-artifact@v3
+      with:
+        name: python-package-distributions
+        path: dist/
+
+    - name: Publish distribution 📦 to TestPyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        repository-url: https://test.pypi.org/legacy/
