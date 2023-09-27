@@ -61,8 +61,10 @@ jobs:
 
     - name: Build Python package
       run: |
-        pip wheel .
-        pip install fasterrwkv*.whl
+        # Ubuntu 20.04's pip is old
+        python3 -m pip install -U pip
+        python3 -m pip wheel .
+        python3 -m pip install fasterrwkv*.whl
       working-directory: ${{github.workspace}}/python
 
     - name: Run Python tests
