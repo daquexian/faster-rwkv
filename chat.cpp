@@ -71,12 +71,6 @@ int main(int argc, char **argv) {
               std::min(3.0f, (num_new_tokens - kChatLenLong) * 0.25f);
         }
       }
-      // print the first 20 elements of output
-      std::cout << "output: ";
-      for (int i = 0; i < 20; i++) {
-        std::cout << output.data_ptr<float>()[i] << ", ";
-      }
-      std::cout << std::endl;
       auto output_id =
           sampler.Sample(output, /*temperature=*/1.f, /*top_k=*/1, kTopP);
       occurences[output_id]++;

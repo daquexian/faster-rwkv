@@ -331,10 +331,10 @@ Tensor group_norm_op(const Tensor &x, int num_groups, const Tensor &weight,
     m = x.size(0);
     k = x.size(1);
   }
-  auto instance_num = num_groups;
-  auto norm_size = k / num_groups;
+  auto instance_num = num_groups * m;
+  auto norm_size = k * m / instance_num;
   auto channel_size = k;
-  auto spatial_size = m;
+  auto spatial_size = 1;
   double epsilon = 1e-5;
   if (x.dtype() == weight.dtype() && x.dtype() == bias.dtype()) {
     if (x.dtype() == DType::kFloat32) {

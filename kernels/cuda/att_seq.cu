@@ -101,14 +101,9 @@ Tensor _ATT_SEQ_V5(const Tensor &x, const Tensor &s, const Tensor &ln_w,
                    Tensor &rs_gemm, Tensor &rswb_mul, Tensor &kwk_mul,
                    Tensor &wss_mul, LengthType H, LengthType S, LengthType T) {
   Tensor xx = cuda::layer_norm_op(x, ln_w, ln_b);
+
   Tensor temp = xx.slice({Range(0, 1, -1), Range::All});
   Tensor converted_sx = cat(unsqueeze(sx, -1), temp, 0);
-
-  // print_n(x, "x");
-  // print_n(xx, "xx");
-  // print_n(sx, "sx");
-
-  // RV_UNIMPLEMENTED();
 
   element_wise(Mix{xx.data_ptr<half>(), converted_sx.data_ptr<half>(),
                    k_mix.data_ptr<half>(), v_mix.data_ptr<half>(),
@@ -151,6 +146,7 @@ Tensor _ATT_SEQ_V5(const Tensor &x, const Tensor &s, const Tensor &ln_w,
   // ((r @ k) * w) @ v + (r @ s) * wb
   gemm_cublas_tensor(r, k, rk_gemm); // [H, T, T]
   gemm_cublas_tensor(r, s, rs_gemm); // [H, T, S]
+
   element_wise(TwoPairMul{rk_gemm.data_ptr<float>(), w.data_ptr<float>(),
                           rs_gemm.data_ptr<float>(), wb.data_ptr<float>(),
                           rkw_mul.data_ptr<float>(),
@@ -161,8 +157,6 @@ Tensor _ATT_SEQ_V5(const Tensor &x, const Tensor &s, const Tensor &ln_w,
                           rkwv_gemm.data_ptr<float>()},
                rkwv_gemm.numel());
   gemm_cublas_tensor(rkw_mul, v, rkwv_gemm); // [H, T, S]
-  print_n(rkw_mul, "rkw_mul");
-  print_n(rkwv_gemm, "rkwv_gemm");
 
   // ws * s + (k * wk) @ v
   element_wise(TwoPairMul{k.data_ptr<float>(), wk.data_ptr<float>(),
@@ -171,28 +165,20 @@ Tensor _ATT_SEQ_V5(const Tensor &x, const Tensor &s, const Tensor &ln_w,
                k.numel());
   kwk_mul = kwk_mul.unsqueeze(0).repeat({v.size(0), 1, 1});
   gemm_cublas_tensor(kwk_mul, v, rswb_mul); // [H, S, S]
-  print_n(rkwv_gemm, "rkwv_gemm-0");
   element_wise(OnePairAdd{wss_mul.data_ptr<float>(), rswb_mul.data_ptr<float>(),
                           s_out.data_ptr<float>()},
                s_out.numel());
-  print_n(s_out, "s_out");
 
   rkwv_gemm = rkwv_gemm.transpose(0, 1).reshape({T, H * S});
-  print_n(rkwv_gemm, "rkwv_gemm-1");
   rkwv_gemm = group_norm_op(rkwv_gemm, H, lx_w, lx_b);
-  print_n(lx_w, "lx_w");
-  print_n(lx_b, "lx_b");
-  print_n(rkwv_gemm, "rkwv_gemm-2");
   rkwv_gemm = cast_dtype(rkwv_gemm, x.dtype());
   gemm_cublas_tensor(rkwv_gemm, ow, x_plus_out);
-  print_n(x_plus_out, "x_plus_out_gemm");
   element_wise(
       OnePairAddHalfInplace{x.data_ptr<half>(), x_plus_out.data_ptr<half>()},
       x.numel());
 
-  print_n(x_plus_out, "x_plus_out");
+  xx = xx.slice({Range(-1, 1, xx.size(0)), Range::All}).squeeze(0);
 
-  // RV_UNIMPLEMENTED();
   return xx;
 }
 
@@ -230,9 +216,6 @@ att_seq_v5(const Tensor &x, const Tensor &sx, const Tensor &s,
       x, s, ln_w, ln_b, lx_w, lx_b, sx, k_mix, v_mix, r_mix, kw, kx, vw, vx, rw,
       rx, ow, t_first, k, t_decay, v, r, decayed_s, x_plus_out, s_out, rk_gemm,
       rkw_mul, rkwv_gemm, rs_gemm, rswb_mul, kwk_mul, wss_mul, H, S, T);
-  std::cout << std::endl
-            << "================================================" << std::endl
-            << std::endl;
   return std::make_tuple(x_plus_out, xx, s_out);
 }
 

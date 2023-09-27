@@ -198,8 +198,6 @@ public:
       }
       auto err = cudaMemcpy(data, host_data.data(), numel * sizeof(T),
                             cudaMemcpyHostToDevice);
-      // std::cout << "err: " << cudaGetErrorString(err) << std::endl;
-      rwkv::print_n(ret, "ret");
 #else
       RV_UNIMPLEMENTED();
 #endif
