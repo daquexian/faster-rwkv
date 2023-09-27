@@ -14,6 +14,10 @@ struct FRException : public std::runtime_error {
     msg += s;
     return *this;
   }
+  FRException &operator<<(int s) {
+    msg += std::to_string(s);
+    return *this;
+  }
   std::string msg;
 };
 

@@ -3,9 +3,9 @@
 #include <iostream>
 
 #include <check.h>
+#include <kernels/export-ncnn/kernels.h>
 #include <kernels/kernels.h>
 #include <stdexcept>
-#include <kernels/export-ncnn/kernels.h>
 #ifdef FR_ENABLE_ONNX
 #include <kernels/export-onnx/kernels.h>
 #endif
@@ -78,7 +78,9 @@ Tensor Copy(const Tensor &x, Device device, bool always_copy) {
     return y;
   }
 
-  RV_UNIMPLEMENTED();
+  RV_UNIMPLEMENTED() << "Copy from device " << static_cast<int>(x.device())
+                     << " to device " << static_cast<int>(device)
+                     << " is not supported yet.";
 }
 
 namespace {
