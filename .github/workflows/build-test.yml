@@ -167,16 +167,16 @@ jobs:
           build-android-aar/abc_music-android
           build-android-aar/midi_music-android
 
-  publish-to-testpypi:
-    name: Publish Python 🐍 distribution 📦 to TestPyPI
+  publish-to-pypi:
+    name: Publish Python 🐍 distribution 📦 to PyPI
+    if: ${{ github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags/v') }}
     needs:
     - build-and-test
     runs-on: ubuntu-latest
 
     environment:
-      name: testpypi
-      url: https://test.pypi.org/p/<package-name>
-
+      name: pypi
+      url: https://pypi.org/p/fasterrwkv
     permissions:
       id-token: write  # IMPORTANT: mandatory for trusted publishing
 
@@ -186,8 +186,6 @@ jobs:
       with:
         name: python-package-distributions
         path: dist/
-
-    - name: Publish distribution 📦 to TestPyPI
+          
+    - name: Publish distribution 📦 to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        repository-url: https://test.pypi.org/legacy/
