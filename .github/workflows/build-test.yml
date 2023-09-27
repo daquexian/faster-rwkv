@@ -78,7 +78,7 @@ jobs:
       with:
         name: python-package-distributions
         path: |
-          fasterrwkv*.whl
+          python/fasterrwkv*.whl
 
     - uses: actions/setup-java@v3
       with:
