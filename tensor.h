@@ -25,7 +25,8 @@
 namespace rwkv {
 
 class Tensor;
-void print_n(const rwkv::Tensor &x, const std::string &name, int cnt = 20);
+void print_n(const rwkv::Tensor &x, const std::string &name, int skip,
+             int cnt = 20);
 
 enum class DType {
   kUndefined,

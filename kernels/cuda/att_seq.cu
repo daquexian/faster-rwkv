@@ -168,6 +168,7 @@ Tensor _ATT_SEQ_V5(const Tensor &x, const Tensor &s, const Tensor &ln_w,
   element_wise(OnePairAdd{wss_mul.data_ptr<float>(), rswb_mul.data_ptr<float>(),
                           s_out.data_ptr<float>()},
                s_out.numel());
+  print_n(s_out, "x", s_out .numel() - 20, 20);
 
   rkwv_gemm = rkwv_gemm.transpose(0, 1).reshape({T, H * S});
   rkwv_gemm = group_norm_op(rkwv_gemm, H, lx_w, lx_b);
