@@ -8,3 +8,8 @@ models/
 abc_music_input*.txt
 eval_set
 abc_probs
+.setuptools-cmake-build/
+*.whl
+.hypothesis/
+*.egg-info/
+*.so

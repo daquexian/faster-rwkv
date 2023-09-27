@@ -138,6 +138,15 @@ void Model::ResetStates() {
   }
 }
 
+Tensor CopyToCPUIfAvailable(Tensor x) {
+  // TODO: more elegant
+  try {
+    return Copy(x, Device::kCPU);
+  } catch (std::exception &e) {
+    return x;
+  }
+}
+
 Tensor Model::Run(const std::vector<int> &ids) {
   if (kDebug) {
     std::cout << "Model::Run([";
@@ -150,7 +159,7 @@ Tensor Model::Run(const std::vector<int> &ids) {
     auto id = ids[i];
     auto out = _Run(id);
     if (i == ids.size() - 1) {
-      return out;
+      return CopyToCPUIfAvailable(out);
     }
   }
   RV_UNIMPLEMENTED();
@@ -160,7 +169,7 @@ Tensor Model::Run(int id) {
   if (kDebug) {
     std::cout << "Model::Run(" << id << ")" << std::endl;
   }
-  return _Run(id);
+  return CopyToCPUIfAvailable(_Run(id));
 }
 
 Tensor Model::_Run(int id) {
