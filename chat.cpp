@@ -6,9 +6,9 @@
 #include <sampler.h>
 #include <tokenizer.h>
 
-static const std::string kUserPrefix = "Question: ";
+static const std::string kUserPrefix = "User: ";
 // no space after kAssistantPrefix
-static const std::string kAssistantPrefix = "Answer:";
+static const std::string kAssistantPrefix = "Assistant:";
 // for debug propose
 static const int kMaxOutputLength =
     std::getenv("FR_MAX_OUTPUT_LEN") != nullptr
