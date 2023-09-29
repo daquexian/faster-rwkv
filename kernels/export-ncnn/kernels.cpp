@@ -41,6 +41,28 @@ int add_and_get_blob_num(int num) {
 
 void reset_blob_num() { *get_blob_num_ptr() = 0; }
 
+bool* get_is_first_matmul() {
+  static bool _is_first_matmul = true;
+  return &_is_first_matmul;
+}
+
+bool is_first_matmul() {
+  return *get_is_first_matmul();
+}
+
+void set_is_first_matmul(bool is_first) {
+  *get_is_first_matmul() = is_first;
+}
+
+bool* get_use_fp16_pricision() {
+  static bool _use_fp16_pricision = false;
+  return &_use_fp16_pricision;
+}
+
+void use_fp16_pricision(bool use_fp16) {
+  *get_use_fp16_pricision() = use_fp16;
+}
+
 FILE *bp, *pp;
 std::string _pp_path;
 std::string _config_path;
@@ -50,6 +72,7 @@ void init(DType weight_dtype, const std::string &bp_path,
           const std::string &pp_path, const std::string &config_path) {
   reset_blob_num();
   reset_unique_layer_id();
+  set_is_first_matmul(true);
   bp = fopen(bp_path.c_str(), "wb");
   pp = fopen(pp_path.c_str(), "wb");
   _pp_path = pp_path;
@@ -602,15 +625,19 @@ Tensor gemm(const Tensor &a, const Tensor &b) {
 }
 
 Tensor matmul(const Tensor &a, const Tensor &b) {
-  if (_weight_dtype == DType::kInt4 && a.shape().size() == 1 &&
+  if (!is_first_matmul() && !*get_use_fp16_pricision() && _weight_dtype == DType::kInt4 && a.shape().size() == 1 &&
       b.shape().size() == 2 && b.device() == Device::kCPU) {
+    set_is_first_matmul(false);
     return gemv_a32w4(a, b);
-  } else if (_weight_dtype == DType::kInt8 && a.shape().size() == 1 &&
+  } else if (_weight_dtype == DType::kInt8 && !*get_use_fp16_pricision() && a.shape().size() == 1 &&
              b.shape().size() == 2 && b.device() == Device::kCPU) {
+    set_is_first_matmul(false);
     return gemv_a32w8(a, b);
   } else if (a.shape().size() <= 2 && b.shape().size() <= 2) {
+    set_is_first_matmul(false);
     return gemm(a, b);
   } else {
+    set_is_first_matmul(false);
     return batch_matmul(a, b);
   }
 }

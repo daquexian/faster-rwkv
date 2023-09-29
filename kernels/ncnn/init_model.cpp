@@ -156,9 +156,11 @@ void init_model(Model *model, Device device, const std::string &_path,
   if (model->_weight_dtype == DType::kInt8 ||
       model->_weight_dtype == DType::kInt4) {
     if (model->_weight_dtype == DType::kInt4) {
-      // We only support A16W4
+#ifdef __ANDROID__
+      // We only support A16W4 on Android
       RV_CHECK(ncnn::cpu_support_arm_asimdhp())
           << "int4 needs fp16 but your cpu does not support it";
+#endif
     }
     net->opt.use_fp16_packed = false;
     net->opt.use_fp16_arithmetic = false;

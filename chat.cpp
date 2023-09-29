@@ -7,21 +7,24 @@
 #include <tokenizer.h>
 
 static const std::string kUserPrefix = "User: ";
-// no space after kAssistantPrefix
+// no space after "Assistant:"
 static const std::string kAssistantPrefix = "Assistant:";
-// for debug propose
 static const int kMaxOutputLength =
     std::getenv("FR_MAX_OUTPUT_LEN") != nullptr
         ? std::stoi(std::getenv("FR_MAX_OUTPUT_LEN"))
         : 999;
 static const int kEndOfSentence = 0;
 static const std::string kDoubleNewLine = "\n\n";
+static const int kNewLineId = 11;
+static const int kChatLenShort = 40;
+static const int kChatLenLong = 150;
 static const float kTopP = 0.0;
 static const float kPresencePenalty = 0.8;
 static const float kFrequencyPenalty = 0.8;
 static const float kPenaltyDecay = 0.996;
 static const bool kGlobalPenalty = std::getenv("FR_GLOBAL_PENALTY") != nullptr;
 
+static const bool kQAMode = true;
 static const bool kShowSpeed = std::getenv("FR_SHOW_SPEED") != nullptr;
 
 int main(int argc, char **argv) {
@@ -56,10 +59,24 @@ int main(int argc, char **argv) {
             kFrequencyPenalty * occurence + kPresencePenalty;
         occurence *= kPenaltyDecay;
       }
+      if (kQAMode) {
+        output.data_ptr<float>()[kEndOfSentence] = -1e30;
+        if (num_new_tokens == 0) {
+          output.data_ptr<float>()[kNewLineId] += -1e-30;
+        } else if (num_new_tokens <= kChatLenShort) {
+          output.data_ptr<float>()[kNewLineId] +=
+              (num_new_tokens - kChatLenShort) / 10.;
+        } else if (num_new_tokens <= kChatLenLong) {
+          output.data_ptr<float>()[kNewLineId] += 0;
+        } else {
+          output.data_ptr<float>()[kNewLineId] +=
+              std::min(3.0f, (num_new_tokens - kChatLenLong) * 0.25f);
+        }
+      }
       auto output_id =
           sampler.Sample(output, /*temperature=*/1.f, /*top_k=*/1, kTopP);
       occurences[output_id]++;
-      if (output_id == kEndOfSentence) {
+      if (output_id == kEndOfSentence && !kQAMode) {
         break;
       }
       auto output_str = tokenizer.decode(output_id);
