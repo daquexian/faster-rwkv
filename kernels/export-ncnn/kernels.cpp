@@ -54,13 +54,13 @@ void set_is_first_matmul(bool is_first) {
   *get_is_first_matmul() = is_first;
 }
 
-bool* get_use_fp16_pricision() {
-  static bool _use_fp16_pricision = false;
-  return &_use_fp16_pricision;
+bool* get_disable_int4() {
+  static bool _disable_int4 = false;
+  return &_disable_int4;
 }
 
-void use_fp16_pricision(bool use_fp16) {
-  *get_use_fp16_pricision() = use_fp16;
+void disable_int4(bool flag) {
+  *get_disable_int4() = flag;
 }
 
 FILE *bp, *pp;
@@ -322,9 +322,12 @@ Tensor gemv_a32w4(const Tensor &a, const Tensor &b) {
   static const int KT = 64;
   // static const int effective_KT = KT / 2;
   Tensor B_int4_t = Tensor::Empty({K / 2, N}, DType::kInt8, Device::kCPU);
-  // a column --> two scales/zero_points
+  constexpr int kGroupSize = 16;
+  RV_CHECK(64 % kGroupSize == 0);
+  constexpr int kGroupNum = 64 / kGroupSize;
+  // a column --> kGroupNum scales
   Tensor scales_t =
-      Tensor::Empty({K * N * 2 / KT}, DType::kFloat16, Device::kCPU);
+      Tensor::Empty({K * N * kGroupNum / KT}, DType::kFloat16, Device::kCPU);
   float16 *scales = scales_t.data_ptr<float16>();
   // a column --> two scales
 
@@ -340,7 +343,7 @@ Tensor gemv_a32w4(const Tensor &a, const Tensor &b) {
     for (int b = 0; b < N / kBlockCols; b++) {
       std::array<float, KT * kBlockCols> block_data;
       int index = 0;
-      // every (64, 1) block in (64, 8) superblock has a scale and a zero_point
+      // every (64, 1) block in (64, 8) superblock has one or more scales
       for (int c = 0; c < KT; c++) {
         for (int d = 0; d < kBlockCols; d++) {
           int k = a * KT + c;
@@ -350,9 +353,9 @@ Tensor gemv_a32w4(const Tensor &a, const Tensor &b) {
       }
 
       const auto col_scales =
-          [&]() -> std::array<std::array<float, 2>, kBlockCols> {
+          [&]() -> std::array<std::array<float, kGroupNum>, kBlockCols> {
         std::array<std::array<float, KT>, kBlockCols> col_datas;
-        std::array<std::array<float, 2>, kBlockCols> col_scales;
+        std::array<std::array<float, kGroupNum>, kBlockCols> col_scales;
 
         for (int i = 0; i < KT * kBlockCols; i++) {
           col_datas[i % kBlockCols][i / kBlockCols] = block_data[i];
@@ -366,12 +369,12 @@ Tensor gemv_a32w4(const Tensor &a, const Tensor &b) {
         for (int col = 0; col < kBlockCols; col++) {
           const auto &col_data = col_datas[col];
           RV_CHECK(col_data.size() == 64);
-          for (int xx = 0; xx < 2; xx++) {
+          for (int group = 0; group < kGroupNum; group++) {
             float scale;
             float zero_point;
-            float max = col_data[xx * 32];
-            float min = col_data[xx * 32];
-            for (int i = xx * 32 + 1; i < xx * 32 + 32; i++) {
+            float max = col_data[group * kGroupSize];
+            float min = col_data[group * kGroupSize];
+            for (int i = group * kGroupSize + 1; i < group * kGroupSize + kGroupSize; i++) {
               if (col_data[i] > max) {
                 max = col_data[i];
               }
@@ -388,7 +391,7 @@ Tensor gemv_a32w4(const Tensor &a, const Tensor &b) {
               scale = std::max(std::abs(max), std::abs(min));
             }
             // zero_point = (min + max) / 2.f;
-            col_scales[col][xx] = scale;
+            col_scales[col][group] = scale;
           }
         }
 
@@ -397,12 +400,11 @@ Tensor gemv_a32w4(const Tensor &a, const Tensor &b) {
 
       // NOTE(daquexian): we do not need zero_point because we assume the distribution is 
       // already normal distribution, needed by nf4.
-      for (int col = 0; col < kBlockCols; col++) {
-        // we maintain nf4 table as int8, [-127, 127], instead of [-1, 1], so we need to divide 127 here
-        scales[block_id * kBlockCols * 2 + col] = col_scales[col][0] / 127.f;
-      }
-      for (int col = 0; col < kBlockCols; col++) {
-        scales[block_id * kBlockCols * 2 + kBlockCols + col] = col_scales[col][1] / 127.f;
+      for (int group = 0; group < kGroupNum; group++) {
+        for (int col = 0; col < kBlockCols; col++) {
+          // we maintain nf4 table as int8, [-127, 127], instead of [-1, 1], so we need to divide 127 here
+          scales[block_id * kBlockCols * kGroupNum + kBlockCols * group + col] = col_scales[col][group] / 127.f;
+        }
       }
 
       // std::cout << "scales[" << block_id << "] = " << scale << std::endl;
@@ -419,14 +421,14 @@ Tensor gemv_a32w4(const Tensor &a, const Tensor &b) {
           int idx1 = i * kSubBlockSize * 2 + j;
           int idx2 = idx1 + kSubBlockSize;
           RV_CHECK(idx1 < KT * kBlockCols);
-          float scale = col_scales[idx1 % kBlockCols][(idx1 / kBlockCols) / 32];
+          float scale = col_scales[idx1 % kBlockCols][(idx1 / kBlockCols) / kGroupSize];
           // block_data[idx1] = (block_data[idx1] - zeropoint) / scale;
           block_data[idx1] = block_data[idx1] / scale;
           uint8_t tmp1 = quantize_nf4(block_data[idx1]);
           RV_CHECK(tmp1 >= 0 && tmp1 <= 15);
 
           RV_CHECK(idx2 < KT * kBlockCols);
-          scale = col_scales[idx2 % kBlockCols][(idx2 / kBlockCols) / 32];
+          scale = col_scales[idx2 % kBlockCols][(idx2 / kBlockCols) / kGroupSize];
           // block_data[idx2] = (block_data[idx2] - zeropoint) / scale;
           block_data[idx2] = block_data[idx2] / scale;
           uint8_t tmp2 = quantize_nf4(block_data[idx2]);
@@ -451,7 +453,8 @@ Tensor gemv_a32w4(const Tensor &a, const Tensor &b) {
   fprintf(pp, " %s", a.name.c_str());
   fprintf(pp, " %s", output.name.c_str());
   fprintf(pp, " 0=%d", N);
-  fprintf(pp, " 1=%d\n", K);
+  fprintf(pp, " 1=%d", K);
+  fprintf(pp, " 11=%d\n", kGroupSize);
   return output;
 }
 
@@ -625,11 +628,21 @@ Tensor gemm(const Tensor &a, const Tensor &b) {
 }
 
 Tensor matmul(const Tensor &a, const Tensor &b) {
-  if (!is_first_matmul() && !*get_use_fp16_pricision() && _weight_dtype == DType::kInt4 && a.shape().size() == 1 &&
+  if (_weight_dtype == DType::kInt4 && a.shape().size() == 1 &&
       b.shape().size() == 2 && b.device() == Device::kCPU) {
-    set_is_first_matmul(false);
-    return gemv_a32w4(a, b);
-  } else if (_weight_dtype == DType::kInt8 && !*get_use_fp16_pricision() && a.shape().size() == 1 &&
+    if (is_first_matmul()) {
+      // first matmul is cheap to use fp16 and the precision will be
+      // increased
+      set_is_first_matmul(false);
+      return gemm(a, b);
+    } else if(*get_disable_int4()) {
+      set_is_first_matmul(false);
+      return gemv_a32w8(a, b);
+    } else {
+      set_is_first_matmul(false);
+      return gemv_a32w4(a, b);
+    }
+  } else if (_weight_dtype == DType::kInt8 && a.shape().size() == 1 &&
              b.shape().size() == 2 && b.device() == Device::kCPU) {
     set_is_first_matmul(false);
     return gemv_a32w8(a, b);

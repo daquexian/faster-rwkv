@@ -149,9 +149,9 @@ Tensor ModelForward(const Model *model, Device device, int id,
   x = layernorm(x, params[param_idx], params[param_idx + 1]);
 
   //                 x = x @ w['head.weight']
-  ncnnmeta::use_fp16_pricision(true);
+  ncnnmeta::disable_int4(true);
   x = matmul(x, params[param_idx + 2]);
-  ncnnmeta::use_fp16_pricision(false);
+  ncnnmeta::disable_int4(false);
   if (x.dtype() == DType::kFloat16) {
     x = cast_dtype(x, DType::kFloat32);
   }
