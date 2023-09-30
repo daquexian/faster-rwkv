@@ -1,10 +1,7 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
-#ifdef __ANDROID__
-#define _FR_ENABLE_ANDROID_ASSET
-#endif
-#ifdef _FR_ENABLE_ANDROID_ASSET
+#ifdef FR_ENABLE_ANDROID_ASSET
 #include <android/asset_manager.h>
 #endif
 
@@ -39,7 +36,7 @@ void init_model(Model *model, Device device, const std::string &_path,
     return std::make_pair(_path, false);
   }();
 
-#ifndef _FR_ENABLE_ANDROID_ASSET
+#ifndef FR_ENABLE_ANDROID_ASSET
   RV_CHECK(!android_asset);
 #else
   if (android_asset) {
@@ -89,7 +86,7 @@ void init_model(Model *model, Device device, const std::string &_path,
     model->_n_att = model->_n_embd;
   }
   std::string config;
-#ifdef _FR_ENABLE_ANDROID_ASSET
+#ifdef FR_ENABLE_ANDROID_ASSET
   if (android_asset) {
     auto *mgr = std::any_cast<AAssetManager *>(extra);
     AAsset *asset =
@@ -181,7 +178,7 @@ void init_model(Model *model, Device device, const std::string &_path,
   if (std::getenv("FR_THREADS")) {
     net->opt.num_threads = std::stoi(std::getenv("FR_THREADS"));
   }
-#ifdef _FR_ENABLE_ANDROID_ASSET
+#ifdef FR_ENABLE_ANDROID_ASSET
   if (android_asset) {
     auto *mgr = std::any_cast<AAssetManager *>(extra);
     AAsset *asset =

@@ -1,10 +1,7 @@
 #include <fstream>
 #include <sstream>
 #include <string>
-#ifdef __ANDROID__
-#define _FR_ENABLE_ANDROID_ASSET
-#endif
-#ifdef _FR_ENABLE_ANDROID_ASSET
+#ifdef FR_ENABLE_ANDROID_ASSET
 #include <android/asset_manager.h>
 #endif
 
@@ -18,7 +15,7 @@ inline bool file_exists(const std::string &path) {
 inline std::string read_file(const std::string &_path,
                              void *_asset_manager = nullptr) {
   if (_path.substr(0, 6) == "asset:") {
-#ifdef _FR_ENABLE_ANDROID_ASSET
+#ifdef FR_ENABLE_ANDROID_ASSET
     AAssetManager *asset_manager = static_cast<AAssetManager *>(_asset_manager);
     RV_CHECK(asset_manager != nullptr) << "Asset manager is not provided";
     const std::string path = _path.substr(6);
