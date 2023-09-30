@@ -28,15 +28,17 @@ jobs:
         wget https://huggingface.co/BlinkDL/rwkv-5-world/resolve/main/RWKV-5-World-0.1B-v1-20230803-ctx4096.pth
         wget https://huggingface.co/BlinkDL/rwkv-5-music/resolve/main/RWKV-5-ABC-82M-v1-20230901-ctx1024.pth
         wget https://huggingface.co/daquexian/fr-models/resolve/dd4d636/world_tokenizer -O old_world_tokenizer
-        wget https://huggingface.co/daquexian/fr-models/resolve/main/tokenizers/world_tokenizer
-        wget https://huggingface.co/daquexian/fr-models/resolve/main/tokenizers/simple_abc_tokenizer
-        wget https://huggingface.co/daquexian/fr-models/resolve/main/tokenizers/abc_tokenizer_v20230913
         mkdir -p RWKV-5-World-0.1B-v1-20230803-ctx4096/ncnn/fp16
         cd RWKV-5-World-0.1B-v1-20230803-ctx4096/ncnn/fp16
         wget https://huggingface.co/daquexian/fr-models/resolve/02382cd/RWKV-5-World-0.1B-v1-20230803-ctx4096/ncnn/fp16/RWKV-5-World-0.1B-v1-20230803-ctx4096-ncnn.bin
         wget https://huggingface.co/daquexian/fr-models/resolve/02382cd/RWKV-5-World-0.1B-v1-20230803-ctx4096/ncnn/fp16/RWKV-5-World-0.1B-v1-20230803-ctx4096-ncnn.param
         wget https://huggingface.co/daquexian/fr-models/resolve/02382cd/RWKV-5-World-0.1B-v1-20230803-ctx4096/ncnn/fp16/RWKV-5-World-0.1B-v1-20230803-ctx4096-ncnn.config
         wget https://huggingface.co/daquexian/fr-models/resolve/main/RWKV-5-World-0.1B-v1-20230803-ctx4096/ncnn/fp16/tokenizer
+        mkdir tokenizers
+        cd tokenizers
+        wget https://huggingface.co/daquexian/fr-models/resolve/main/tokenizers/world_tokenizer
+        wget https://huggingface.co/daquexian/fr-models/resolve/main/tokenizers/simple_abc_tokenizer
+        wget https://huggingface.co/daquexian/fr-models/resolve/main/tokenizers/abc_tokenizer_v20230913
 
     - name: Convert ChatRWKV Models
       run: |

@@ -16,6 +16,11 @@ inline std::string get_model_dir() {
 #define TEST_FILE(path)                                                        \
   get_model_dir() + path;                                                      \
   if (!file_exists(get_model_dir() + path)) {                                  \
-    GTEST_SKIP() << "\"" << path << "\" not found in \"" << get_model_dir()    \
-                 << "\"";                                                      \
+    if (std::getenv("CI") != nullptr) {                                        \
+      FAIL() << "CI mode is enabled, but \"" << path << "\" not found in \""   \
+             << get_model_dir() << "\"";                                       \
+    } else {                                                                   \
+      GTEST_SKIP() << "\"" << path << "\" not found in \"" << get_model_dir()  \
+                   << "\"";                                                    \
+    }                                                                          \
   }

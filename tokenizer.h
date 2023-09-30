@@ -9,6 +9,8 @@
 #include <msgpack.hpp>
 
 namespace rwkv {
+struct TrieTree;
+  
 class TokenizerBase {
 public:
   TokenizerBase(int pad_token_id, int bos_token_id, int eos_token_id)
@@ -55,6 +57,7 @@ public:
 private:
   std::unordered_map<std::string, int> _word2idx;
   std::unordered_map<int, std::string> _idx2word;
+  std::unique_ptr<TrieTree> _tree;
   std::string _normalizer;
   std::string _pre_tokenizer;
 };

@@ -7,13 +7,13 @@
 using namespace rwkv;
 
 TEST(Tokenizer, load) {
-  const std::string filename = TEST_FILE("world_tokenizer");
+  const std::string filename = TEST_FILE("tokenizers/world_tokenizer");
 
   Tokenizer tokenizer(filename);
 }
 
 TEST(Tokenizer, encode_decode) {
-  const std::string filename = TEST_FILE("world_tokenizer");
+  const std::string filename = TEST_FILE("tokenizers/world_tokenizer");
 
   Tokenizer tokenizer(filename);
   auto ids = tokenizer.encode("今天天气不错");
@@ -27,23 +27,12 @@ TEST(Tokenizer, encode_decode) {
 
   auto str = tokenizer.decode(ids);
   EXPECT_EQ(str, "今天天气不错");
-}
 
-TEST(OldTokenizer, encode_decode) {
-  const std::string filename = TEST_FILE("old_world_tokenizer");
-
-  Tokenizer tokenizer(filename);
-  auto ids = tokenizer.encode("今天天气不错");
-  EXPECT_EQ(ids.size(), 6);
-  EXPECT_EQ(ids[0], 10381);
-  EXPECT_EQ(ids[1], 11639);
-  EXPECT_EQ(ids[2], 11639);
-  EXPECT_EQ(ids[3], 13655);
-  EXPECT_EQ(ids[4], 10260);
-  EXPECT_EQ(ids[5], 17631);
-
-  auto str = tokenizer.decode(ids);
-  EXPECT_EQ(str, "今天天气不错");
+  // test we successfully find the longest prefix,
+  // there is "cle" and "clear", but not "clea" in tokenizer
+  ids = tokenizer.encode("clear");
+  EXPECT_EQ(ids.size(), 1);
+  EXPECT_EQ(ids[0], 34138);
 }
 
 TEST(OldABCTokenizer, encode_decode) {
@@ -71,7 +60,7 @@ TEST(ABCTokenizerFromEmptyPath, encode_decode) {
 }
 
 TEST(SimpleTokenizer, encode_decode) {
-  const std::string filename = TEST_FILE("simple_abc_tokenizer");
+  const std::string filename = TEST_FILE("tokenizers/simple_abc_tokenizer");
 
   Tokenizer tokenizer(filename);
   auto ids = tokenizer.encode("S:2");
@@ -86,7 +75,7 @@ TEST(SimpleTokenizer, encode_decode) {
 
 
 TEST(NewABCTokenizer, encode_decode) {
-  const std::string filename = TEST_FILE("abc_tokenizer_v20230913");
+  const std::string filename = TEST_FILE("tokenizers/abc_tokenizer_v20230913");
 
   Tokenizer tokenizer(filename);
   auto ids = tokenizer.encode("S:2");
