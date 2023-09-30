@@ -60,7 +60,7 @@ if (FR_ENABLE_NCNN)
     if (FR_BUILD_PYTHON)
         # pybind11 requires RTTI
         option(NCNN_DISABLE_RTTI "" OFF)
-    else()
+    endif()
     if (NOT CMAKE_SYSTEM_NAME STREQUAL "Android" AND NOT CMAKE_CROSSCOMPILING)
         option(NCNN_OPENMP "" OFF)
         option(NCNN_SIMPLEOMP "" ON)
