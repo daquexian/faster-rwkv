@@ -8,7 +8,8 @@ import os
 import sys
 import numpy as np
 np.set_printoptions(precision=4, suppress=True, linewidth=200)
-with open("/data/user/cangshui/tianchao/repos/ChatRWKV/misc/lambada_test.jsonl", "r", encoding="utf-8") as f:
+script_directory = os.path.dirname(os.path.abspath(sys.argv[0]))
+with open(os.path.join(script_directory, "lambada_test.jsonl"), "r", encoding="utf-8") as f:
     todo = [json.loads(line) for line in f]
     todo = [[doc['text'].rsplit(' ', 1)[0], " " + doc['text'].rsplit(' ', 1)[1]] for doc in todo]
 

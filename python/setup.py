@@ -168,7 +168,7 @@ class CmakeBuild(setuptools.Command):
                 del os.environ["PYTHONPATH"]
             subprocess.check_call(cmake_args)
 
-            build_args = [CMAKE, "--build", os.curdir]
+            build_args = [CMAKE, "--build", os.curdir, "--target", "fr_python"]
             if WINDOWS:
                 build_args.extend(["--config", build_type])
                 build_args.extend(["--", f"/maxcpucount:{self.jobs}"])
