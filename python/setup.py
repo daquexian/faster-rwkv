@@ -116,6 +116,7 @@ class CmakeBuild(setuptools.Command):
                 f"-DPYTHON_INCLUDE_DIR={sysconfig.get_path('include')}",
                 f"-DPYTHON_EXECUTABLE={sys.executable}",
                 "-DFR_BUILD_PYTHON=ON",
+                "-DFR_BUILD_JNI=OFF",
                 "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON",
                 f"-DPY_EXT_SUFFIX={get_ext_suffix() or ''}",
             ]
