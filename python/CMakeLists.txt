@@ -1,6 +1,6 @@
 include(FetchContent)
 
-find_package(Python COMPONENTS Interpreter Development)
+find_package(Python3 COMPONENTS Interpreter Development)
 
 FetchContent_Declare(
   pybind11
@@ -13,3 +13,4 @@ FetchContent_MakeAvailable(pybind11)
 
 pybind11_add_module(fr_python fr_python.cpp)
 target_link_libraries(fr_python PRIVATE faster_rwkv)
+target_include_directories(fr_python PRIVATE Python3::Module)
