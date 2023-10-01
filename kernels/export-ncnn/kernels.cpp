@@ -322,16 +322,22 @@ Tensor gemv_a32w4(const Tensor &a, const Tensor &b) {
   static const int KT = 64;
   // static const int effective_KT = KT / 2;
   Tensor B_int4_t = Tensor::Empty({K / 2, N}, DType::kInt8, Device::kCPU);
-  constexpr int kGroupSize = 16;
+  constexpr int kGroupSize = 8;
+  const bool double_quant = true;
   RV_CHECK(64 % kGroupSize == 0);
   constexpr int kGroupNum = 64 / kGroupSize;
   // a column --> kGroupNum scales
   Tensor scales_t =
       Tensor::Empty({K * N * kGroupNum / KT}, DType::kFloat16, Device::kCPU);
-  float16 *scales = scales_t.data_ptr<float16>();
-  // a column --> two scales
+  std::vector<float16> scales_vec;
+  Tensor dq_scales_t =
+      Tensor::Empty({scales_t.numel() / 16}, DType::kFloat16, Device::kCPU);
+  std::vector<float16> dq_scales_vec;
 
   const int kBlockCols = 8;
+
+  std::vector<std::array<float, kBlockCols>> unquanted_scales_buffer;
+  int kScaleGroupSize = 16;
 
   // (2 comes from a int8 has two int4)
   // (K / 2, N)
@@ -353,9 +359,9 @@ Tensor gemv_a32w4(const Tensor &a, const Tensor &b) {
       }
 
       const auto col_scales =
-          [&]() -> std::array<std::array<float, kGroupNum>, kBlockCols> {
+          [&]() -> std::array<std::array<float, kBlockCols>, kGroupNum> {
         std::array<std::array<float, KT>, kBlockCols> col_datas;
-        std::array<std::array<float, kGroupNum>, kBlockCols> col_scales;
+        std::array<std::array<float, kBlockCols>, kGroupNum> col_scales;
 
         for (int i = 0; i < KT * kBlockCols; i++) {
           col_datas[i % kBlockCols][i / kBlockCols] = block_data[i];
@@ -391,20 +397,45 @@ Tensor gemv_a32w4(const Tensor &a, const Tensor &b) {
               scale = std::max(std::abs(max), std::abs(min));
             }
             // zero_point = (min + max) / 2.f;
-            col_scales[col][group] = scale;
+            col_scales[group][col] = scale;
           }
         }
 
         return col_scales;
       }();
 
+      for (const auto& x : col_scales) {
+        unquanted_scales_buffer.push_back(x);
+      }
       // NOTE(daquexian): we do not need zero_point because we assume the distribution is 
       // already normal distribution, needed by nf4.
-      for (int group = 0; group < kGroupNum; group++) {
-        for (int col = 0; col < kBlockCols; col++) {
-          // we maintain nf4 table as int8, [-127, 127], instead of [-1, 1], so we need to divide 127 here
-          scales[block_id * kBlockCols * kGroupNum + kBlockCols * group + col] = col_scales[col][group] / 127.f;
+      if (unquanted_scales_buffer.size() == kScaleGroupSize) {
+        std::array<float16, kBlockCols> this_dq_scales;
+        for (int i = 0; i < kBlockCols; i++) {
+          float max = std::abs(unquanted_scales_buffer[0][i]);
+          for (int j = 1; j < kScaleGroupSize; j++) {
+            if (std::abs(unquanted_scales_buffer[j][i]) > max) {
+              max = std::abs(unquanted_scales_buffer[j][i]);
+            }
+          }
+          this_dq_scales[i] = max / 127.f;
         }
+        for (int i = 0; i < kBlockCols; i++) {
+          dq_scales_vec.push_back(this_dq_scales[i]);
+        }
+
+        for (int i = 0; i < kScaleGroupSize; i++) {
+          for (int j = 0; j < kBlockCols; j++) {
+            float dq_scale = this_dq_scales[j];
+            float unquanted_scale = unquanted_scales_buffer[i][j];
+            // int quantized_scale = std::lround(unquanted_scale / dq_scale);
+            // RV_CHECK(quantized_scale <= 127 && quantized_scale >= -127) << "unquanted_scale = " << unquanted_scale << ", dq_scale = " << dq_scale;
+            // scales_vec.push_back(quantized_scale);
+            scales_vec.push_back(static_cast<float16>(unquanted_scale));
+          }
+        }
+
+        unquanted_scales_buffer.clear();
       }
 
       // std::cout << "scales[" << block_id << "] = " << scale << std::endl;
@@ -421,14 +452,14 @@ Tensor gemv_a32w4(const Tensor &a, const Tensor &b) {
           int idx1 = i * kSubBlockSize * 2 + j;
           int idx2 = idx1 + kSubBlockSize;
           RV_CHECK(idx1 < KT * kBlockCols);
-          float scale = col_scales[idx1 % kBlockCols][(idx1 / kBlockCols) / kGroupSize];
+          float scale = col_scales[(idx1 / kBlockCols) / kGroupSize][idx1 % kBlockCols];
           // block_data[idx1] = (block_data[idx1] - zeropoint) / scale;
           block_data[idx1] = block_data[idx1] / scale;
           uint8_t tmp1 = quantize_nf4(block_data[idx1]);
           RV_CHECK(tmp1 >= 0 && tmp1 <= 15);
 
           RV_CHECK(idx2 < KT * kBlockCols);
-          scale = col_scales[idx2 % kBlockCols][(idx2 / kBlockCols) / kGroupSize];
+          scale = col_scales[(idx2 / kBlockCols) / kGroupSize][idx2 % kBlockCols];
           // block_data[idx2] = (block_data[idx2] - zeropoint) / scale;
           block_data[idx2] = block_data[idx2] / scale;
           uint8_t tmp2 = quantize_nf4(block_data[idx2]);
@@ -446,9 +477,17 @@ Tensor gemv_a32w4(const Tensor &a, const Tensor &b) {
     }
   }
 
+  RV_CHECK(unquanted_scales_buffer.empty());
+  RV_CHECK(scales_vec.size() == scales_t.numel());
+  memcpy(scales_t.data_ptr(), scales_vec.data(), scales_t.numel() * scales_t.elem_size());
+
+  // RV_CHECK(dq_scales_vec.size() == dq_scales_t.numel());
+  // memcpy(dq_scales_t.data_ptr(), dq_scales_vec.data(), dq_scales_t.numel() * dq_scales_t.elem_size());
+
   PRINT_OP_TYPE_AND_NAME("GemvA32W4", 1, 1);
   append_data_to_bin_file(B_int4_t, true);
   append_data_to_bin_file(scales_t, false);
+  // append_data_to_bin_file(dq_scales_t, false);
   auto output = Tensor::Empty({N}, DType::kFloat32, Device::kNCNNMeta);
   fprintf(pp, " %s", a.name.c_str());
   fprintf(pp, " %s", output.name.c_str());
@@ -630,6 +669,8 @@ Tensor gemm(const Tensor &a, const Tensor &b) {
 Tensor matmul(const Tensor &a, const Tensor &b) {
   if (_weight_dtype == DType::kInt4 && a.shape().size() == 1 &&
       b.shape().size() == 2 && b.device() == Device::kCPU) {
+    // TODO:
+    set_is_first_matmul(false);
     if (is_first_matmul()) {
       // first matmul is cheap to use fp16 and the precision will be
       // increased
@@ -637,6 +678,7 @@ Tensor matmul(const Tensor &a, const Tensor &b) {
       return gemm(a, b);
     } else if(*get_disable_int4()) {
       set_is_first_matmul(false);
+      // TODO:
       return gemv_a32w8(a, b);
     } else {
       set_is_first_matmul(false);

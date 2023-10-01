@@ -19,7 +19,7 @@ TOKENIZER_NAME = sys.argv[1]
 MODEL_NAME = sys.argv[2]
 
 import fasterrwkv as fr
-model = fr.Model(MODEL_NAME, 'cuda fp16')
+model = fr.Model(MODEL_NAME, sys.argv[3])
 sampler = fr.Tokenizer(TOKENIZER_NAME)
 
 def forward_with_full_output(model, input_ids):
@@ -36,7 +36,7 @@ def softmax(x):
     return e_x / e_x.sum()
 
 
-print('Check LAMBADA...')
+print(f'Check LAMBADA, model {MODEL_NAME}')
 xsum = 0
 xcnt = 0
 xacc = 0
@@ -57,5 +57,5 @@ for d in todo:
     xcnt += 1
     xsum += logits
     xacc += 1 if correct else 0
-    if xcnt % 10 == 0 or xcnt == len(todo):
+    if xcnt % 1 == 0 or xcnt == len(todo):
         print(xcnt, 'ppl', round(math.exp(-xsum / xcnt), 2), 'acc', round(xacc/xcnt*100, 2))

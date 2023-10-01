@@ -37,10 +37,9 @@ while True:
         for id, occurence in occurences.items():
             output[id] -= FREQUENCY_PENALTY * occurence + PRESENCE_PENALTY
             occurence *= PENALTY_DECAY
+        output[END_OF_SENTENCE] = -1e30
         output_id = sampler.sample(output, 1.0, 1, TOP_P)
         occurences[output_id] += 1
-        if output_id == END_OF_SENTENCE:
-            break
         output_str = tokenizer.decode(output_id)
         print(output_str, end="")
         response += output_str

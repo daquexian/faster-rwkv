@@ -3,6 +3,7 @@
 #include <exception>
 #include <stdexcept>
 #include <string>
+#include <sstream>
 
 #define STRINGIFY(...) STRINGIFY_(__VA_ARGS__)
 #define STRINGIFY_(...) #__VA_ARGS__
@@ -10,12 +11,11 @@
 struct FRException : public std::runtime_error {
   FRException() : std::runtime_error("") {}
   const char *what() const noexcept override { return msg.c_str(); }
-  FRException &operator<<(const std::string &s) {
-    msg += s;
-    return *this;
-  }
-  FRException &operator<<(int s) {
-    msg += std::to_string(s);
+  template<typename T>
+  FRException &operator<<(const T& s) {
+    std::stringstream ss;
+    ss << s;
+    msg += ss.str();
     return *this;
   }
   std::string msg;
