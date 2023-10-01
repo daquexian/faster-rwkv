@@ -1,5 +1,7 @@
 include(FetchContent)
 
+find_package(Python COMPONENTS Interpreter Development)
+
 FetchContent_Declare(
   pybind11
   GIT_REPOSITORY
