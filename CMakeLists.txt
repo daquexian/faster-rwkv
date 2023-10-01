@@ -45,7 +45,7 @@ if (FR_ENABLE_NCNN)
         GIT_REPOSITORY https://github.com/daquexian/ncnn
         # This commit reduces peak memory usage
         # https://github.com/Tencent/ncnn/pull/4966
-        GIT_TAG 1c0ce1c3
+        GIT_TAG 2d007de4
         SYSTEM
         )
     option(NCNN_BUILD_BENCHMARK "" OFF)
