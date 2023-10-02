@@ -109,17 +109,26 @@ void init_model(Model *model, Device device, const std::string &_path,
       config = ss.str();
     }
   }
+  int ncnn_impl_version = 1;
   if (!config.empty()) {
-    const auto get_value = [&config](const std::string &key) {
-      auto pos = config.find(key);
-      RV_CHECK(pos != std::string::npos);
-      auto pos2 = config.find(": ", pos);
-      RV_CHECK(pos2 != std::string::npos);
-      auto pos3 = config.find("\n", pos2);
-      if (pos3 == std::string::npos) {
-        pos3 = config.size();
+    const auto get_value = [&config](const std::string &key,
+                                     std::optional<std::string> default_value =
+                                         std::nullopt) {
+      const std::string key_with_colon = key + ": ";
+      auto pos = config.find(key_with_colon);
+      if (pos == std::string::npos) {
+        if (default_value.has_value()) {
+          return default_value.value();
+        }
+        RV_UNIMPLEMENTED() << "cannot find key: " << key
+                           << " and default value is not provided";
       }
-      return config.substr(pos2 + 2, pos3 - pos2 - 2);
+      pos += key_with_colon.size();
+      auto pos2 = config.find("\n", pos);
+      if (pos2 == std::string::npos) {
+        pos2 = config.size();
+      }
+      return config.substr(pos, pos2 - pos);
     };
     const auto str_to_dtype = [](const std::string &str) {
       if (str == "fp32") {
@@ -136,18 +145,15 @@ void init_model(Model *model, Device device, const std::string &_path,
     };
 
     model->_version = get_value("version");
-    try {
-      model->_act_dtype = str_to_dtype(get_value("act_dtype"));
-      model->_weight_dtype = str_to_dtype(get_value("weight_dtype"));
-    } catch (...) {
-      // do nothing
-    }
+    model->_act_dtype = str_to_dtype(get_value("act_dtype", "fp32"));
+    model->_weight_dtype = str_to_dtype(get_value("weight_dtype", "fp16"));
     model->_head_size = std::stoi(get_value("head_size"));
     // overwrite these fields if it is new model (having config file)
     model->_n_embd = std::stoi(get_value("n_embd"));
     model->_n_layer = std::stoi(get_value("n_layer"));
     model->_n_att = std::stoi(get_value("n_att"));
     model->_n_ffn = std::stoi(get_value("n_ffn"));
+    ncnn_impl_version = std::stoi(get_value("ncnn_impl_version", "1"));
   }
   auto net = std::make_shared<ncnn::Net>();
   if (model->_weight_dtype == DType::kInt8 ||
@@ -202,7 +208,9 @@ void init_model(Model *model, Device device, const std::string &_path,
   std::vector<std::vector<int>> output_state_ids;
   for (int i = 0; i < net->input_names().size(); i++) {
     auto name = std::string(net->input_names()[i]);
-    if (name == "input") {
+    if (ncnn_impl_version == 2 && name == "input_id") {
+      input_blob_id = net->input_indexes()[i];
+    } else if (ncnn_impl_version == 1 && name == "input") {
       input_blob_id = net->input_indexes()[i];
     } else if (name.find("state_") != std::string::npos) {
       auto tmp = name.substr(name.find("state_"));
@@ -223,8 +231,9 @@ void init_model(Model *model, Device device, const std::string &_path,
     }
   }
 
-  model->_extra = std::make_shared<NcnnExtra>(net, input_blob_id, state_ids,
-                                              output_blob_id, output_state_ids);
+  model->_extra =
+      std::make_shared<NcnnExtra>(net, input_blob_id, state_ids, output_blob_id,
+                                  output_state_ids, ncnn_impl_version);
 }
 
 KernelRegister init_model_reg("init_model", Device::kNCNN, init_model);

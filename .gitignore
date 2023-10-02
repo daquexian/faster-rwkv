@@ -14,3 +14,4 @@ abc_probs
 *.egg-info/
 *.so
 *-ppl
+*-ppl-try*

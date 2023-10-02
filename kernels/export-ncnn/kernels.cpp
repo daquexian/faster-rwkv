@@ -95,6 +95,8 @@ void destroy(const Model &model) {
     config_file << "n_embd: " << model.n_embd() << std::endl;
     config_file << "n_att: " << model.n_att() << std::endl;
     config_file << "n_ffn: " << model.n_ffn() << std::endl;
+    std::string kNcnnImplVersion = "2";
+    config_file << "ncnn_impl_version: " << kNcnnImplVersion << std::endl;
     config_file.close();
   }
 }
@@ -655,6 +657,49 @@ Tensor matmul(const Tensor &a, const Tensor &b) {
   } else {
     return batch_matmul(a, b);
   }
+}
+
+Tensor Embedding(const Tensor &weight, const Tensor &id) {
+  RV_CHECK(weight.device() == Device::kCPU);
+  auto output = Tensor::Empty({1, weight.shape()[1]},
+                              DType::kFloat32, Device::kNCNNMeta);
+  PRINT_OP_TYPE_AND_NAME("Embed", 1, 1);
+  fprintf(pp, " %s", id.name.c_str());
+  fprintf(pp, " %s", output.name.c_str());
+  int kGroupSize = 64;
+  RV_CHECK(weight.shape()[1] % kGroupSize == 0);
+  Tensor scales = Tensor::Empty({weight.numel() / kGroupSize},
+                                DType::kFloat16, Device::kCPU);
+  float16* scales_ptr = scales.data_ptr<float16>();
+  const float* weight_ptr = weight.data_ptr<float>();
+  Tensor quanted_weight = Tensor::Empty(weight.shape(),
+                                DType::kInt8, Device::kCPU);
+  for (int i = 0; i < weight.numel() / kGroupSize; i++) {
+    float max = weight_ptr[i * kGroupSize];
+    float min = weight_ptr[i * kGroupSize];
+    for (int j = 1; j < kGroupSize; j++) {
+      if (weight_ptr[i * kGroupSize + j] > max) {
+        max = weight_ptr[i * kGroupSize + j];
+      }
+      if (weight_ptr[i * kGroupSize + j] < min) {
+        min = weight_ptr[i * kGroupSize + j];
+      }
+    }
+    float scale = std::max(std::abs(max), std::abs(min)) / 127.f;
+    scales_ptr[i] = scale;
+    for (int j = 0; j < kGroupSize; j++) {
+      int qw = std::lround(weight_ptr[i * kGroupSize + j] / scale);
+      RV_CHECK(qw <= 127 && qw >= -127);
+      // NOTE: although uint8_t pointer is used, the bit pattern doesn't change
+      // if 2's complement is used
+      quanted_weight.data_ptr<uint8_t>()[i * kGroupSize + j] = qw;
+    }
+  }
+  append_data_to_bin_file(quanted_weight, true);
+  append_data_to_bin_file(scales, true);
+  fprintf(pp, " 0=%d 1=%d 3=%d 4=%d\n", (int)weight.shape()[1], (int)weight.shape()[0], (int)weight.numel(), kGroupSize);
+  // flatten to 1d
+  return output.flatten();
 }
 
 Tensor MemoryData(const Tensor &x) {
