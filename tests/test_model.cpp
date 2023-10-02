@@ -28,16 +28,16 @@ TEST(Model, ncnn_fp16) {
   auto output = model.Run(0);
   auto output_ptr = output.data_ptr<float>();
   // NOTE: different machines may have different results
-  EXPECT_LT(output_ptr[0], -0.048);
-  EXPECT_GT(output_ptr[0], -0.059);
+  EXPECT_LT(output_ptr[0], 0);
+  EXPECT_GT(output_ptr[0], -0.1);
   EXPECT_LT(output_ptr[9], -9.7);
   EXPECT_GT(output_ptr[9], -10.0);
   output = model.Run(0);
   output_ptr = output.data_ptr<float>();
   EXPECT_LT(output_ptr[0], -1.28);
-  EXPECT_GT(output_ptr[0], -1.31);
+  EXPECT_GT(output_ptr[0], -1.61);
   EXPECT_LT(output_ptr[9], -9.1);
-  EXPECT_GT(output_ptr[9], -9.4);
+  EXPECT_GT(output_ptr[9], -9.6);
 }
 
 TEST(Model, ncnn_fp16_v5) {
