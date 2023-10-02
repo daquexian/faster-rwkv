@@ -34,6 +34,7 @@ jobs:
         wget https://huggingface.co/daquexian/fr-models/resolve/02382cd/RWKV-5-World-0.1B-v1-20230803-ctx4096/ncnn/fp16/RWKV-5-World-0.1B-v1-20230803-ctx4096-ncnn.param
         wget https://huggingface.co/daquexian/fr-models/resolve/02382cd/RWKV-5-World-0.1B-v1-20230803-ctx4096/ncnn/fp16/RWKV-5-World-0.1B-v1-20230803-ctx4096-ncnn.config
         wget https://huggingface.co/daquexian/fr-models/resolve/main/RWKV-5-World-0.1B-v1-20230803-ctx4096/ncnn/fp16/tokenizer
+        cd ${{env.FR_MODEL_DIR}}
         mkdir tokenizers
         cd tokenizers
         wget https://huggingface.co/daquexian/fr-models/resolve/main/tokenizers/world_tokenizer
