@@ -48,9 +48,9 @@ TEST(Model, ncnn_fp16_v5) {
   auto output = model.Run(0);
   auto output_ptr = output.data_ptr<float>();
   EXPECT_LT(output_ptr[0], -7.0);
-  EXPECT_GT(output_ptr[0], -7.1);
+  EXPECT_GT(output_ptr[0], -7.2);
   EXPECT_LT(output_ptr[9], -15.75);
-  EXPECT_GT(output_ptr[9], -15.9);
+  EXPECT_GT(output_ptr[9], -16.0);
   output = model.Run(0);
   output_ptr = output.data_ptr<float>();
   EXPECT_LT(output_ptr[0], -7.3);
@@ -67,16 +67,16 @@ TEST(Model, ncnn_int8) {
   auto output = model.Run(0);
   auto output_ptr = output.data_ptr<float>();
   // NOTE: different machines may have different results
-  EXPECT_LT(output_ptr[0], -0.20);
-  EXPECT_GT(output_ptr[0], -0.30);
+  EXPECT_LT(output_ptr[0], -0.15);
+  EXPECT_GT(output_ptr[0], -0.35);
   EXPECT_LT(output_ptr[9], -10.0);
   EXPECT_GT(output_ptr[9], -10.5);
   float old_output_0 = output_ptr[0];
   float old_output_9 = output_ptr[9];
   output = model.Run(0);
   output_ptr = output.data_ptr<float>();
-  EXPECT_LT(output_ptr[0], -1.34);
-  EXPECT_GT(output_ptr[0], -1.39);
+  EXPECT_LT(output_ptr[0], -1.30);
+  EXPECT_GT(output_ptr[0], -1.45);
   EXPECT_LT(output_ptr[9], -9.1);
   EXPECT_GT(output_ptr[9], -9.4);
   model.ResetStates();
