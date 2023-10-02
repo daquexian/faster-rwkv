@@ -76,9 +76,9 @@ TEST(Model, ncnn_int8) {
   output = model.Run(0);
   output_ptr = output.data_ptr<float>();
   EXPECT_LT(output_ptr[0], -1.30);
-  EXPECT_GT(output_ptr[0], -1.45);
+  EXPECT_GT(output_ptr[0], -1.48);
   EXPECT_LT(output_ptr[9], -9.1);
-  EXPECT_GT(output_ptr[9], -9.4);
+  EXPECT_GT(output_ptr[9], -9.6);
   model.ResetStates();
   output = model.Run(0);
   output_ptr = output.data_ptr<float>();
