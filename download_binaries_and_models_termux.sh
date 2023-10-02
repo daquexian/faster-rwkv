@@ -23,7 +23,7 @@ else
 fi
 sleep 1
 rm -f chat
-aria2c -c -x16 -s16 https://github.com/daquexian/faster-rwkv/releases/download/v0.0.5/chat-android -o chat
+aria2c -c -x16 -s16 https://github.com/daquexian/faster-rwkv/releases/download/v0.0.6/chat-android -o chat
 chmod +x chat
 aria2c -c -x16 -s16 https://huggingface.co/daquexian/fr-models/resolve/02382cd/tokenizers/world_tokenizer -o world_tokenizer
 
@@ -35,9 +35,9 @@ if (( $ARG >= 1 )); then
     chmod +x run_0.1b_int8.sh
 fi
 if (( $ARG >= 2 )); then
-    aria2c -c -x16 -s16 https://huggingface.co/daquexian/fr-models/raw/46059b9/RWKV-4-World-CHNtuned-1.5B-v1-20230620-ctx4096-ncnn-int4.param -o RWKV-4-World-CHNtuned-1.5B-v1-20230620-ctx4096-ncnn-int4.param
-    aria2c -c -x16 -s16 https://huggingface.co/daquexian/fr-models/raw/46059b9/RWKV-4-World-CHNtuned-1.5B-v1-20230620-ctx4096-ncnn-int4.config -o RWKV-4-World-CHNtuned-1.5B-v1-20230620-ctx4096-ncnn-int4.config
-    aria2c -c -x16 -s16 https://huggingface.co/daquexian/fr-models/resolve/46059b9/RWKV-4-World-CHNtuned-1.5B-v1-20230620-ctx4096-ncnn-int4.bin -o RWKV-4-World-CHNtuned-1.5B-v1-20230620-ctx4096-ncnn-int4.bin
+    aria2c -c -x16 -s16 https://huggingface.co/daquexian/fr-models/resolve/efc05d6/RWKV-4-World-CHNtuned-1.5B-v1-20230620-ctx4096/ncnn/int4/RWKV-4-World-CHNtuned-1.5B-v1-20230620-ctx4096-ncnn-int4.param -o RWKV-4-World-CHNtuned-1.5B-v1-20230620-ctx4096-ncnn-int4.param
+    aria2c -c -x16 -s16 https://huggingface.co/daquexian/fr-models/resolve/efc05d6/RWKV-4-World-CHNtuned-1.5B-v1-20230620-ctx4096/ncnn/int4/RWKV-4-World-CHNtuned-1.5B-v1-20230620-ctx4096-ncnn-int4.config -o RWKV-4-World-CHNtuned-1.5B-v1-20230620-ctx4096-ncnn-int4.config
+    aria2c -c -x16 -s16 https://huggingface.co/daquexian/fr-models/resolve/efc05d6/RWKV-4-World-CHNtuned-1.5B-v1-20230620-ctx4096/ncnn/int4/RWKV-4-World-CHNtuned-1.5B-v1-20230620-ctx4096-ncnn-int4.bin -o RWKV-4-World-CHNtuned-1.5B-v1-20230620-ctx4096-ncnn-int4.bin
     echo 'SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd ); FR_SHOW_SPEED=1 $SCRIPT_DIR/chat $SCRIPT_DIR/world_tokenizer $SCRIPT_DIR/RWKV-4-World-CHNtuned-1.5B-v1-20230620-ctx4096-ncnn-int4 "ncnn auto"' > run_1.5b_int4.sh
     chmod +x run_1.5b_int4.sh
 fi
