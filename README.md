@@ -1,5 +1,35 @@
 ## Faster RWKV
 
+### Android Demo
+
+*Try int4-quantized LLM on Android phone*
+
+Run one of the following commands in Termux to download prebuilt executables and models automatically. The download script supports continuely downloading partially downloaded files, so feel free to Ctrl-C and restart it if the speed is too slow.
+
+Executables, 1.5B CHNtuned int8 model, 1.5B CHNtuned int4 model and 0.1B world int8 model:
+
+```
+curl -L -s https://raw.githubusercontent.com/daquexian/faster-rwkv/master/download_binaries_and_models_termux.sh | bash -s 3
+```
+
+Executables, 1.5B CHNtuned int4 model and 0.1B world int8 model:
+
+```
+curl -L -s https://raw.githubusercontent.com/daquexian/faster-rwkv/master/download_binaries_and_models_termux.sh | bash -s 2
+```
+
+Executables and 0.1B world int8 model:
+
+```
+curl -L -s https://raw.githubusercontent.com/daquexian/faster-rwkv/master/download_binaries_and_models_termux.sh | bash -s 1
+```
+
+Executables only:
+
+```
+curl -L -s https://raw.githubusercontent.com/daquexian/faster-rwkv/master/download_binaries_and_models_termux.sh | bash -s 0
+```
+
 ### CUDA
 
 #### Convert Model
@@ -65,34 +95,6 @@ ninja
 * RAM >= 4GB (for 1.5B model)
 
 * No hard requirement for CPU. More powerful = faster.
-
-### Android Demo
-
-Run one of the following commands in Termux to download prebuilt executables and models automatically. The download script supports continuely downloading partially downloaded files, so feel free to Ctrl-C and restart it if the speed is too slow.
-
-Executables, 1.5B CHNtuned int8 model, 1.5B CHNtuned int4 model and 0.1B world int8 model:
-
-```
-curl -L -s https://raw.githubusercontent.com/daquexian/faster-rwkv/master/download_binaries_and_models_termux.sh | bash -s 3
-```
-
-Executables, 1.5B CHNtuned int4 model and 0.1B world int8 model:
-
-```
-curl -L -s https://raw.githubusercontent.com/daquexian/faster-rwkv/master/download_binaries_and_models_termux.sh | bash -s 2
-```
-
-Executables and 0.1B world int8 model:
-
-```
-curl -L -s https://raw.githubusercontent.com/daquexian/faster-rwkv/master/download_binaries_and_models_termux.sh | bash -s 1
-```
-
-Executables only:
-
-```
-curl -L -s https://raw.githubusercontent.com/daquexian/faster-rwkv/master/download_binaries_and_models_termux.sh | bash -s 0
-```
 
 ### TODO
 
