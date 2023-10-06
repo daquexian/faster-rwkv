@@ -5,6 +5,7 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <kernels/macro.h>
 #include <kernels/registry.h>
 #include <numeric>
 #include <tensor.h>
@@ -13,14 +14,14 @@
 namespace rwkv {
 namespace cuda {
 template <typename T, int ndim>
-__global__ void _transpose(const T *src, T *dst, int dim_a, int dim_b,
+__global__ void _transpose(LengthType total_elems, LengthType offset,
+                           const T *src, T *dst, int dim_a, int dim_b,
                            const LengthType *src_shape,
-                           const LengthType *dst_shape,
-                           LengthType total_elems) {
+                           const LengthType *dst_shape) {
   LengthType src_idx[ndim];
   LengthType dst_idx[ndim];
-  for (LengthType i = blockIdx.x * blockDim.x + threadIdx.x; i < total_elems;
-       i += blockDim.x * gridDim.x) {
+  for (LengthType i = blockIdx.x * blockDim.x + threadIdx.x + offset;
+       i < total_elems; i += blockDim.x * gridDim.x) {
     ::cuda::offset_to_indices(i, dst_shape, dst_idx, total_elems, ndim);
     for (int j = 0; j < ndim; j++) {
       src_idx[j] = dst_idx[j];
@@ -60,15 +61,9 @@ Tensor transpose_internal(const Tensor &x, int dim_a, int dim_b) {
              cudaMemcpyHostToDevice);
 
 #define LAUNCH_TRANSPOSE_KERNEL(type)                                          \
-  if (total_elems % 256 == 0) {                                                \
-    _transpose<type, ndim><<<total_elems / 256, 256>>>(                        \
-        x.data_ptr<type>(), dst.data_ptr<type>(), dim_a, dim_b, src_shape_gpu, \
-        dst_shape_gpu, total_elems);                                           \
-  } else {                                                                     \
-    _transpose<type, ndim>                                                     \
-        <<<1, 256>>>(x.data_ptr<type>(), dst.data_ptr<type>(), dim_a, dim_b,   \
-                     src_shape_gpu, dst_shape_gpu, total_elems);               \
-  }
+  FR_LAUNCH_CUDA_KERNEL_BASE_256(_transpose, type, ndim, total_elems,          \
+                                 x.data_ptr<type>(), dst.data_ptr<type>(),     \
+                                 dim_a, dim_b, src_shape_gpu, dst_shape_gpu);
 
   if (x.dtype() == DType::kFloat32) {
     LAUNCH_TRANSPOSE_KERNEL(float)

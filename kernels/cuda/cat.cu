@@ -4,6 +4,7 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <kernels/macro.h>
 #include <kernels/registry.h>
 #include <numeric>
 #include <tensor.h>
@@ -25,13 +26,13 @@ out_total: the total element number of the output tensor
 TODO(Rinne): optimize this kernel.
 */
 template <typename T>
-__global__ void _cat(const T *a, const T *b, T *out, int dim, int left,
-                     int right, int a_size, int b_size, int out_total) {
+__global__ void _cat(int out_total, int offset, const T *a, const T *b, T *out,
+                     int dim, int left, int right, int a_size, int b_size) {
   int a_except_left = a_size * right;
   int b_except_left = b_size * right;
   int except_left =
       a_except_left + b_except_left; // elem count except the left part
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < out_total;
+  for (int i = blockIdx.x * blockDim.x + threadIdx.x + offset; i < out_total;
        i += blockDim.x * gridDim.x) {
     int left_index = i / except_left;
     int out_dim_index = (i / right) % except_left;
@@ -86,15 +87,10 @@ Tensor cat(const Tensor &a, const Tensor &b, int dim) {
   int total = out.numel();
 
 #define LAUNCH_KERNEL(type)                                                    \
-  if (total % 256 == 0) {                                                      \
-    _cat<<<total / 256, 256>>>(a.data_ptr<type>(), b.data_ptr<type>(),         \
-                               out.data_ptr<type>(), dim, left_size,           \
-                               right_size, a_dim_size, b_dim_size, total);     \
-  } else {                                                                     \
-    _cat<<<1, 256>>>(a.data_ptr<type>(), b.data_ptr<type>(),                   \
-                     out.data_ptr<type>(), dim, left_size, right_size,         \
-                     a_dim_size, b_dim_size, total);                           \
-  }
+  FR_LAUNCH_CUDA_KERNEL_NO_ALLOC_BASE_256(                                     \
+      _cat, total, a.data_ptr<type>(), b.data_ptr<type>(),                     \
+      out.data_ptr<type>(), dim, left_size, right_size, a_dim_size,            \
+      b_dim_size);
 
   if (out.dtype() == DType::kFloat32) {
     LAUNCH_KERNEL(float)

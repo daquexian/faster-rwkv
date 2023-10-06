@@ -1,10 +1,10 @@
-
 #include "check.h"
 #include "element_wise.cuh"
 #include "util.cuh"
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <kernels/macro.h>
 #include <kernels/registry.h>
 #include <numeric>
 #include <tensor.h>
@@ -13,13 +13,13 @@
 namespace rwkv {
 namespace cuda {
 template <typename T, int ndim>
-__global__ void _flip(const T *src, T *dst, LengthType total_elems,
-                      const LengthType *shape, int flipped_ndim,
+__global__ void _flip(LengthType total_elems, LengthType offset, const T *src,
+                      T *dst, const LengthType *shape, int flipped_ndim,
                       const LengthType *dims) {
   LengthType src_idx[ndim];
 
-  for (LengthType i = blockIdx.x * blockDim.x + threadIdx.x; i < total_elems;
-       i += blockDim.x * gridDim.x) {
+  for (LengthType i = blockIdx.x * blockDim.x + threadIdx.x + offset;
+       i < total_elems; i += blockDim.x * gridDim.x) {
     ::cuda::offset_to_indices(i, shape, src_idx, total_elems, ndim);
     for (LengthType j = 0; j < flipped_ndim; j++) {
       auto dim = dims[j];
@@ -47,15 +47,9 @@ Tensor flip_internal(const Tensor &x, const std::vector<LengthType> &dims) {
              cudaMemcpyHostToDevice);
 
 #define LAUNCH_FLIP_KERNEL(type)                                               \
-  if (total_elems % 256 == 0) {                                                \
-    _flip<type, ndim><<<total_elems / 256, 256>>>(                             \
-        x.data_ptr<type>(), dst.data_ptr<type>(), total_elems, src_shape_gpu,  \
-        flipped_ndim, dims_gpu);                                               \
-  } else {                                                                     \
-    _flip<type, ndim><<<1, 256>>>(x.data_ptr<type>(), dst.data_ptr<type>(),    \
-                                  total_elems, src_shape_gpu, flipped_ndim,    \
-                                  dims_gpu);                                   \
-  }
+  FR_LAUNCH_CUDA_KERNEL_BASE_256(_flip, type, ndim, total_elems,               \
+                                 x.data_ptr<type>(), dst.data_ptr<type>(),     \
+                                 src_shape_gpu, flipped_ndim, dims_gpu);
 
   if (x.dtype() == DType::kFloat32) {
     LAUNCH_FLIP_KERNEL(float)

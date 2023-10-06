@@ -5,6 +5,7 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <kernels/macro.h>
 #include <kernels/registry.h>
 #include <numeric>
 #include <tensor.h>
@@ -14,14 +15,15 @@ namespace rwkv {
 namespace cuda {
 
 template <typename T, int ndim>
-__global__ void _pad(const T *src, T *dst, const LengthType *src_shape,
+__global__ void _pad(LengthType total_elems, LengthType offset, const T *src,
+                     T *dst, const LengthType *src_shape,
                      const LengthType *dst_shape, const LengthType *paddings,
-                     LengthType total_elems, T value) {
+                     T value) {
   LengthType src_idx[ndim];
   LengthType dst_idx[ndim];
 
-  for (LengthType i = blockIdx.x * blockDim.x + threadIdx.x; i < total_elems;
-       i += blockDim.x * gridDim.x) {
+  for (LengthType i = blockIdx.x * blockDim.x + threadIdx.x + offset;
+       i < total_elems; i += blockDim.x * gridDim.x) {
     ::cuda::offset_to_indices(i, dst_shape, dst_idx, total_elems, ndim);
     bool to_pad = false;
     for (int j = 0; j < ndim; j++) {
@@ -36,13 +38,6 @@ __global__ void _pad(const T *src, T *dst, const LengthType *src_shape,
     if (!to_pad) {
       dst[i] = src[::cuda::indices_to_offset(src_shape, src_idx, ndim)];
     } else {
-      // printf("i: %ld, dst_idx: [%ld, %ld], src_idx: [%ld, %ld], dst_shape: "
-      //        "[%ld, %ld], src_shape: [ % ld, % ld ], total_elems: [ % ld, %
-      //        ld "
-      //        "], paddings: [ % ld, % ld, % ld, % ld ]\n ",
-      //        i, dst_idx[0], dst_idx[1], src_idx[0], src_idx[1], dst_shape[0],
-      //        dst_shape[1], src_shape[0], src_shape[1], total_elems,
-      //        paddings[0], paddings[1], paddings[2], paddings[3]);
       dst[i] = value;
     }
   }
@@ -73,14 +68,6 @@ Tensor pad_internal(const Tensor &x, const std::vector<LengthType> &paddings,
   };
 
   Shape dst_shape = deduce_shape();
-
-  // print elements in `paddings_vec`
-  // std::cout << "paddings vec size: " << paddings_vec.size() << std::endl;
-  // for (auto i : paddings_vec) {
-  //   std::cout << i << " ";
-  // }
-  // std::cout << std::endl;
-
   Tensor dst = Tensor::Empty(dst_shape, x.dtype(), x.device());
   auto total_elems = dst.numel();
 
@@ -98,15 +85,9 @@ Tensor pad_internal(const Tensor &x, const std::vector<LengthType> &paddings,
              paddings_vec.size() * sizeof(LengthType), cudaMemcpyHostToDevice);
 
 #define LAUNCH_PAD_KERNEL(type, value)                                         \
-  if (total_elems % 256 == 0) {                                                \
-    _pad<type, ndim><<<total_elems / 256, 256>>>(                              \
-        x.data_ptr<type>(), dst.data_ptr<type>(), src_shape_gpu,               \
-        dst_shape_gpu, paddings_gpu, total_elems, value);                      \
-  } else {                                                                     \
-    _pad<type, ndim><<<1, 256>>>(x.data_ptr<type>(), dst.data_ptr<type>(),     \
-                                 src_shape_gpu, dst_shape_gpu, paddings_gpu,   \
-                                 total_elems, value);                          \
-  }
+  FR_LAUNCH_CUDA_KERNEL_BASE_256(                                              \
+      _pad, type, ndim, total_elems, x.data_ptr<type>(), dst.data_ptr<type>(), \
+      src_shape_gpu, dst_shape_gpu, paddings_gpu, value);
 
   if (x.dtype() == DType::kFloat32) {
     LAUNCH_PAD_KERNEL(float, .0f)

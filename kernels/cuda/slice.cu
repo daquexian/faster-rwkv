@@ -4,6 +4,7 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <kernels/macro.h>
 #include <kernels/registry.h>
 #include <numeric>
 #include <stdio.h>
@@ -14,12 +15,12 @@ namespace rwkv {
 namespace cuda {
 
 template <typename T, int ndim>
-__global__ void _slice(const T *input, T *output, int output_total,
+__global__ void _slice(int output_total, int offset, const T *input, T *output,
                        const LengthType *input_shape,
                        const LengthType *output_shape, const int *starts,
                        const int *intervals) {
   LengthType indices[ndim];
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < output_total;
+  for (int i = blockIdx.x * blockDim.x + threadIdx.x + offset; i < output_total;
        i += blockDim.x * gridDim.x) {
     ::cuda::offset_to_indices(i, output_shape, indices, output_total, ndim);
     for (int j = 0; j < ndim; j++) {
@@ -89,15 +90,10 @@ Tensor slice_internal(const Tensor &x, const std::vector<Range> &ranges) {
              cudaMemcpyHostToDevice);
 
 #define LAUNCH_KERNEL(type)                                                    \
-  if (total_elems % 256 == 0) {                                                \
-    _slice<type, ndim><<<total_elems / 256, 256>>>(                            \
-        x.data_ptr<type>(), output.data_ptr<type>(), total_elems,              \
-        input_shape_gpu, output_shape_gpu, start_ptr, interval_ptr);           \
-  } else {                                                                     \
-    _slice<type, ndim><<<1, 256>>>(                                            \
-        x.data_ptr<type>(), output.data_ptr<type>(), total_elems,              \
-        input_shape_gpu, output_shape_gpu, start_ptr, interval_ptr);           \
-  }
+  FR_LAUNCH_CUDA_KERNEL_BASE_256(_slice, type, ndim, total_elems,              \
+                                 x.data_ptr<type>(), output.data_ptr<type>(),  \
+                                 input_shape_gpu, output_shape_gpu, start_ptr, \
+                                 interval_ptr);
 
   if (output.dtype() == DType::kFloat32) {
     LAUNCH_KERNEL(float)

@@ -5,6 +5,7 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <kernels/macro.h>
 #include <kernels/registry.h>
 #include <numeric>
 #include <tensor.h>
@@ -14,11 +15,11 @@ namespace rwkv {
 namespace cuda {
 
 template <typename T, int ndim>
-__global__ void _repeat(const T *src, T *dst, LengthType dst_total,
-                        LengthType *dst_shape, LengthType *src_shape) {
+__global__ void _repeat(LengthType dst_total, LengthType offset, const T *src,
+                        T *dst, LengthType *dst_shape, LengthType *src_shape) {
   LengthType indices[ndim];
-  for (LengthType i = blockIdx.x * blockDim.x + threadIdx.x; i < dst_total;
-       i += blockDim.x * gridDim.x) {
+  for (LengthType i = blockIdx.x * blockDim.x + threadIdx.x + offset;
+       i < dst_total; i += blockDim.x * gridDim.x) {
     ::cuda::offset_to_indices(i, dst_shape, indices, dst_total, ndim);
     for (int j = 0; j < ndim; j++) {
       indices[j] = indices[j] % src_shape[j];
@@ -62,14 +63,9 @@ Tensor repeat_internal(const Tensor &x,
              cudaMemcpyHostToDevice);
 
 #define LAUNCH_REPEAT_KERNEL(type)                                             \
-  if (dst_total % 256 == 0) {                                                  \
-    _repeat<type, ndim>                                                        \
-        <<<dst_total / 256, 256>>>(x.data_ptr<type>(), dst.data_ptr<type>(),   \
-                                   dst_total, dst_shape_gpu, src_shape_gpu);   \
-  } else {                                                                     \
-    _repeat<type, ndim><<<1, 256>>>(x.data_ptr<type>(), dst.data_ptr<type>(),  \
-                                    dst_total, dst_shape_gpu, src_shape_gpu);  \
-  }
+  FR_LAUNCH_CUDA_KERNEL_BASE_256(_repeat, type, ndim, dst_total,               \
+                                 x.data_ptr<type>(), dst.data_ptr<type>(),     \
+                                 dst_shape_gpu, src_shape_gpu);
 
   if (x.dtype() == DType::kFloat32) {
     LAUNCH_REPEAT_KERNEL(float);
