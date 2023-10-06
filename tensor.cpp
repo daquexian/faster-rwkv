@@ -238,7 +238,8 @@ void print_n(const rwkv::Tensor &x, const std::string &name, int skip,
     if (x.dtype() == rwkv::DType::kFloat32) {
       std::cout << x_cpu.data_ptr<float>()[skip + i] << ", ";
     } else if (x.dtype() == rwkv::DType::kFloat16) {
-      std::cout << static_cast<float>(x_cpu.data_ptr<half>()[skip + i]) << ", ";
+      std::cout << static_cast<float>(x_cpu.data_ptr<float16>()[skip + i])
+                << ", ";
     }
   }
   std::cout << std::endl;
