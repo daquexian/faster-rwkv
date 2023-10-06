@@ -50,7 +50,8 @@ PYBIND11_MODULE(fr_python, m) {
           [](const std::filesystem::path &path, const std::string &strategy) {
             return std::make_shared<Model>(std::string(path), strategy);
           }))
-      .def("_run", py::overload_cast<const std::vector<int> &>(&Model::Run))
+      .def("_run",
+           py::overload_cast<const std::vector<int> &, bool>(&Model::Run))
       .def("_run", py::overload_cast<int>(&Model::Run))
       .def("states", &Model::states)
       .def("reset_states", &Model::ResetStates);
