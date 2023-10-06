@@ -27,7 +27,7 @@ void element_wise(Func func, int n) {
   } else if (n % 128 == 0) {
     _element_wise<<<n / 128, 128>>>(func, n);
   } else {
-    _element_wise<<<1, n>>>(func, n);
+    _element_wise<<<1, 256>>>(func, n);
   }
 }
 

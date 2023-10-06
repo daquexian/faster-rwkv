@@ -22,7 +22,7 @@ __global__ void _transpose(const T *src, T *dst, int dim_a, int dim_b,
   for (LengthType i = blockIdx.x * blockDim.x + threadIdx.x; i < total_elems;
        i += blockDim.x * gridDim.x) {
     ::cuda::offset_to_indices(i, dst_shape, dst_idx, total_elems, ndim);
-    for (LengthType j = 0; j < ndim; j++) {
+    for (int j = 0; j < ndim; j++) {
       src_idx[j] = dst_idx[j];
     }
     src_idx[dim_b] = dst_idx[dim_a];
@@ -34,14 +34,13 @@ __global__ void _transpose(const T *src, T *dst, int dim_a, int dim_b,
 
 template <int ndim>
 Tensor transpose_internal(const Tensor &x, int dim_a, int dim_b) {
+  if (dim_a < 0)
+    dim_a += ndim;
+  if (dim_b < 0)
+    dim_b += ndim;
+  RV_CHECK(dim_a >= 0 && dim_b >= 0)
+  RV_CHECK(dim_a < ndim && dim_b < ndim)
   auto deduce_shape = [&x, &dim_a, &dim_b]() {
-    auto n_dim = x.sizes().size();
-    RV_CHECK(n_dim >= 2)
-    if (dim_a < 0)
-      dim_a += n_dim;
-    if (dim_b < 0)
-      dim_b += n_dim;
-    RV_CHECK(dim_a < n_dim && dim_b < n_dim)
     auto shape = Shape(x.shape());
     std::swap(shape[dim_a], shape[dim_b]);
     return shape;
@@ -49,7 +48,7 @@ Tensor transpose_internal(const Tensor &x, int dim_a, int dim_b) {
   Shape src_shape = x.shape();
   Shape dst_shape = deduce_shape();
   Tensor dst = Tensor::Empty(dst_shape, x.dtype(), x.device());
-  auto total_elems = x.numel();
+  auto total_elems = dst.numel();
 
   LengthType *src_shape_gpu;
   LengthType *dst_shape_gpu;
@@ -59,6 +58,14 @@ Tensor transpose_internal(const Tensor &x, int dim_a, int dim_b) {
              cudaMemcpyHostToDevice);
   cudaMemcpy(dst_shape_gpu, dst_shape.data(), ndim * sizeof(LengthType),
              cudaMemcpyHostToDevice);
+
+  cudaDeviceSynchronize();
+  cudaError_t error_a = cudaGetLastError();
+  if (error_a != cudaSuccess) {
+    printf("transpose allocation CUDA error: %s\n",
+           cudaGetErrorString(error_a));
+    RV_UNIMPLEMENTED();
+  }
 
 #define LAUNCH_TRANSPOSE_KERNEL(type)                                          \
   if (total_elems % 256 == 0) {                                                \
@@ -95,9 +102,8 @@ Tensor transpose_internal(const Tensor &x, int dim_a, int dim_b) {
 
 Tensor transpose(const Tensor &x, int dim_a, int dim_b) {
   int ndim = x.sizes().size();
-  if (ndim == 1) {
-    return transpose_internal<1>(x, dim_a, dim_b);
-  } else if (ndim == 2) {
+  RV_CHECK(ndim >= 2)
+  if (ndim == 2) {
     return transpose_internal<2>(x, dim_a, dim_b);
   } else if (ndim == 3) {
     return transpose_internal<3>(x, dim_a, dim_b);

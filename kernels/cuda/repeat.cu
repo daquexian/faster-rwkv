@@ -51,8 +51,6 @@ Tensor repeat_internal(const Tensor &x,
   auto dst_shape = deduce_shape();
   Tensor dst = Tensor::Empty(dst_shape, x.dtype(), x.device());
   LengthType dst_total = dst.numel();
-  LengthType repeat_total = std::accumulate(repeats.begin(), repeats.end(), 1,
-                                            std::multiplies<LengthType>());
 
   LengthType *src_shape_gpu;
   LengthType *dst_shape_gpu;

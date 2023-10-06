@@ -13,7 +13,7 @@ namespace cuda {
 Tensor layer_norm_op(const Tensor &x, const Tensor &weight, const Tensor &bias);
 void gemm_cublas_tensor(const Tensor &a, const Tensor &b, Tensor &c);
 
-struct FfnOneMix {
+struct FfnSeqMix {
   __device__ __forceinline__ void operator()(int idx) const {
     half k_mix_ = k_mix[idx % mix_numel];
     half r_mix_ = r_mix[idx % mix_numel];

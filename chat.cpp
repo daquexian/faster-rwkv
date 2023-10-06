@@ -37,9 +37,9 @@ int main(int argc, char **argv) {
     std::cout << kUserPrefix;
     std::string input;
     // std::getline(std::cin, input);
-    input = "Hi";
+    input = "hello";
     std::cout << kAssistantPrefix;
-    const std::string prompt =
+    std::string prompt =
         kUserPrefix + input + kDoubleNewLine + kAssistantPrefix;
     auto start = std::chrono::system_clock::now();
     auto tmp = start;
@@ -47,7 +47,6 @@ int main(int argc, char **argv) {
     auto encode_time = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::system_clock::now() - tmp);
     tmp = std::chrono::system_clock::now();
-    std::cout << "prompt length: " << prompt_ids.size() << std::endl;
     auto output = Copy(model.Run(prompt_ids), rwkv::Device::kCPU);
     std::string response;
     int num_new_tokens = 0;

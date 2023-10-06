@@ -164,7 +164,7 @@ Tensor Model::Run(int id) {
   return _Run(id);
 }
 
-Tensor Model::Run(const std::vector<int> &ids) {
+Tensor Model::Run(const std::vector<int> &ids, bool seq_mode) {
   if (kDebug) {
     std::cout << "[seq mode]Model::Run(";
     for (auto id : ids) {
@@ -172,7 +172,17 @@ Tensor Model::Run(const std::vector<int> &ids) {
     }
     std::cout << ")" << std::endl;
   }
-  return _Run(ids);
+  if (seq_mode) {
+    return _Run(ids);
+  } else {
+    for (int i = 0; i < ids.size(); ++i) {
+      auto id = ids[i];
+      auto out = _Run(id);
+      if (i == ids.size() - 1) {
+        return out;
+      }
+    }
+  }
 }
 
 Tensor Model::_Run(int id) {

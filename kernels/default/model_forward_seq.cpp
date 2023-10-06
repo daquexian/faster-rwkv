@@ -126,7 +126,6 @@ Tensor ModelForwardSeq(const Model *model, Device device,
       scalar_div_(x, 2);
     }
   }
-  RV_UNIMPLEMENTED();
 
   //             x = F.layer_norm(x, (args.n_embd,),
   //             weight=w['ln_out.weight'], bias=w['ln_out.bias'])

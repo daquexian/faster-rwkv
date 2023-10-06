@@ -14,7 +14,7 @@ using States = std::vector<std::vector<Tensor>>;
 struct Model {
   Model(const std::string &path, const std::string &strategy);
   Model(const std::string &path, const std::string &strategy, std::any extra);
-  Tensor Run(const std::vector<int> &id);
+  Tensor Run(const std::vector<int> &id, bool seq_mode = true);
   Tensor Run(int id);
   void LoadStateFile(const std::string &path);
   void ResetStates();

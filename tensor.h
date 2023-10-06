@@ -28,6 +28,8 @@ class Tensor;
 void print_n(const rwkv::Tensor &x, const std::string &name, int skip,
              int cnt = 20);
 
+void print_shape(const rwkv::Tensor &x, const std::string &name);
+
 enum class DType {
   kUndefined,
   kInt8,

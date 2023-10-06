@@ -226,15 +226,25 @@ TensorStorage::~TensorStorage() {
 void print_n(const rwkv::Tensor &x, const std::string &name, int skip,
              int cnt) {
   auto x_cpu = rwkv::Copy(x, rwkv::Device::kCPU);
+  auto max_elems = x.numel();
+  if (cnt > max_elems) {
+    cnt = max_elems;
+    skip = 0;
+  }
   std::cout << ">>>>>>>> " << name << ": ";
   for (int i = 0; i < cnt; i++) {
     if (x.dtype() == rwkv::DType::kFloat32) {
-      std::cout << x_cpu.data_ptr<float>()[skip + i] << ", ";
+      std::cout << x_cpu.data_ptr<float>()[skip + i] << "\n";
     } else if (x.dtype() == rwkv::DType::kFloat16) {
-      std::cout << static_cast<float>(x_cpu.data_ptr<half>()[skip + i]) << ", ";
+      std::cout << static_cast<float>(x_cpu.data_ptr<half>()[skip + i]) << "\n";
     }
   }
   std::cout << std::endl;
+}
+
+void print_shape(const rwkv::Tensor &x, const std::string &name) {
+  std::cout << ">>>>>>>> " << name << ": " << x.sizes().size() << " dims  "
+            << x.size(0) << ", " << x.size(1) << ", " << x.size(2) << std::endl;
 }
 
 } // namespace rwkv
