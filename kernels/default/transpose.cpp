@@ -34,12 +34,12 @@ void transpose_internal(const T *src, T *dst, const Shape &src_shape,
 Tensor transpose(const Tensor &x, int dim_a, int dim_b) {
   auto deduce_shape = [&x, &dim_a, &dim_b]() {
     auto n_dim = x.sizes().size();
-    RV_CHECK(n_dim >= 2)
+    RV_CHECK(n_dim >= 2);
     if (dim_a < 0)
       dim_a += n_dim;
     if (dim_b < 0)
       dim_b += n_dim;
-    RV_CHECK(dim_a < n_dim && dim_b < n_dim)
+    RV_CHECK(dim_a < n_dim && dim_b < n_dim);
     auto shape = x.shape();
     std::swap(shape[dim_a], shape[dim_b]);
     return shape;
@@ -60,7 +60,7 @@ Tensor transpose(const Tensor &x, int dim_a, int dim_b) {
   } else if (x.dtype() == DType::kInt8) {
     LAUNCH_TRANSPOSE_KERNEL(int8_t)
   } else {
-    RV_CHECK(false)
+    RV_CHECK(false);
   }
 
   return dst;

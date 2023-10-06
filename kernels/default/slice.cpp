@@ -74,7 +74,7 @@ Tensor slice(const Tensor &x, const std::vector<Range> &ranges) {
     LAUNCH_SLICE_VALUE_COPY(uint8_t)
   }
 
-  RV_UNIMPLEMENTED()
+  RV_UNIMPLEMENTED();
 
 #undef LAUNCH_SLICE_VALUE_COPY
 }

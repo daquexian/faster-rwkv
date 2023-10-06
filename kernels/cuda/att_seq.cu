@@ -86,7 +86,8 @@ struct KwkMul {
   const int last_dim;
 
   __device__ void operator()(int i) const {
-    kwk[i] = k[i] * wk[i / broad_cast_base * last_dim + i % last_dim];
+    kwk[i] =
+        k[i] * wk[i / last_dim / broad_cast_base * last_dim + i % last_dim];
   }
 };
 
@@ -119,9 +120,8 @@ Tensor _ATT_SEQ_V5(const Tensor &x, const Tensor &s, const Tensor &ln_w,
                    Tensor &kwkv_gemm, Tensor &wss_mul, LengthType H,
                    LengthType S, LengthType T) {
   Tensor xx = cuda::layer_norm_op(x, ln_w, ln_b);
-
-  Tensor temp = xx.slice({Range(0, 1, -1), Range::All});
-  Tensor converted_sx = cat(unsqueeze(sx, -1), temp, 0);
+  Tensor converted_sx =
+      cat(unsqueeze(sx, -1), xx.slice({Range(0, 1, -1), Range::All}), 0);
 
   element_wise(AttSeqMix{xx.data_ptr<half>(), converted_sx.data_ptr<half>(),
                          k_mix.data_ptr<half>(), v_mix.data_ptr<half>(),
@@ -159,9 +159,7 @@ Tensor _ATT_SEQ_V5(const Tensor &x, const Tensor &s, const Tensor &ln_w,
   gemm_cublas_tensor(rx, rw, r);
   r = r.view({T, H, S}).transpose(0, 1); // [H, T, S]
   gemm_cublas_tensor(kx, kw, k);
-  // print_n(kx, "kx", 0, kx.numel());
-  print_shape(kx, "kx");
-  RV_UNIMPLEMENTED();
+  // RV_UNIMPLEMENTED();
   k = k.view({T, H, S}).transpose(0, 1);
   k = k.transpose(-2, -1); // [H, S, T]
   gemm_cublas_tensor(vx, vw, v);

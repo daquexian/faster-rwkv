@@ -11,7 +11,7 @@ namespace def {
 Tensor repeat(const Tensor &x, const std::vector<LengthType> &repeats) {
   auto deduce_shape = [&x, &repeats]() {
     Shape x_shape = x.shape();
-    RV_CHECK(repeats.size() > 0)
+    RV_CHECK(repeats.size() > 0);
     auto max_dims = std::max(x_shape.size(), repeats.size());
     Shape res(max_dims, 1);
     for (int i = 0; i < max_dims; i++) {

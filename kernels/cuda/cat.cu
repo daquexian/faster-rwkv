@@ -56,7 +56,7 @@ __global__ void _cat(const T *a, const T *b, T *out, int dim, int left,
 Tensor cat(const Tensor &a, const Tensor &b, int dim) {
   RV_CHECK(a.sizes().size() == b.sizes().size());
   RV_CHECK(a.dtype() == b.dtype());
-  RV_CHECK(a.device() == b.device())
+  RV_CHECK(a.device() == b.device());
   int ndim = static_cast<int>(a.sizes().size());
 
   if (dim < 0) {
@@ -71,11 +71,11 @@ Tensor cat(const Tensor &a, const Tensor &b, int dim) {
   std::vector<LengthType> out_shape;
   for (int i = 0; i < ndim; i++) {
     if (i < dim) {
-      RV_CHECK(a.size(i) == b.size(i))
+      RV_CHECK(a.size(i) == b.size(i));
       left_size *= static_cast<int>(a.size(i));
       out_shape.push_back(a.size(i));
     } else if (i > dim) {
-      RV_CHECK(a.size(i) == b.size(i))
+      RV_CHECK(a.size(i) == b.size(i));
       right_size *= static_cast<int>(a.size(i));
       out_shape.push_back(a.size(i));
     } else {

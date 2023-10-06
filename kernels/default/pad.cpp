@@ -87,7 +87,7 @@ Tensor pad(const Tensor &x, const std::vector<LengthType> &paddings,
   } else if (x.dtype() == DType::kInt8) {
     LAUNCH_PAD_KERNEL(int8_t, static_cast<int8_t>(0))
   } else {
-    RV_CHECK(false)
+    RV_CHECK(false);
   }
 
   return dst;

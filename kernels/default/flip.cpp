@@ -46,7 +46,7 @@ Tensor flip(const Tensor &x, const std::vector<LengthType> &dims) {
   } else if (x.dtype() == DType::kInt8) {
     LAUNCH_FLIP_KERNEL(int8_t)
   } else {
-    RV_CHECK(false)
+    RV_CHECK(false);
   }
 
   return dst;

@@ -213,7 +213,7 @@ When using this api, please ensure that shape of x are all the same.
 */
 inline Tensor vgather(const std::vector<Tensor> &x,
                       const std::vector<int> &idx) {
-  RV_CHECK(x.size() > 0)
+  RV_CHECK(x.size() > 0);
   return KernelRegistry::Instance().Get<decltype(vgather) *>(
       "vgather", x[0].device())(x, idx);
 }
