@@ -37,7 +37,7 @@ Tensor repeat(const Tensor &x, const std::vector<LengthType> &repeats) {
     if (x.dtype() == DType::kFloat32) {
       MEM_COPY(float, 0, j *x.numel(), x.numel());
     } else if (x.dtype() == DType::kFloat16) {
-      MEM_COPY(half, 0, j * x.numel(), x.numel());
+      MEM_COPY(float16, 0, j * x.numel(), x.numel());
     } else if (x.dtype() == DType::kInt8) {
       MEM_COPY(int8_t, 0, j * x.numel(), x.numel());
     } else {

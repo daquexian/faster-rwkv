@@ -83,7 +83,7 @@ Tensor pad(const Tensor &x, const std::vector<LengthType> &paddings,
   if (x.dtype() == DType::kFloat32) {
     LAUNCH_PAD_KERNEL(float, .0f)
   } else if (x.dtype() == DType::kFloat16) {
-    LAUNCH_PAD_KERNEL(half, static_cast<half>(.0f))
+    LAUNCH_PAD_KERNEL(float16, static_cast<float16>(.0f))
   } else if (x.dtype() == DType::kInt8) {
     LAUNCH_PAD_KERNEL(int8_t, static_cast<int8_t>(0))
   } else {

@@ -42,7 +42,7 @@ Tensor flip(const Tensor &x, const std::vector<LengthType> &dims) {
   if (x.dtype() == DType::kFloat32) {
     LAUNCH_FLIP_KERNEL(float)
   } else if (x.dtype() == DType::kFloat16) {
-    LAUNCH_FLIP_KERNEL(half)
+    LAUNCH_FLIP_KERNEL(float16)
   } else if (x.dtype() == DType::kInt8) {
     LAUNCH_FLIP_KERNEL(int8_t)
   } else {

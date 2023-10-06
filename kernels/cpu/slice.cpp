@@ -69,7 +69,7 @@ Tensor slice(const Tensor &x, const std::vector<Range> &ranges) {
   if (x.dtype() == DType::kFloat32) {
     LAUNCH_SLICE_VALUE_COPY(float)
   } else if (x.dtype() == DType::kFloat16) {
-    LAUNCH_SLICE_VALUE_COPY(half)
+    LAUNCH_SLICE_VALUE_COPY(float16)
   } else if (x.dtype() == DType::kInt8) {
     LAUNCH_SLICE_VALUE_COPY(uint8_t)
   }

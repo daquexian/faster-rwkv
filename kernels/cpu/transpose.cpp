@@ -56,7 +56,7 @@ Tensor transpose(const Tensor &x, int dim_a, int dim_b) {
   if (x.dtype() == DType::kFloat32) {
     LAUNCH_TRANSPOSE_KERNEL(float)
   } else if (x.dtype() == DType::kFloat16) {
-    LAUNCH_TRANSPOSE_KERNEL(half)
+    LAUNCH_TRANSPOSE_KERNEL(float16)
   } else if (x.dtype() == DType::kInt8) {
     LAUNCH_TRANSPOSE_KERNEL(int8_t)
   } else {
