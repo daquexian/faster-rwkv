@@ -1,5 +1,6 @@
 #include "model.h"
 
+#include "check.h"
 #include "kernels/kernels.h"
 #include <tensor.h>
 
@@ -187,6 +188,7 @@ Tensor Model::Run(const std::vector<int> &ids, bool seq_mode) {
       }
     }
   }
+  RV_UNIMPLEMENTED();
 }
 
 Tensor Model::Run(int id) {
