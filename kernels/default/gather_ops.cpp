@@ -57,7 +57,7 @@ Tensor vgather(const std::vector<Tensor> &x, const std::vector<int> &idx) {
     if (x[0].dtype() == DType::kFloat32) {
       LAUNCH_VGATHER_KERNEL(vgather_internal_cpu, float)
     } else if (x[0].dtype() == DType::kFloat16) {
-      LAUNCH_VGATHER_KERNEL(vgather_internal_cpu, half)
+      LAUNCH_VGATHER_KERNEL(vgather_internal_cpu, float16)
     } else if (x[0].dtype() == DType::kInt8) {
       LAUNCH_VGATHER_KERNEL(vgather_internal_cpu, int8_t)
     } else {
@@ -67,7 +67,7 @@ Tensor vgather(const std::vector<Tensor> &x, const std::vector<int> &idx) {
     if (x[0].dtype() == DType::kFloat32) {
       LAUNCH_VGATHER_KERNEL(vgather_internal_cuda, float)
     } else if (x[0].dtype() == DType::kFloat16) {
-      LAUNCH_VGATHER_KERNEL(vgather_internal_cuda, half)
+      LAUNCH_VGATHER_KERNEL(vgather_internal_cuda, float16)
     } else if (x[0].dtype() == DType::kInt8) {
       LAUNCH_VGATHER_KERNEL(vgather_internal_cuda, int8_t)
     } else {
