@@ -27,6 +27,8 @@ void vgather_internal_cpu(const std::vector<Tensor> &x,
   }
 }
 
+#if FR_ENABLE_CUDA
+
 template <typename T>
 void vgather_internal_cuda(const std::vector<Tensor> &x,
                            const std::vector<int> &idx, Tensor &res, int count,
@@ -40,6 +42,8 @@ void vgather_internal_cuda(const std::vector<Tensor> &x,
     res_ptr += single_elems;
   }
 }
+
+#endif
 
 Tensor vgather(const std::vector<Tensor> &x, const std::vector<int> &idx) {
   auto single_shape = x[0].shape();
@@ -63,7 +67,9 @@ Tensor vgather(const std::vector<Tensor> &x, const std::vector<int> &idx) {
     } else {
       RV_CHECK(false);
     }
-  } else if (x[0].device() == Device::kCUDA) {
+  }
+#if FR_ENABLE_CUDA
+  else if (x[0].device() == Device::kCUDA) {
     if (x[0].dtype() == DType::kFloat32) {
       LAUNCH_VGATHER_KERNEL(vgather_internal_cuda, float)
     } else if (x[0].dtype() == DType::kFloat16) {
@@ -73,7 +79,9 @@ Tensor vgather(const std::vector<Tensor> &x, const std::vector<int> &idx) {
     } else {
       RV_CHECK(false);
     }
-  } else {
+  }
+#endif
+  else {
     RV_CHECK(false);
   }
 
