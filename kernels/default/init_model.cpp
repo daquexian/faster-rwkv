@@ -59,10 +59,8 @@ inline void init_model(Model *model, Device device, const std::string &path,
   model->_n_embd = map["n_embd"].as<int>();
 
   if (map.find("version") == map.end()) {
-    std::cout << ">>>>>>>>>>>>>>>> version 4 " << std::endl;
     model->_version = "4";
   } else {
-    std::cout << ">>>>>>>>>>>>>>>> version 5 " << std::endl;
     model->_version = map["version"].as<std::string>();
   }
 

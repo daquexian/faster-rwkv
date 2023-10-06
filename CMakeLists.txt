@@ -144,10 +144,10 @@ add_library(faster_rwkv_internal
         kernels/cpu/fill.cpp
         kernels/cpu/cast_dtype.cpp
         kernels/cpu/repeat.cpp
-        kernels/default/transpose.cpp
-        kernels/default/slice.cpp
-        kernels/default/flip.cpp
-        kernels/default/pad.cpp
+        kernels/cpu/transpose.cpp
+        kernels/cpu/slice.cpp
+        kernels/cpu/flip.cpp
+        kernels/cpu/pad.cpp
         kernels/default/gather_ops.cpp
         kernels/default/view_ops.cpp
         kernels/cpu/softmax.cpp

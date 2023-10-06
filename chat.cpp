@@ -40,8 +40,7 @@ int main(int argc, char **argv) {
   while (true) {
     std::cout << kUserPrefix;
     std::string input;
-    // std::getline(std::cin, input);
-    input = "Who is Trump?";
+    std::getline(std::cin, input);
     std::cout << kAssistantPrefix;
     std::string prompt =
         kUserPrefix + input + kDoubleNewLine + kAssistantPrefix;

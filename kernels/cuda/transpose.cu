@@ -59,14 +59,6 @@ Tensor transpose_internal(const Tensor &x, int dim_a, int dim_b) {
   cudaMemcpy(dst_shape_gpu, dst_shape.data(), ndim * sizeof(LengthType),
              cudaMemcpyHostToDevice);
 
-  cudaDeviceSynchronize();
-  cudaError_t error_a = cudaGetLastError();
-  if (error_a != cudaSuccess) {
-    printf("transpose allocation CUDA error: %s\n",
-           cudaGetErrorString(error_a));
-    RV_UNIMPLEMENTED();
-  }
-
 #define LAUNCH_TRANSPOSE_KERNEL(type)                                          \
   if (total_elems % 256 == 0) {                                                \
     _transpose<type, ndim><<<total_elems / 256, 256>>>(                        \
@@ -88,7 +80,6 @@ Tensor transpose_internal(const Tensor &x, int dim_a, int dim_b) {
     RV_UNIMPLEMENTED();
   }
 
-  cudaDeviceSynchronize();
   cudaError_t error = cudaGetLastError();
   if (error != cudaSuccess) {
     printf("transpose CUDA error: %s\n", cudaGetErrorString(error));

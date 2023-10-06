@@ -80,8 +80,6 @@ Tensor ModelForwardSeq(const Model *model, Device device,
 
   int param_idx = 0;
 
-  std::cout << "states size: " << states.size() << std::endl;
-
   for (int i = 0; i < states.size(); ++i) {
     auto &state = states[i];
 
@@ -144,7 +142,6 @@ Tensor ModelForwardSeq(const Model *model, Device device,
   if (device == Device::kNCNNMeta || device == Device::kONNXMeta) {
     mark_as_output(x, "output");
   }
-  // print_n(x, "x", x.numel() - 70, 70);
   return x;
 } // namespace def
 

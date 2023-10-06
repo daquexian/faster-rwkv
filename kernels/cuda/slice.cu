@@ -109,11 +109,6 @@ Tensor slice_internal(const Tensor &x, const std::vector<Range> &ranges) {
     RV_UNIMPLEMENTED();
   }
 
-  cudaError_t cudaerr = cudaDeviceSynchronize();
-  if (cudaerr != cudaSuccess)
-    printf("kernel launch failed with error \"%s\".\n",
-           cudaGetErrorString(cudaerr));
-
   cudaFree(start_ptr);
   cudaFree(interval_ptr);
   cudaFree(input_shape_gpu);

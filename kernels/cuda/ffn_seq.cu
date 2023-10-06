@@ -68,26 +68,13 @@ Tensor _FFN_SEQ(const Tensor &x, const Tensor &sx, const Tensor &ln_w,
                 /* imm */ Tensor &buf, Tensor &kx, Tensor &rx, Tensor &vx,
                 Tensor &r, /* out */ Tensor &x_plus_out) {
   Tensor xx = cuda::layer_norm_op(x, ln_w, ln_b);
-  // print_n(xx, "xx", xx.numel());
   Tensor sx_cat =
       sx.unsqueeze(0).cat(xx.slice({Range(0, 1, -1), Range::All}), 0);
-  // char *buf_ptr = (char *)buf.data_ptr();
-  // half *kx = (half *)buf_ptr;
-  // half *rx = kx + x.numel();
-  // half *vx = rx + x.numel();
-  // half *r = vx + x.size(0) * kw.size(1);
-  // RV_UNIMPLEMENTED();
-  // element_wise(FfnOneMix{k_mix.data_ptr<half>(), r_mix.data_ptr<half>(),
-  //                        xx.data_ptr<half>(), sx_cat.data_ptr<half>(),
-  //                        kx.data_ptr<half>(), rx.data_ptr<half>(),
-  //                        static_cast<int>(k_mix.numel())},
-  //              xx.numel());
-  //
-  element_wise2<int>(xx.numel(), k_mix.data_ptr<half>(), r_mix.data_ptr<half>(),
-                     xx.data_ptr<half>(), sx_cat.data_ptr<half>(),
-                     kx.data_ptr<half>(), rx.data_ptr<half>(),
-                     static_cast<int>(k_mix.numel()));
-  // print_n(rx, "rx", rx.numel());
+  element_wise(FfnSeqMix{k_mix.data_ptr<half>(), r_mix.data_ptr<half>(),
+                         xx.data_ptr<half>(), sx_cat.data_ptr<half>(),
+                         kx.data_ptr<half>(), rx.data_ptr<half>(),
+                         static_cast<int>(k_mix.numel())},
+               xx.numel());
   gemm_cublas_tensor(rx, rw, r);
   element_wise(InplaceSigmoid{r.data_ptr<half>()}, r.numel());
   gemm_cublas_tensor(kx, kw, vx);
@@ -96,8 +83,6 @@ Tensor _FFN_SEQ(const Tensor &x, const Tensor &sx, const Tensor &ln_w,
   element_wise(InplaceFma{x_plus_out.data_ptr<half>(), r.data_ptr<half>(),
                           x.data_ptr<half>()},
                x_plus_out.numel());
-  // print_n(x_plus_out, "x_plus_out", x_plus_out.numel());
-  // RV_UNIMPLEMENTED();
   return xx.slice({Range(-1, 1, xx.size(0)), Range::All}).squeeze(0);
 }
 
@@ -106,13 +91,6 @@ std::tuple<Tensor, Tensor> ffn_seq(const Tensor &x, const Tensor &sx,
                                    const Tensor &k_mix, const Tensor &r_mix,
                                    const Tensor &kw, const Tensor &vw,
                                    const Tensor &rw) {
-  // krx_bytes = x.numel() * x.element_size()
-  // vx_bytes = x.shape[0] * kw.shape[1] * x.element_size()
-  // r_bytes = x.shape[0] * rw.shape[1] * x.element_size()
-  // buf = torch.empty((krx_bytes * 2 + vx_bytes + r_bytes,), device=x.device,
-  // dtype=torch.int8) x_plus_out = torch.empty_like(x) xx =
-  // torch.ops.rwkv.ffn_one(x, sx, ln_w, ln_b, k_mix, r_mix, kw, vw, rw, buf,
-  // x_plus_out) return x_plus_out, xx
   int krx_bytes = x.numel() * x.elem_size();
   int vx_bytes = x.size(0) * kw.size(1) * x.elem_size();
   int r_bytes = x.size(0) * rw.size(1) * x.elem_size();

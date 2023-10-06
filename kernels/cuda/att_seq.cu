@@ -136,7 +136,7 @@ Tensor _ATT_SEQ_V5(const Tensor &x, const Tensor &s, const Tensor &ln_w,
   element_wise(PowScalar{w.data_ptr<float>(), static_cast<float>(T),
                          ws.data_ptr<float>()},
                w.numel());
-  // print_n(w, "w", w.numel() - 20, 20);
+
   ws = rwkv::reshape(ws, Shape({H, 1, 1}));
   Tensor ind = Tensor::Arange(static_cast<float>(T - 1), -1.0f, -1.0f,
                               w.dtype(), w.device());
@@ -148,9 +148,7 @@ Tensor _ATT_SEQ_V5(const Tensor &x, const Tensor &s, const Tensor &ln_w,
   Tensor wk = rwkv::reshape(w, Shape({H, 1, T}));
   Tensor wb = wk.transpose(-2, -1).flip(1);
   w = cat(w.slice({Range::All, Range(1, 1, w.size(1))}), u, 1);
-  // print_n(w, "w before pad", 0, w.numel());
   w = pad(w, {0, T}, "constant");
-  // print_n(w, "w after pad", w.numel() - 20, 20);
   w = w.repeat({1, T});
   w = w.slice({Range::All, Range(0, 1, -T)}).reshape(Shape({-1, T, 2 * T - 1}));
   w = w.slice({Range::All, Range::All, Range(T - 1, 1, w.size(2))})
@@ -159,7 +157,6 @@ Tensor _ATT_SEQ_V5(const Tensor &x, const Tensor &s, const Tensor &ln_w,
   gemm_cublas_tensor(rx, rw, r);
   r = r.view({T, H, S}).transpose(0, 1); // [H, T, S]
   gemm_cublas_tensor(kx, kw, k);
-  // RV_UNIMPLEMENTED();
   k = k.view({T, H, S}).transpose(0, 1);
   k = k.transpose(-2, -1); // [H, S, T]
   gemm_cublas_tensor(vx, vw, v);
@@ -207,8 +204,6 @@ Tensor _ATT_SEQ_V5(const Tensor &x, const Tensor &s, const Tensor &ln_w,
       x.numel());
 
   xx = xx.slice({Range(-1, 1, xx.size(0)), Range::All}).squeeze(0);
-
-  // print_n(x_plus_out, "x_plus_out", x_plus_out.numel() - 20, 20);
 
   return xx;
 }
