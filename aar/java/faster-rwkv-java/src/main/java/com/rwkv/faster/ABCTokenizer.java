@@ -1,7 +1,10 @@
 package com.rwkv.faster;
 
+import android.util.Log;
+
 public class ABCTokenizer {
     public ABCTokenizer() {
+        Log.i("faster-rwkv", "`ABCTokenizer` is deprecated. Use `Tokenizer` instead.");
         init();
     }
 

@@ -11,7 +11,7 @@ static const bool kShowSpeed = std::getenv("FR_SHOW_SPEED") != nullptr;
 
 int main(int argc, char **argv) {
   std::cout.setf(std::ios::unitbuf);
-  rwkv::ABCTokenizer tokenizer;
+  rwkv::Tokenizer tokenizer(argv[1]);
   rwkv::Sampler sampler;
   rwkv::Model model(argv[1], argv[2]);
   std::ifstream ifs(argv[3]);
@@ -22,7 +22,7 @@ int main(int argc, char **argv) {
   input.erase(input.find_last_not_of(" \t\n\r\f\v") + 1);
   std::cout << input;
   std::vector<int> input_ids = tokenizer.encode(input);
-  input_ids.insert(input_ids.begin(), tokenizer.bos_token_id);
+  input_ids.insert(input_ids.begin(), tokenizer.bos_token_id());
   static const int N_TRIAL = 1;
   for (int t = 0; t < N_TRIAL; t++) {
     std::string result = input;
@@ -30,7 +30,7 @@ int main(int argc, char **argv) {
     auto output_tensor = Copy(model.Run(input_ids), rwkv::Device::kCPU);
     for (int i = 0; i < 1024; i++) {
       auto output_id = sampler.Sample(output_tensor, 1.f, 1, 0.f);
-      if (output_id == tokenizer.eos_token_id) {
+      if (output_id == tokenizer.eos_token_id()) {
         break;
       }
       std::string output = tokenizer.decode(output_id);

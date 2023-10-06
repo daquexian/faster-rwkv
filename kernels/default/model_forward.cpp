@@ -3,8 +3,8 @@
 
 #include <msgpack.hpp>
 
-#include <kernels/kernels.h>
 #include <kernels/export-ncnn/kernels.h>
+#include <kernels/kernels.h>
 #ifdef FR_ENABLE_ONNX
 #include <kernels/export-onnx/kernels.h>
 #endif
@@ -22,9 +22,11 @@ namespace def {
 Tensor ModelForward(const Model *model, Device device, int id,
                     std::vector<std::vector<Tensor>> &states) {
   Tensor x = [&]() -> Tensor {
+    if (model->_act_device == Device::kNCNNMeta
 #ifdef FR_ENABLE_ONNX
-    if (model->_act_device == Device::kONNXMeta) {
-      Tensor input_id = onnxmeta::add_input({}, DType::kInt64, "input_id");
+        || model->_act_device == Device::kONNXMeta
+#endif
+    ) {
       Tensor embd_weights_cpu =
           Tensor::Empty({static_cast<long>(model->_embd_weights.size()),
                          model->_embd_weights[0].shape()[0]},
@@ -34,30 +36,37 @@ Tensor ModelForward(const Model *model, Device device, int id,
         for (int i = 0; i < model->_embd_weights.size(); i++) {
           for (int j = 0; j < model->_n_embd; j++) {
             // embd weights in .fr are always fp16
-            *ptr++ = static_cast<float>(model->_embd_weights[i].data_ptr<float16>()[j]);
+            *ptr++ = static_cast<float>(
+                model->_embd_weights[i].data_ptr<float16>()[j]);
           }
         }
       }
+      if (model->_act_device == Device::kNCNNMeta) {
+        Tensor id_tensor = ncnnmeta::add_input({1}, "input_id");
+        for (int i = 0; i < states.size(); i++) {
+          for (int j = 0; j < states[i].size(); j++) {
+            auto state_name =
+                "state_" + std::to_string(i) + "_" + std::to_string(j);
+            auto &state_tensor = states[i][j];
+            state_tensor =
+                ncnnmeta::add_input(state_tensor.shape(), state_name);
+          }
+        }
+        return ncnnmeta::Embedding(embd_weights_cpu, id_tensor);
+      }
+#ifdef FR_ENABLE_ONNX
+      if (model->_act_device == Device::kONNXMeta) {
+        Tensor input_id = onnxmeta::add_input({}, DType::kInt64, "input_id");
 
-      Tensor embd_weights = onnxmeta::possible_initializer(embd_weights_cpu);
-      return onnxmeta::gather(embd_weights, input_id);
-    }
+        Tensor embd_weights = onnxmeta::possible_initializer(embd_weights_cpu);
+        return onnxmeta::gather(embd_weights, input_id);
+      }
 #endif
+    }
     return model->_embd_weights[id];
   }();
 
   auto &params = model->_params;
-  if (model->_act_device == Device::kNCNNMeta) {
-    x = ncnnmeta::add_input(x.shape(), "input");
-    for (int i = 0; i < states.size(); i++) {
-      for (int j = 0; j < states[i].size(); j++) {
-        auto state_name =
-            "state_" + std::to_string(i) + "_" + std::to_string(j);
-        auto &state_tensor = states[i][j];
-        state_tensor = ncnnmeta::add_input(state_tensor.shape(), state_name);
-      }
-    }
-  }
 #ifdef FR_ENABLE_ONNX
   if (model->_act_device == Device::kONNXMeta) {
     for (int i = 0; i < states.size(); i++) {
@@ -65,7 +74,8 @@ Tensor ModelForward(const Model *model, Device device, int id,
         auto state_name =
             "state_" + std::to_string(i) + "_" + std::to_string(j);
         auto &state_tensor = states[i][j];
-        state_tensor = onnxmeta::add_input(state_tensor.shape(), DType::kFloat32, state_name);
+        state_tensor = onnxmeta::add_input(state_tensor.shape(),
+                                           DType::kFloat32, state_name);
       }
     }
   }
@@ -149,7 +159,9 @@ Tensor ModelForward(const Model *model, Device device, int id,
   x = layernorm(x, params[param_idx], params[param_idx + 1]);
 
   //                 x = x @ w['head.weight']
+  ncnnmeta::disable_int4(true);
   x = matmul(x, params[param_idx + 2]);
+  ncnnmeta::disable_int4(false);
   if (x.dtype() == DType::kFloat16) {
     x = cast_dtype(x, DType::kFloat32);
   }

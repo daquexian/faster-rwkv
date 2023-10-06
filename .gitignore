@@ -9,3 +9,10 @@ abc_music_input*.txt
 .clangd/
 eval_set
 abc_probs
+.setuptools-cmake-build/
+*.whl
+.hypothesis/
+*.egg-info/
+*.so
+*-ppl
+*-ppl-try*

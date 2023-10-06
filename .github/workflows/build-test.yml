@@ -20,15 +20,6 @@ jobs:
       run: |
         sudo apt-get install ninja-build
 
-    - uses: actions/setup-java@v3
-      with:
-        distribution: 'zulu'
-        java-version: '17'
-
-    - name: Build Android AAR
-      run: |
-        ./aar/build_aar.sh
-
     - name: Download Tokenizer and ChatRWKV Models
       run: |
         mkdir ${{env.FR_MODEL_DIR}}
@@ -36,7 +27,20 @@ jobs:
         wget https://huggingface.co/BlinkDL/rwkv-4-world/resolve/main/RWKV-4-World-0.1B-v1-20230520-ctx4096.pth 
         wget https://huggingface.co/BlinkDL/rwkv-5-world/resolve/main/RWKV-5-World-0.1B-v1-20230803-ctx4096.pth
         wget https://huggingface.co/BlinkDL/rwkv-5-music/resolve/main/RWKV-5-ABC-82M-v1-20230901-ctx1024.pth
-        wget https://huggingface.co/daquexian/fr-models/resolve/main/world_tokenizer
+        wget https://huggingface.co/daquexian/fr-models/resolve/dd4d636/world_tokenizer -O old_world_tokenizer
+        mkdir -p RWKV-5-World-0.1B-v1-20230803-ctx4096/ncnn/fp16
+        cd RWKV-5-World-0.1B-v1-20230803-ctx4096/ncnn/fp16
+        wget https://huggingface.co/daquexian/fr-models/resolve/02382cd/RWKV-5-World-0.1B-v1-20230803-ctx4096/ncnn/fp16/RWKV-5-World-0.1B-v1-20230803-ctx4096-ncnn.bin
+        wget https://huggingface.co/daquexian/fr-models/resolve/02382cd/RWKV-5-World-0.1B-v1-20230803-ctx4096/ncnn/fp16/RWKV-5-World-0.1B-v1-20230803-ctx4096-ncnn.param
+        wget https://huggingface.co/daquexian/fr-models/resolve/02382cd/RWKV-5-World-0.1B-v1-20230803-ctx4096/ncnn/fp16/RWKV-5-World-0.1B-v1-20230803-ctx4096-ncnn.config
+        wget https://huggingface.co/daquexian/fr-models/resolve/main/RWKV-5-World-0.1B-v1-20230803-ctx4096/ncnn/fp16/tokenizer
+        cd ${{env.FR_MODEL_DIR}}
+        mkdir tokenizers
+        cd tokenizers
+        wget https://huggingface.co/daquexian/fr-models/resolve/main/tokenizers/world_tokenizer
+        wget https://huggingface.co/daquexian/fr-models/resolve/main/tokenizers/simple_abc_tokenizer
+        wget https://huggingface.co/daquexian/fr-models/resolve/main/tokenizers/abc_tokenizer_v20230913
+
     - name: Convert ChatRWKV Models
       run: |
         git clone https://github.com/BlinkDL/ChatRWKV
@@ -63,7 +67,21 @@ jobs:
         cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DFR_ENABLE_NCNN=ON -GNinja
         cmake --build ${{github.workspace}}/build
 
-    - name: Convert the v5 ABC model to ncnn
+    - name: Upload Executables
+      uses: actions/upload-artifact@v3
+      with:
+        name: export_ncnn
+        path: |
+          build/export_ncnn
+
+    - name: Run C++ tests
+      # Execute tests defined by the CMake configuration.
+      # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
+      run: |
+        FR_MODEL_DIR=${{env.FR_MODEL_DIR}} ctest -vv --output-on-failure --test-dir tests
+      working-directory: ${{github.workspace}}/build/
+
+    - name: Convert the v5 ABC model to ncnn for ABC ppl test
       run: |
         ${{github.workspace}}/build/export_ncnn ${{env.FR_MODEL_DIR}}/RWKV-5-ABC-82M-v1-20230901-ctx1024-fp32.fr ${{env.FR_MODEL_DIR}}/RWKV-5-ABC-82M-v1-20230901-ctx1024-ncnn fp16
 
@@ -72,12 +90,37 @@ jobs:
         pip install datasets msgpack
         python3 tests/run_abc_benchmark.py ${{github.workspace}}/build/tests/run_abc_benchmark ${{env.FR_MODEL_DIR}}/RWKV-5-ABC-82M-v1-20230901-ctx1024-ncnn
 
-    - name: Run tests
-      # Execute tests defined by the CMake configuration.
-      # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
+    - name: Build Python wheel
       run: |
-        FR_MODEL_DIR=${{env.FR_MODEL_DIR}} ctest -vv --output-on-failure --test-dir tests
-      working-directory: ${{github.workspace}}/build/
+        # Ubuntu 20.04's pip is old
+        python3 -m pip install -U pip
+        python3 -m pip wheel .
+        python3 -m pip install fasterrwkv*.whl
+      working-directory: ${{github.workspace}}/python
+
+    - name: Run Python tests
+      run: |
+        python3 -m pip install pytest
+        FR_MODEL_DIR=${{env.FR_MODEL_DIR}} pytest tests
+      working-directory: ${{github.workspace}}/python
+
+    - name: Upload Python wheel
+      uses: actions/upload-artifact@v3
+      with:
+        name: python-package-distributions
+        path: |
+          python/fasterrwkv*.whl
+
+    - uses: actions/setup-java@v3
+      with:
+        distribution: 'zulu'
+        java-version: '17'
+
+    - name: Build Android AAR
+      run: |
+        # android toolchain cmake file hardcode '-g', making the binary bigger
+        sed -i 's/ -g$//' $ANDROID_NDK/build/cmake/android-legacy.toolchain.cmake
+        ./aar/build_aar.sh
 
     - name: Upload Android AAR libraries
       uses: actions/upload-artifact@v3
@@ -85,12 +128,22 @@ jobs:
         name: Android AAR Packages
         path: |
           aar/java/faster-rwkv-java/build/outputs/aar/*
-    - name: Upload Executables
+
+    - name: Rename Android binaries to upload
+      run: |
+        mv build-android-aar/chat build-android-aar/chat-android
+        mv build-android-aar/abc_music build-android-aar/abc_music-android
+        mv build-android-aar/midi_music build-android-aar/midi_music-android
+
+    - name: Upload Android binaries
       uses: actions/upload-artifact@v3
       with:
-        name: export_ncnn
+        name: Android binaries
         path: |
-          build/export_ncnn
+          build-android-aar/chat-android
+          build-android-aar/abc_music-android
+          build-android-aar/midi_music-android
+
     - uses: "marvinpinto/action-automatic-releases@latest"
       if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' }}
       with:
@@ -101,8 +154,9 @@ jobs:
         files: |
           build/export_ncnn
           aar/java/faster-rwkv-java/build/outputs/aar/faster-rwkv-java-release.aar
-          build-android/chat
-          build-android/abc_music
+          build-android-aar/chat-android
+          build-android-aar/abc_music-android
+          build-android-aar/midi_music-android
 
     - uses: "marvinpinto/action-automatic-releases@latest"
       if: ${{ github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags/v') }}
@@ -112,6 +166,29 @@ jobs:
         files: |
           build/export_ncnn
           aar/java/faster-rwkv-java/build/outputs/aar/faster-rwkv-java-release.aar
-          build-android/chat
-          build-android/abc_music
+          build-android-aar/chat-android
+          build-android-aar/abc_music-android
+          build-android-aar/midi_music-android
 
+  publish-to-pypi:
+    name: Publish Python 🐍 distribution 📦 to PyPI
+    if: ${{ github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags/v') }}
+    needs:
+    - build-and-test
+    runs-on: ubuntu-latest
+
+    environment:
+      name: pypi
+      url: https://pypi.org/p/fasterrwkv
+    permissions:
+      id-token: write  # IMPORTANT: mandatory for trusted publishing
+
+    steps:
+    - name: Download all the dists
+      uses: actions/download-artifact@v3
+      with:
+        name: python-package-distributions
+        path: dist/
+          
+    - name: Publish distribution 📦 to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1

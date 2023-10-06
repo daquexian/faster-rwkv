@@ -7,12 +7,16 @@ include(FetchContent)
 option(FR_ENABLE_CUDA "Enable CUDA" OFF)
 # ONNX support is a WIP
 option(FR_ENABLE_ONNX "Enable ONNX" OFF)
-if (CMAKE_SYSTEM_NAME STREQUAL "Android")
+option(FR_ENABLE_NCNN "Enable NCNN" ON)
+option(FR_BUILD_PYTHON "" OFF)
+if (DEFINED ANDROID_NDK)
     option(FR_BUILD_JNI "" ON)
-    option(FR_ENABLE_NCNN "Enable NCNN" ON)
 else()
     option(FR_BUILD_JNI "" OFF)
-    option(FR_ENABLE_NCNN "Enable NCNN" OFF)
+endif()
+
+if(NOT DEFINED CMAKE_POSITION_INDEPENDENT_CODE)
+  set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 endif()
 option(FR_ENABLE_CUDA_ARCH "Specify the cuda arch yourself by CMAKE_CUDA_ARCHITECTURES" OFF)
 
@@ -64,7 +68,7 @@ if (FR_ENABLE_NCNN)
         GIT_REPOSITORY https://github.com/daquexian/ncnn
         # This commit reduces peak memory usage
         # https://github.com/Tencent/ncnn/pull/4966
-        GIT_TAG 876ab05c
+        GIT_TAG c0daa4fd
         SYSTEM
         )
     option(NCNN_BUILD_BENCHMARK "" OFF)
@@ -76,9 +80,17 @@ if (FR_ENABLE_NCNN)
     option(NCNN_PIXEL_AFFINE "" OFF)
     option(NCNN_PIXEL_DRAWING "" OFF)
     option(NCNN_DISABLE_EXCEPTION "" OFF)
+    if (FR_BUILD_PYTHON)
+        # pybind11 requires RTTI
+        option(NCNN_DISABLE_RTTI "" OFF)
+    endif()
     if (NOT CMAKE_SYSTEM_NAME STREQUAL "Android" AND NOT CMAKE_CROSSCOMPILING)
         option(NCNN_OPENMP "" OFF)
         option(NCNN_SIMPLEOMP "" ON)
+    endif()
+    # Termux
+    if (CMAKE_SYSTEM_NAME STREQUAL "Android" AND NOT DEFINED ANDROID_NDK)
+        option(NCNN_PLATFORM_API "" OFF)
     endif()
     include(disable_unused_ncnn_layers)
     FetchContent_MakeAvailable(ncnn)
@@ -166,6 +178,10 @@ if (FR_ENABLE_ONNX)
     target_link_libraries(faster_rwkv_internal PRIVATE onnx)
 endif()
 
+if (DEFINED ANDROID_NDK)
+    target_compile_definitions(faster_rwkv_internal PUBLIC FR_ENABLE_ANDROID_ASSET)
+endif()
+
 add_library(faster_rwkv INTERFACE)
 target_link_libraries(faster_rwkv INTERFACE "$<LINK_LIBRARY:WHOLE_ARCHIVE,faster_rwkv_internal>")
 
@@ -200,6 +216,10 @@ endif()
 
 if (FR_BUILD_JNI)
     add_subdirectory(aar)
+endif()
+
+if (FR_BUILD_PYTHON)
+    add_subdirectory(python)
 endif()
 
 add_subdirectory(tools)

@@ -132,10 +132,6 @@ inline void init_model(Model *model, Device device, const std::string &path,
     auto mp_tensor = embd_weights[i];
     model->_embd_weights.push_back(
         from_mp_tensor(mp_tensor, std::string("embd_") + std::to_string(i)));
-    if (model->_act_device == Device::kNCNNMeta) {
-      // add embd_weights to ncnn bin
-      Copy(model->_embd_weights.back(), Device::kNCNNMeta);
-    }
   }
 }
 

@@ -274,7 +274,7 @@ Tensor mark_as_output(const Tensor &x, const std::string &name) {
 KernelRegister allocator_reg("allocator", Device::kONNXMeta, null_allocator);
 
 KernelRegister layernorm_reg("layernorm", Device::kONNXMeta, layernorm);
-// KernelRegister groupnorm_reg("groupnorm", Device::kONNXMeta, groupnorm);
+KernelRegister groupnorm_reg("groupnorm", Device::kONNXMeta, groupnorm);
 KernelRegister matmul_reg("matmul", Device::kONNXMeta, matmul);
 KernelRegister add_reg("add", Device::kONNXMeta, add);
 KernelRegister sub_reg("sub", Device::kONNXMeta, sub);

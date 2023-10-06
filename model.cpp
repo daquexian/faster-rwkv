@@ -39,7 +39,9 @@ Model::Model(const std::string &path, const std::string &strategy,
   _act_device = act_device;
   std::tie(_act_dtype, _weight_dtype) = [&]() -> std::pair<DType, DType> {
     std::string dtype_str = strategy.substr(strategy.find(" ") + 1);
-    if (dtype_str == "int8") {
+    if (dtype_str == "int4") {
+      return {DType::kFloat32, DType::kInt4};
+    } else if (dtype_str == "int8") {
       return {DType::kFloat32, DType::kInt8};
     } else if (dtype_str == "fp16") {
       return {DType::kFloat16, DType::kFloat16};
@@ -157,11 +159,13 @@ void Model::ResetStates() {
 //   RV_UNIMPLEMENTED();
 // }
 
-Tensor Model::Run(int id) {
-  if (kDebug) {
-    std::cout << "Model::Run(" << id << ")" << std::endl;
+Tensor CopyToCPUIfAvailable(Tensor x) {
+  // TODO: more elegant
+  try {
+    return Copy(x, Device::kCPU);
+  } catch (std::exception &e) {
+    return x;
   }
-  return _Run(id);
 }
 
 Tensor Model::Run(const std::vector<int> &ids, bool seq_mode) {
@@ -179,10 +183,17 @@ Tensor Model::Run(const std::vector<int> &ids, bool seq_mode) {
       auto id = ids[i];
       auto out = _Run(id);
       if (i == ids.size() - 1) {
-        return out;
+        return CopyToCPUIfAvailable(out);
       }
     }
   }
+}
+
+Tensor Model::Run(int id) {
+  if (kDebug) {
+    std::cout << "Model::Run(" << id << ")" << std::endl;
+  }
+  return CopyToCPUIfAvailable(_Run(id));
 }
 
 Tensor Model::_Run(int id) {

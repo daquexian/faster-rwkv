@@ -27,12 +27,15 @@ int main(int argc, char **argv) {
     weight_dtype = rwkv::DType::kFloat16;
   } else {
     std::string weight_dtype_str(argv[3]);
-    if (weight_dtype_str == "int8" || weight_dtype_str == "i8") {
+    if (weight_dtype_str == "int4" || weight_dtype_str == "i4") {
+      weight_dtype = rwkv::DType::kInt4;
+    } else if (weight_dtype_str == "int8" || weight_dtype_str == "i8") {
       weight_dtype = rwkv::DType::kInt8;
     } else if (weight_dtype_str == "fp16") {
       weight_dtype = rwkv::DType::kFloat16;
     } else {
-      RV_UNIMPLEMENTED();
+      RV_UNIMPLEMENTED() << "Only int4, int8, and fp16 are supported. But got "
+                         << weight_dtype_str << ".";
     }
   }
   rwkv::ncnnmeta::ExportModel(argv[1], weight_dtype, argv[2]);

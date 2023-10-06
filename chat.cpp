@@ -7,14 +7,18 @@
 #include <tokenizer.h>
 
 static const std::string kUserPrefix = "User: ";
+// no space after "Assistant:"
 static const std::string kAssistantPrefix = "Assistant:";
-static const int kMaxOutputLength = 999;
+static const int kMaxOutputLength =
+    std::getenv("FR_MAX_OUTPUT_LEN") != nullptr
+        ? std::stoi(std::getenv("FR_MAX_OUTPUT_LEN"))
+        : 999;
 static const int kEndOfSentence = 0;
 static const std::string kDoubleNewLine = "\n\n";
 static const int kNewLineId = 11;
 static const int kChatLenShort = 40;
 static const int kChatLenLong = 150;
-static const float kTopP = 0.3;
+static const float kTopP = 0.0;
 static const float kPresencePenalty = 0.8;
 static const float kFrequencyPenalty = 0.8;
 static const float kPenaltyDecay = 0.996;
@@ -26,7 +30,7 @@ static const bool kShowSpeed = std::getenv("FR_SHOW_SPEED") != nullptr;
 int main(int argc, char **argv) {
   std::cout.setf(std::ios::unitbuf);
 
-  rwkv::WorldTokenizer tokenizer(argv[1]);
+  rwkv::Tokenizer tokenizer(argv[1]);
   rwkv::Sampler sampler;
   rwkv::Model model(argv[2], argv[3]);
   if (argc == 5) {

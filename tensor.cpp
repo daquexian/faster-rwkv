@@ -80,7 +80,9 @@ Tensor Copy(const Tensor &x, Device device, bool always_copy) {
     return y;
   }
 
-  RV_UNIMPLEMENTED();
+  RV_UNIMPLEMENTED() << "Copy from device " << static_cast<int>(x.device())
+                     << " to device " << static_cast<int>(device)
+                     << " is not supported yet.";
 }
 
 namespace {

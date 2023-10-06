@@ -68,15 +68,21 @@ ninja
 
 ### Android Demo
 
-Run one of the following commands in Termux to download prebuilt executables and models automatically. The download script supports continuely downloading partially downloaded files, so feel free to ctrl-C and restart it if the speed is too slow.
+Run one of the following commands in Termux to download prebuilt executables and models automatically. The download script supports continuely downloading partially downloaded files, so feel free to Ctrl-C and restart it if the speed is too slow.
 
-Executables, 1.5B CHNtuned model and 0.1B world model:
+Executables, 1.5B CHNtuned int8 model, 1.5B CHNtuned int4 model and 0.1B world int8 model:
+
+```
+curl -L -s https://raw.githubusercontent.com/daquexian/faster-rwkv/master/download_binaries_and_models_termux.sh | bash -s 3
+```
+
+Executables, 1.5B CHNtuned int4 model and 0.1B world int8 model:
 
 ```
 curl -L -s https://raw.githubusercontent.com/daquexian/faster-rwkv/master/download_binaries_and_models_termux.sh | bash -s 2
 ```
 
-Executables and 0.1B world model:
+Executables and 0.1B world int8 model:
 
 ```
 curl -L -s https://raw.githubusercontent.com/daquexian/faster-rwkv/master/download_binaries_and_models_termux.sh | bash -s 1
@@ -95,9 +101,10 @@ curl -L -s https://raw.githubusercontent.com/daquexian/faster-rwkv/master/downlo
 - [x] ABC music models support (models are published at https://huggingface.co/daquexian/fr-models/tree/main)
 - [x] CI
 - [x] ARM NEON int8 (~2x speedup compared to fp16)
+- [x] ARM NEON int4 (>2x speedup compared to fp16)
 - [x] MIDI music models support
+- [x] custom initial state support
 - [ ] Raven models support
-- [ ] initial state support
 - [ ] seq mode
 - [ ] export ONNX
 - [ ] more backends..

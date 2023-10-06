@@ -70,11 +70,17 @@ GraphBackendForwardInternal(const Model *model, int id,
   auto &state_ids = extra.state_ids;
   auto output_blob_id = extra.output_blob_id;
   auto &output_state_ids = extra.output_state_ids;
+  int ncnn_impl_version = extra.ncnn_impl_version;
   ncnn::Extractor ex = net.create_extractor();
   ncnn::Mat input;
-  // In ncnn model we generated, blob with id `n` is the embedding weights for
-  // token with id `n`
-  ex.extract(id, input);
+  RV_CHECK(ncnn_impl_version == 1 || ncnn_impl_version == 2) << "Invalid ncnn_impl_version: " << ncnn_impl_version;
+  if (ncnn_impl_version == 1) {
+    // In ncnn model we generated, blob with id `n` is the embedding weights for
+    // token with id `n`
+    ex.extract(id, input);
+  } else {
+    input = ncnn::Mat(1, &id, /*_elemsize=*/4u);
+  }
 
   // Set ncnn input and states
   ex.input(input_blob_id, input);
