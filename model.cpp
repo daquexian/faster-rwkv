@@ -177,7 +177,7 @@ Tensor Model::Run(const std::vector<int> &ids) {
     }
     std::cout << ")" << std::endl;
   }
-  return _Run(ids);
+  return CopyToCPUIfAvailable(_Run(ids));
   // if (seq_mode) {
   //   return _Run(ids);
   // } else {
