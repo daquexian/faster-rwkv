@@ -30,6 +30,7 @@ while True:
     start = time.time()
     prompt_ids = tokenizer.encode(prompt)
     encode_time = time.time() - start
+    print(f'{model.states()[0][0].numpy()=}')
     start = time.time()
     output = model(prompt_ids)
     response = ""

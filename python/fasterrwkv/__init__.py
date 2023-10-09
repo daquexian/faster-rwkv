@@ -8,7 +8,14 @@ try:
 except PackageNotFoundError:
     __version__ = "unknown version"
 
-_Tensor.numpy = lambda self: np.array(self, copy=False)
+def tensor_numpy(self):
+    self = self.cpu()
+    arr = np.array(self, copy=False)
+    if arr.dtype == np.int16:
+        arr = arr.view(np.float16)
+    return arr
+
+_Tensor.numpy = tensor_numpy
 
 # _run returns a fr Tensor, but we don't want to expose that to the user.
 Model.__call__ = lambda self, *args, **kwargs: self._run(*args, **kwargs).numpy()
