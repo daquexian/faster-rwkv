@@ -31,6 +31,8 @@ struct Model {
   // TODO:
   std::vector<Tensor> _embd_weights;
 
+  bool should_print;
+
 private:
   Tensor _Run(int id);
   Tensor _Run(const std::vector<int> &id);

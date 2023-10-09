@@ -177,19 +177,20 @@ Tensor Model::Run(const std::vector<int> &ids) {
     }
     std::cout << ")" << std::endl;
   }
-  return _Run(ids);
-  // if (seq_mode) {
-  //   return _Run(ids);
-  // } else {
-  //   for (int i = 0; i < ids.size(); ++i) {
-  //     auto id = ids[i];
-  //     auto out = _Run(id);
-  //     if (i == ids.size() - 1) {
-  //       return CopyToCPUIfAvailable(out);
-  //     }
-  //   }
-  // }
-  // RV_UNIMPLEMENTED();
+  if (ids.size() == 1) {
+    return Run(ids[0]);
+  } else {
+    return _Run(ids);
+  }
+
+  for (int i = 0; i < ids.size(); ++i) {
+    auto id = ids[i];
+    auto out = _Run(id);
+    if (i == ids.size() - 1) {
+      return CopyToCPUIfAvailable(out);
+    }
+  }
+  RV_UNIMPLEMENTED();
 }
 
 Tensor Model::Run(int id) {
