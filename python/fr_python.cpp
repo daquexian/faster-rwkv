@@ -60,13 +60,17 @@ PYBIND11_MODULE(fr_python, m) {
       .def(py::init([](py::buffer b) -> std::shared_ptr<Tensor> {
         return std::make_shared<Tensor>(FRTensorFromPyBuffer(b));
       }))
+      .def("cpu", [](Tensor &t) { return Copy(t, Device::kCPU, false); })
       .def_buffer([](Tensor &t) -> py::buffer_info {
         auto format_descriptor = [&]() {
           switch (t.dtype()) {
           case DType::kFloat32:
             return py::format_descriptor<float>::format();
           case DType::kFloat16:
-            RV_UNIMPLEMENTED() << "Float16 in Python is not supported yet.";
+            // NOTE: we export fp16 tensor as int16 and view it as float16 in
+            // python,
+            // because py::format_descriptor doesn't support float16
+            return py::format_descriptor<int16_t>::format();
           case DType::kInt8:
             return py::format_descriptor<int8_t>::format();
           default:
