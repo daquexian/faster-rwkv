@@ -117,7 +117,7 @@ class CmakeBuild(setuptools.Command):
                 f"-DPYTHON_EXECUTABLE={sys.executable}",
                 "-DFR_BUILD_PYTHON=ON",
                 "-DFR_BUILD_JNI=OFF",
-                "-DFR_ENABLE_CUDA=ON",
+                # "-DFR_ENABLE_CUDA=ON",
                 "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON",
                 f"-DPY_EXT_SUFFIX={get_ext_suffix() or ''}",
             ]
