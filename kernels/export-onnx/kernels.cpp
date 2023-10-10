@@ -279,8 +279,8 @@ Tensor rsub_scalar(float x, const Tensor &_y) {
   Tensor output = Tensor::Empty(y.shape(), y.dtype(), y.device());
   NodeProto *node = new_node();
   node->set_op_type("Sub");
-  node->add_input(y.name);
   node->add_input(x_t.name);
+  node->add_input(y.name);
   node->add_output(output.name);
   return output;
 }
