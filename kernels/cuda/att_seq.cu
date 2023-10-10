@@ -171,7 +171,7 @@ Tensor _ATT_SEQ_V5(const Tensor &x, const Tensor &s, const Tensor &ln_w,
                               rkw_mul.data_ptr<float>()},
                rkw_mul.numel());
   element_wise(
-      SingleSideBroadcastMul{rs_gemm.data_ptr<float>(), wb.data_ptr<float>(),
+      SingleSideBroadcastMul{wb.data_ptr<float>(), rs_gemm.data_ptr<float>(),
                              rswb_mul.data_ptr<float>(), static_cast<int>(S)},
       rswb_mul.numel());
 
@@ -181,7 +181,6 @@ Tensor _ATT_SEQ_V5(const Tensor &x, const Tensor &s, const Tensor &ln_w,
                           rswb_mul.data_ptr<float>(),
                           rkwv_gemm.data_ptr<float>()},
                rkwv_gemm.numel());
-
   element_wise(SingleSideBroadcastMul{ws.data_ptr<float>(), s.data_ptr<float>(),
                                       wss_mul.data_ptr<float>(),
                                       static_cast<int>(s.size(1) * s.size(2))},
@@ -198,9 +197,6 @@ Tensor _ATT_SEQ_V5(const Tensor &x, const Tensor &s, const Tensor &ln_w,
   rkwv_gemm = rkwv_gemm.transpose(0, 1).reshape({T, H * S});
   rkwv_gemm = group_norm_op(rkwv_gemm, H, lx_w, lx_b);
   rkwv_gemm = cast_dtype(rkwv_gemm, x.dtype());
-  RV_UNIMPLEMENTED();
-  print_n(rkwv_gemm, "rkwv_gemm", 768, 30);
-  exit(0);
   gemm_cublas_tensor(rkwv_gemm, ow, x_plus_out);
   element_wise(
       OnePairAddHalfInplace{x.data_ptr<half>(), x_plus_out.data_ptr<half>()},
