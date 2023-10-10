@@ -1,7 +1,5 @@
 #include "check.h"
 #include "utils.h"
-#include <bits/stdint-intn.h>
-#include <bits/stdint-uintn.h>
 #include <functional>
 #include <initializer_list>
 #include <kernels/kernels.h>

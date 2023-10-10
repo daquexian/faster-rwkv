@@ -1,5 +1,4 @@
 #include "check.h"
-#include <bits/stdint-intn.h>
 #include <kernels/kernels.h>
 #include <kernels/registry.h>
 #include <tensor.h>
