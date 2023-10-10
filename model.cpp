@@ -163,8 +163,22 @@ Tensor Model::Run(const std::vector<int> &ids) {
     return CopyToCPUIfAvailable(
         ModelForward(this, this->_act_device, ids[0], _states));
   } else {
+    // TODO: Remove the fallback after adding ncnn implementation of seq mode.
+#if FR_ENABLE_CUDA
     return CopyToCPUIfAvailable(
         ModelForwardSeq(this, this->_act_device, ids, _states, false));
+#else
+    {
+      for (int i = 0; i < ids.size(); ++i) {
+        auto id = ids[i];
+        auto out = ModelForward(this, this->_act_device, id, _states);
+        if (i == ids.size() - 1) {
+          return CopyToCPUIfAvailable(out);
+        }
+      }
+      RV_UNIMPLEMENTED();
+    }
+#endif
   }
 }
 
