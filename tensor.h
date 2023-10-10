@@ -25,6 +25,7 @@ enum class DType {
   kInt8,
   kFloat16,
   kFloat32,
+  kInt32,
   kInt64,
 };
 using float16 = half_float::half;
@@ -36,6 +37,8 @@ enum class Device {
   kNCNN,
   kONNX,
 };
+std::optional<Device>& default_dispatch_device();
+
 template <typename T> inline const DType dtype_v = DType::kFloat32;
 template <> inline const DType dtype_v<float16> = DType::kFloat16;
 #ifdef FR_ENABLE_CUDA
@@ -54,6 +57,10 @@ inline std::string dtype_to_string(DType dtype) {
     return "fp32";
   } else if (dtype == DType::kFloat16) {
     return "fp16";
+  } else if (dtype == DType::kInt32) {
+    return "int32";
+  } else if (dtype == DType::kInt64) {
+    return "int64";
   } else if (dtype == DType::kInt8) {
     return "int8";
   } else if (dtype == DType::kInt4) {
@@ -79,10 +86,12 @@ inline int32_t elem_size(DType dtype) {
     return 2;
   case DType::kFloat32:
     return 4;
+  case DType::kInt32:
+    return 4;
   case DType::kInt64:
     return 8;
   default:
-    RV_UNIMPLEMENTED();
+    RV_UNIMPLEMENTED() << "Unsupported dtype: " << dtype_to_string(dtype);
   }
 }
 

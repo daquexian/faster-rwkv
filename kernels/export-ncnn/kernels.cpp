@@ -105,15 +105,18 @@ void ExportModel(const std::string &input_path, DType weight_dtype,
                  const std::string &output_prefix) {
   RV_CHECK(weight_dtype == DType::kFloat16 || weight_dtype == DType::kInt8 ||
            weight_dtype == DType::kInt4);
+  default_dispatch_device() = Device::kNCNNMeta;
 
-  rwkv::ncnnmeta::init(weight_dtype, output_prefix + ".bin",
-                       output_prefix + ".param", output_prefix + ".config");
+  init(weight_dtype, output_prefix + ".bin",
+       output_prefix + ".param", output_prefix + ".config");
 
   // NOTE: fp32 here is just a placeholder. The dtype used by ncnn is determined
   // by the weight_dtype parameter.
-  rwkv::Model model(input_path, "export-ncnn fp32");
+  Model model(input_path, "export-ncnn fp32");
   model.Run(0);
-  rwkv::ncnnmeta::destroy(model);
+  destroy(model);
+
+  default_dispatch_device() = std::nullopt;
 }
 
 void append_data_to_bin_file(const Tensor &tensor, bool write_tag) {

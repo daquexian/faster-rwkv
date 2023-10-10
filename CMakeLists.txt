@@ -79,6 +79,15 @@ if (FR_ENABLE_NCNN)
 endif()
 
 if (FR_ENABLE_ONNX)
+    option(protobuf_BUILD_TESTS "Build tests" OFF)
+    FetchContent_Declare(
+        protobuf
+        GIT_REPOSITORY https://github.com/protocolbuffers/protobuf
+        GIT_TAG v3.20.1
+        SYSTEM
+        SOURCE_SUBDIR cmake
+    )
+    FetchContent_MakeAvailable(protobuf)
     FetchContent_Declare(
         onnx
         GIT_REPOSITORY https://github.com/onnx/onnx
@@ -97,7 +106,7 @@ if (FR_ENABLE_ONNX)
     # )
     # FetchContent_MakeAvailable(onnxruntime)
     set(onnx_kernel_srcs
-        kernels/export-ncnn/kernels.cpp
+        kernels/export-onnx/kernels.cpp
     )
 endif()
 

@@ -12,6 +12,11 @@
 
 namespace rwkv {
 
+std::optional<Device>& default_dispatch_device() {
+  static std::optional<Device> _default_dispatch_device = std::nullopt;
+  return _default_dispatch_device;
+}
+
 // operator<< for Shape
 std::ostream &operator<<(std::ostream &os, const Shape &shape) {
   os << "(";
