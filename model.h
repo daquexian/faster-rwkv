@@ -32,8 +32,6 @@ struct Model {
   std::vector<Tensor> _embd_weights;
 
 private:
-  Tensor _Run(int id);
-  Tensor _Run(const std::vector<int> &id);
   // _params is not a map because we know the exact order of the parameters
   std::vector<Tensor> _params;
   Device _act_device;

@@ -88,9 +88,6 @@ Tensor ModelForwardSeq(const Model *model, Device device,
       if (model->_version == "4") {
         RV_UNIMPLEMENTED();
       } else if (model->_version == "5") {
-        state[0] = fill_(state[0], 2.0f);
-        state[1] = fill_(state[1], 3.0f);
-        print_n(params[param_idx + 12], "params[param_idx + 12]", 0, 30);
         std::tie(x, state[0], state[1]) = att_seq_v5(
             x, state[0], state[1], params[param_idx], params[param_idx + 1],
             params[param_idx + 2], params[param_idx + 3], params[param_idx + 4],

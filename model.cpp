@@ -183,10 +183,8 @@ Tensor Model::Run(const std::vector<int> &ids) {
 }
 
 Tensor Model::Run(int id) {
-  if (kDebug) {
-    std::cout << "Model::Run(" << id << ")" << std::endl;
-  }
-  return CopyToCPUIfAvailable(_Run(id));
+  return CopyToCPUIfAvailable(
+      ModelForward(this, this->_act_device, id, _states));
 }
 
 } // namespace rwkv
