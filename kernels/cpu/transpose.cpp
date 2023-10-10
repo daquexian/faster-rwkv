@@ -1,7 +1,5 @@
 #include "check.h"
 #include "utils.h"
-#include <bits/stdint-intn.h>
-#include <bits/stdint-uintn.h>
 #include <functional>
 #include <kernels/kernels.h>
 #include <kernels/registry.h>

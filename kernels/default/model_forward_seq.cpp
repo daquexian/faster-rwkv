@@ -53,9 +53,6 @@ Tensor ModelForwardSeq(const Model *model, Device device,
     return vgather(model->_embd_weights, id);
   }();
 
-  // print_n(x, "x", 768 * 3, 768 * 5);
-  // print_shape(x, "x");
-
   auto &params = model->_params;
   if (model->_act_device == Device::kNCNNMeta) {
     x = ncnnmeta::add_input(x.shape(), "input");
@@ -149,7 +146,6 @@ Tensor ModelForwardSeq(const Model *model, Device device,
   if (device == Device::kNCNNMeta || device == Device::kONNXMeta) {
     mark_as_output(x, "output");
   }
-  // print_n(x, "x", x.numel() - 30, 30);
   return x;
 } // namespace def
 

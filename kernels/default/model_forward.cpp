@@ -168,7 +168,6 @@ Tensor ModelForward(const Model *model, Device device, int id,
   if (device == Device::kNCNNMeta || device == Device::kONNXMeta) {
     mark_as_output(x, "output");
   }
-  // print_n(x, "x", x.numel() - 30, 30);
   return x;
 }
 

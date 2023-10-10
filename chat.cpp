@@ -37,15 +37,12 @@ int main(int argc, char **argv) {
     model.LoadStateFile(argv[4]);
   }
   std::map<int, float> occurences;
-  std::vector<std::string> questions({"Who is Trump?", "Who is Biden?"});
-  int idx = 0;
   while (true) {
     std::cout << kUserPrefix;
     std::string input;
-    // std::getline(std::cin, input);
-    input = questions[idx];
+    std::getline(std::cin, input);
     std::cout << kAssistantPrefix;
-    std::string prompt =
+    const std::string prompt =
         kUserPrefix + input + kDoubleNewLine + kAssistantPrefix;
     auto start = std::chrono::system_clock::now();
     auto tmp = start;
@@ -53,16 +50,6 @@ int main(int argc, char **argv) {
     auto encode_time = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::system_clock::now() - tmp);
     tmp = std::chrono::system_clock::now();
-    if (idx == 1) {
-      model.should_print = true;
-      // std::cout << "===========================" << std::endl;
-      // // print all the prompt ids
-      // for (auto id : prompt_ids) {
-      //   std::cout << id << ", ";
-      // }
-      // std::cout << std::endl;
-      // std::cout << "===========================" << std::endl;
-    }
     auto output = Copy(model.Run(prompt_ids), rwkv::Device::kCPU);
     std::string response;
     int num_new_tokens = 0;
@@ -127,12 +114,6 @@ int main(int argc, char **argv) {
     if (!kGlobalPenalty) {
       occurences.clear();
     }
-
-    idx++;
-    if (idx >= 2) {
-      exit(0);
-    }
-
     // std::cout << std::endl;
     // model.Run(tokenizer.encode("\n"), states);
   }

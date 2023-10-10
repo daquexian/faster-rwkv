@@ -18,13 +18,12 @@ endif()
 if(NOT DEFINED CMAKE_POSITION_INDEPENDENT_CODE)
   set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 endif()
-option(FR_ENABLE_CUDA_ARCH "Specify the cuda arch yourself by CMAKE_CUDA_ARCHITECTURES" OFF)
 
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 if (FR_ENABLE_CUDA)
     enable_language(CUDA)
-    if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES OR NOT FR_ENABLE_CUDA_ARCH)
+    if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
         set(CMAKE_CUDA_ARCHITECTURES native)
         message("CMAKE_CUDA_ARCHITECTURES is not set, using native arch: " ${CMAKE_CUDA_ARCHITECTURES})
         # # find the largest cuda arch number compatible with the device.

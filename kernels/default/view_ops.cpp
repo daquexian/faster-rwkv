@@ -9,7 +9,7 @@ namespace rwkv {
 namespace def {
 
 Tensor reshape(const Tensor &x, const Shape &shape) {
-  auto check_valid_shape = [&x](Shape &output_shape) {
+  auto check_and_normalize_shape = [&x](Shape &output_shape) {
     auto original_shape = x.shape();
     LengthType original_elems = x.numel();
     LengthType target_elems = 1;
@@ -37,7 +37,7 @@ Tensor reshape(const Tensor &x, const Shape &shape) {
     return target_elems == original_elems;
   };
   Shape output_shape(shape);
-  RV_CHECK(check_valid_shape(output_shape));
+  RV_CHECK(check_and_normalize_shape(output_shape));
   return Tensor::FromOther(x, output_shape);
 }
 

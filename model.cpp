@@ -142,24 +142,6 @@ void Model::ResetStates() {
   }
 }
 
-// Tensor Model::Run(const std::vector<int> &ids) {
-//   if (kDebug) {
-//     std::cout << "Model::Run([";
-//     for (auto id : ids) {
-//       std::cout << id << ", ";
-//     }
-//     std::cout << "])" << std::endl;
-//   }
-//   for (int i = 0; i < ids.size(); ++i) {
-//     auto id = ids[i];
-//     auto out = _Run(id);
-//     if (i == ids.size() - 1) {
-//       return out;
-//     }
-//   }
-//   RV_UNIMPLEMENTED();
-// }
-
 Tensor CopyToCPUIfAvailable(Tensor x) {
   // TODO: more elegant
   try {
@@ -178,19 +160,12 @@ Tensor Model::Run(const std::vector<int> &ids) {
     std::cout << ")" << std::endl;
   }
   if (ids.size() == 1) {
-    return Run(ids[0]);
+    return CopyToCPUIfAvailable(
+        ModelForward(this, this->_act_device, ids[0], _states));
   } else {
-    return _Run(ids);
+    return CopyToCPUIfAvailable(
+        ModelForwardSeq(this, this->_act_device, ids, _states, false));
   }
-
-  for (int i = 0; i < ids.size(); ++i) {
-    auto id = ids[i];
-    auto out = _Run(id);
-    if (i == ids.size() - 1) {
-      return CopyToCPUIfAvailable(out);
-    }
-  }
-  RV_UNIMPLEMENTED();
 }
 
 Tensor Model::Run(int id) {
@@ -198,14 +173,6 @@ Tensor Model::Run(int id) {
     std::cout << "Model::Run(" << id << ")" << std::endl;
   }
   return CopyToCPUIfAvailable(_Run(id));
-}
-
-Tensor Model::_Run(int id) {
-  return ModelForward(this, this->_act_device, id, _states);
-}
-
-Tensor Model::_Run(const std::vector<int> &ids) {
-  return ModelForwardSeq(this, this->_act_device, ids, _states, false);
 }
 
 } // namespace rwkv
