@@ -1,9 +1,9 @@
 #pragma once
 
 #include <exception>
+#include <sstream>
 #include <stdexcept>
 #include <string>
-#include <sstream>
 
 #define STRINGIFY(...) STRINGIFY_(__VA_ARGS__)
 #define STRINGIFY_(...) #__VA_ARGS__
@@ -11,8 +11,7 @@
 struct FRException : public std::runtime_error {
   FRException() : std::runtime_error("") {}
   const char *what() const noexcept override { return msg.c_str(); }
-  template<typename T>
-  FRException &operator<<(const T& s) {
+  template <typename T> FRException &operator<<(const T &s) {
     std::stringstream ss;
     ss << s;
     msg += ss.str();

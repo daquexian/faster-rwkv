@@ -1,11 +1,16 @@
+#include "tensor.h"
 #include <fstream>
+#include <iostream>
 #include <sstream>
 #include <string>
+#include <vector>
 #ifdef FR_ENABLE_ANDROID_ASSET
 #include <android/asset_manager.h>
 #endif
 
 #include <check.h>
+
+#define LOG_INFO(msg) std::cout << "[INFO] " << msg << std::endl;
 
 inline bool file_exists(const std::string &path) {
   std::ifstream file(path);
@@ -43,3 +48,13 @@ inline std::string read_file(const std::string &_path,
     return ss.str();
   }
 }
+
+namespace rwkv {
+namespace utils {
+LengthType indices_to_offset(const Shape &shape,
+                             const std::vector<LengthType> &indices);
+
+void offset_to_indices(LengthType offset, const Shape &shape,
+                       std::vector<LengthType> &indices);
+} // namespace utils
+} // namespace rwkv

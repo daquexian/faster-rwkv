@@ -1,5 +1,6 @@
 #include "model.h"
 
+#include "check.h"
 #include "kernels/kernels.h"
 #include <tensor.h>
 
@@ -15,9 +16,11 @@ namespace rwkv {
 
 static const bool kDebug = std::getenv("FR_DEBUG") != nullptr;
 
-Model::Model(const std::string &path, const std::string &strategy): Model(path, strategy, std::any()) {}
+Model::Model(const std::string &path, const std::string &strategy)
+    : Model(path, strategy, std::any()) {}
 
-Model::Model(const std::string &path, const std::string &strategy, std::any extra) {
+Model::Model(const std::string &path, const std::string &strategy,
+             std::any extra) {
   auto dev_str = strategy.substr(0, strategy.find(" "));
   Device act_device = [&]() {
     if (dev_str == "export-ncnn") {
@@ -59,8 +62,10 @@ Model::Model(const std::string &path, const std::string &strategy, std::any extr
   if (kDebug) {
     std::cout << "Model inited" << std::endl;
     std::cout << "version: " << _version << std::endl;
-    std::cout << "activation dtype: " << dtype_to_string(_act_dtype) << std::endl;
-    std::cout << "weight dtype: " << dtype_to_string(_weight_dtype) << std::endl;
+    std::cout << "activation dtype: " << dtype_to_string(_act_dtype)
+              << std::endl;
+    std::cout << "weight dtype: " << dtype_to_string(_weight_dtype)
+              << std::endl;
     std::cout << "head_size: " << _head_size << std::endl;
     std::cout << "n_embd: " << _n_embd << std::endl;
     std::cout << "n_layer: " << _n_layer << std::endl;
@@ -130,10 +135,9 @@ void Model::ResetStates() {
       _states.push_back({});
       auto s1 = Tensor::Empty(Shape{_n_embd}, _act_dtype, Device::kCPU);
       _states.back().push_back(Copy(fill_(s1, 0), device));
-      auto s2 =
-          Tensor::Empty(Shape{this->_head_size, _n_att / this->_head_size,
-                              _n_embd / this->_head_size},
-                        DType::kFloat32, Device::kCPU);
+      auto s2 = Tensor::Empty(Shape{this->_head_size, _n_att / this->_head_size,
+                                    _n_embd / this->_head_size},
+                              DType::kFloat32, Device::kCPU);
       _states.back().push_back(Copy(fill_(s2, 0), device));
       auto s3 = Tensor::Empty(Shape{_n_embd}, _act_dtype, Device::kCPU);
       _states.back().push_back(Copy(fill_(s3, 0), device));
@@ -152,31 +156,38 @@ Tensor CopyToCPUIfAvailable(Tensor x) {
 
 Tensor Model::Run(const std::vector<int> &ids) {
   if (kDebug) {
-    std::cout << "Model::Run([";
+    std::cout << "[seq mode]Model::Run(";
     for (auto id : ids) {
       std::cout << id << ", ";
     }
-    std::cout << "])" << std::endl;
+    std::cout << ")" << std::endl;
   }
-  for (int i = 0; i < ids.size(); ++i) {
-    auto id = ids[i];
-    auto out = _Run(id);
-    if (i == ids.size() - 1) {
-      return CopyToCPUIfAvailable(out);
+  if (ids.size() == 1) {
+    return CopyToCPUIfAvailable(
+        ModelForward(this, this->_act_device, ids[0], _states));
+  } else {
+    // TODO: Remove the fallback after adding ncnn implementation of seq mode.
+#if FR_ENABLE_CUDA
+    return CopyToCPUIfAvailable(
+        ModelForwardSeq(this, this->_act_device, ids, _states, false));
+#else
+    {
+      for (int i = 0; i < ids.size(); ++i) {
+        auto id = ids[i];
+        auto out = ModelForward(this, this->_act_device, id, _states);
+        if (i == ids.size() - 1) {
+          return CopyToCPUIfAvailable(out);
+        }
+      }
+      RV_UNIMPLEMENTED();
     }
+#endif
   }
-  RV_UNIMPLEMENTED();
 }
 
 Tensor Model::Run(int id) {
-  if (kDebug) {
-    std::cout << "Model::Run(" << id << ")" << std::endl;
-  }
-  return CopyToCPUIfAvailable(_Run(id));
-}
-
-Tensor Model::_Run(int id) {
-  return ModelForward(this, this->_act_device, id, _states);
+  return CopyToCPUIfAvailable(
+      ModelForward(this, this->_act_device, id, _states));
 }
 
 } // namespace rwkv

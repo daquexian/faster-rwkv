@@ -18,9 +18,9 @@ limitations under the License.
 #include <cub/cub.cuh>
 #include <math_constants.h>
 
-#include <tensor.h>
-#include <kernels/registry.h>
 #include <kernels/cuda/layer_norm.cuh>
+#include <kernels/registry.h>
+#include <tensor.h>
 
 namespace rwkv {
 
@@ -98,7 +98,8 @@ void LayerNormForwardGpu(const int64_t num_instances, const int64_t norm_size,
 
 } // namespace layer_norm
 
-Tensor layer_norm_op(const Tensor& x, const Tensor& weight, const Tensor& bias) {
+Tensor layer_norm_op(const Tensor &x, const Tensor &weight,
+                     const Tensor &bias) {
   Tensor out = Tensor::Empty(x.sizes(), x.dtype(), x.device());
   RV_CHECK(x.sizes().size() <= 2);
   int m, k;

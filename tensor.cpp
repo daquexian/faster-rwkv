@@ -1,5 +1,6 @@
 #include "tensor.h"
-
+#include "check.h"
+#include <initializer_list>
 #include <iostream>
 
 #include <check.h>
@@ -11,6 +12,7 @@
 #endif
 
 namespace rwkv {
+Range Range::All = Range(0, 0, 0);
 
 std::optional<Device>& default_dispatch_device() {
   static std::optional<Device> _default_dispatch_device = std::nullopt;
@@ -158,11 +160,52 @@ Tensor Tensor::FromOther(const Tensor &other, const Shape &shape) {
   return tensor;
 }
 
-Tensor Tensor::view(const Shape &shape) { return rwkv::reshape(*this, shape); }
+Tensor Tensor::view(const Shape &shape) const {
+  return rwkv::reshape(*this, shape);
+}
 
-Tensor Tensor::flatten() { return rwkv::flatten(*this); }
+Tensor Tensor::flatten() const { return rwkv::flatten(*this); }
 
-Tensor Tensor::unsqueeze(int dim) { return rwkv::unsqueeze(*this, dim); }
+Tensor Tensor::cat(const Tensor &other, int dim) const {
+  return rwkv::cat(*this, other, dim);
+}
+
+Tensor Tensor::unsqueeze(int dim) const { return rwkv::unsqueeze(*this, dim); }
+
+Tensor Tensor::squeeze(int dim) const { return rwkv::squeeze(*this, dim); }
+
+Tensor Tensor::slice(const std::vector<Range> &ranges) const {
+  return rwkv::slice(*this, ranges);
+}
+
+Tensor Tensor::slice(const std::initializer_list<Range> &ranges) const {
+  return rwkv::slice(*this, std::vector<Range>(ranges));
+}
+
+Tensor Tensor::repeat(const std::initializer_list<LengthType> &repeats) const {
+  return ::rwkv::repeat(*this, repeats);
+}
+
+Tensor Tensor::repeat(LengthType repeats) const {
+  return this->repeat({repeats});
+}
+
+Tensor Tensor::pad(const std::initializer_list<LengthType> &paddings,
+                   const std::string &mode) const {
+  return ::rwkv::pad(*this, paddings, mode);
+}
+
+Tensor Tensor::reshape(const Shape &shape) const {
+  return ::rwkv::reshape(*this, shape);
+}
+
+Tensor Tensor::transpose(int dim_a, int dim_b) const {
+  return ::rwkv::transpose(*this, dim_a, dim_b);
+}
+
+Tensor Tensor::flip(const std::initializer_list<LengthType> &dims) const {
+  return ::rwkv::flip(*this, dims);
+}
 
 Tensor operator+(const Tensor &lhs, const Tensor &rhs) { return add(lhs, rhs); }
 
@@ -190,6 +233,33 @@ TensorStorage::~TensorStorage() {
   if (!_is_view) {
     allocator(_device).Deallocate(_data);
   }
+}
+
+void print_n(const rwkv::Tensor &x, const std::string &name, int skip,
+             int cnt) {
+  auto x_cpu = rwkv::Copy(x, rwkv::Device::kCPU);
+  auto max_elems = x.numel();
+  if (cnt > max_elems) {
+    cnt = max_elems;
+    skip = 0;
+  }
+  std::cout << ">>>>>>>> " << name << ": ";
+  for (int i = 0; i < cnt; i++) {
+    if (x.dtype() == rwkv::DType::kFloat32) {
+      std::cout << std::fixed << std::setprecision(6)
+                << x_cpu.data_ptr<float>()[skip + i] << ", ";
+    } else if (x.dtype() == rwkv::DType::kFloat16) {
+      std::cout << std::fixed << std::setprecision(6)
+                << static_cast<float>(x_cpu.data_ptr<float16>()[skip + i])
+                << ", ";
+    }
+  }
+  std::cout << std::endl;
+}
+
+void print_shape(const rwkv::Tensor &x, const std::string &name) {
+  std::cout << ">>>>>>>> " << name << ": " << x.sizes().size() << " dims  "
+            << x.size(0) << ", " << x.size(1) << ", " << x.size(2) << std::endl;
 }
 
 } // namespace rwkv

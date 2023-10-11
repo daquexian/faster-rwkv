@@ -18,7 +18,18 @@
 #include <check.h>
 #include <half.hpp>
 
+#include "kernels/allocator.h"
+
+#include <iostream>
+
 namespace rwkv {
+
+class Tensor;
+void print_n(const rwkv::Tensor &x, const std::string &name, int skip,
+             int cnt = 20);
+
+void print_shape(const rwkv::Tensor &x, const std::string &name);
+
 enum class DType {
   kUndefined,
   kInt4,
@@ -97,6 +108,17 @@ inline int32_t elem_size(DType dtype) {
   }
 }
 
+struct Range {
+  int start;
+  int interval;
+  int end;
+
+  Range(int start, int interval, int end)
+      : start(start), interval(interval), end(end) {}
+
+  static Range All;
+};
+
 class TensorStorage {
 public:
   TensorStorage(size_t nbytes, Device device);
@@ -133,23 +155,82 @@ public:
   LengthType numel() const { return num_elements(_shape); }
   int32_t elem_size() const { return ::rwkv::elem_size(_dtype); }
 
-  Tensor view(const Shape &shape);
+  Tensor view(const Shape &shape) const;
 
-  Tensor flatten();
+  Tensor flatten() const;
 
-  Tensor unsqueeze(int dim);
+  Tensor cat(const Tensor &other, int dim) const;
+
+  Tensor unsqueeze(int dim) const;
+
+  Tensor squeeze(int dim) const;
+
+  Tensor slice(const std::vector<Range> &ranges) const;
+
+  Tensor slice(const std::initializer_list<Range> &ranges) const;
+
+  Tensor repeat(const std::initializer_list<LengthType> &repeats) const;
+
+  Tensor repeat(LengthType repeats) const;
+
+  Tensor transpose(int dim_a, int dim_b) const;
+
+  Tensor reshape(const Shape &shape) const;
+
+  Tensor pad(const std::initializer_list<LengthType> &paddings,
+             const std::string &mode) const;
+
+  Tensor flip(const std::initializer_list<LengthType> &dims) const;
+
+  Tensor flip(LengthType dim) const { return flip({dim}); }
+
+  template <typename T>
+  static Tensor Arange(T start, T interval, T end, DType dtype, Device device) {
+    RV_CHECK(start < end && interval > 0 || start > end && interval < 0);
+    RV_CHECK(device == Device::kCPU || device == Device::kCUDA);
+    // T *host_data = (T *)malloc(numel * sizeof(T));
+    std::vector<T> host_data;
+    if (start < end) {
+      for (T i = start; i < end; i += interval) {
+        host_data.push_back(i);
+      }
+    } else {
+      for (T i = start; i > end; i += interval) {
+        host_data.push_back(i);
+      }
+    }
+    LengthType numel = host_data.size();
+
+    auto ret = Tensor::Empty({numel}, dtype, device);
+    T *data = ret.template data_ptr<T>();
+    if (device == Device::kCPU) {
+      for (LengthType i = 0; i < numel; i++) {
+        data[i] = start + i * interval;
+      }
+    } else {
+#ifdef FR_ENABLE_CUDA
+      std::vector<T> host_data;
+      for (LengthType i = 0; i < numel; i++) {
+        host_data.push_back(start + i * interval);
+      }
+      auto err = cudaMemcpy(data, host_data.data(), numel * sizeof(T),
+                            cudaMemcpyHostToDevice);
+#else
+      RV_UNIMPLEMENTED();
+#endif
+    }
+    return ret;
+  }
 
   static Tensor Empty(const Shape &shape, DType dtype, Device device);
   static Tensor FromPtr(void *ptr, const Shape &shape, DType dtype,
                         Device device);
   static Tensor FromMsgPack(const msgpack::object &obj);
-  static Tensor FromOther(const Tensor& other, const Shape &shape);
+  static Tensor FromOther(const Tensor &other, const Shape &shape);
 
-  template<typename T>
-  T FromTensor() const;
+  template <typename T> T FromTensor() const;
 
-  template<typename T>
-  static Tensor ToTensor(const T& x);
+  template <typename T> static Tensor ToTensor(const T &x);
 
   std::string name;
   bool is_constant = false;

@@ -4,9 +4,12 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <cstdio>
+#include <cuda_fp16.h>
+#include <cuda_runtime.h>
 
-template <typename Func> __global__ void _element_wise(Func func, int n) {
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < n;
+template <typename Func> __global__ void _element_wise(Func func, int n, int offset) {
+  for (int i = blockIdx.x * blockDim.x + threadIdx.x + offset; i < n;
        i += blockDim.x * gridDim.x) {
     func(i);
   }
@@ -18,10 +21,16 @@ template <typename Func> __global__ void _element_wise(Func func, int n) {
 template <typename Func>
 void element_wise(Func func, int n) {
   // 256 is good enough on most GPUs
-  RV_CHECK(n % 128 == 0);
+  // RV_CHECK(n % 128 == 0);
   if (n % 256 == 0) {
-    _element_wise<<<n / 256, 256>>>(func, n);
+    _element_wise<<<n / 256, 256>>>(func, n, 0);
   } else {
-    _element_wise<<<n / 128, 128>>>(func, n);
+    auto pieces = n / 256;
+    if (pieces == 0) {
+      _element_wise<<<1, n>>>(func, n, 0);
+    } else {
+      _element_wise<<<pieces, 256>>>(func, n, 0);
+      _element_wise<<<1, n - pieces * 256>>>(func, n, pieces * 256);
+    }
   }
 }

@@ -29,17 +29,41 @@ list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 if (FR_ENABLE_CUDA)
     enable_language(CUDA)
+    ## ===================== A solution for compiling error of half caused by low cuda arch detected =======================
+    ## find the largest cuda arch number compatible with the device.
+    # include(FindCUDA/select_compute_arch)
+    # CUDA_DETECT_INSTALLED_GPUS(INSTALLED_GPU_CCS_1)
+    # string(STRIP "${INSTALLED_GPU_CCS_1}" INSTALLED_GPU_CCS_2)
+    # string(REPLACE " " "\;" INSTALLED_GPU_CCS_3 "${INSTALLED_GPU_CCS_2}")
+    # string(REPLACE "." "" CUDA_ARCH_LIST "${INSTALLED_GPU_CCS_3}")
+    # STRING(FIND "${CUDA_ARCH_LIST}" "\;" LAST_SEMICOLON_INDEX REVERSE)
+    # math(EXPR SPLIT_START_INDEX "${LAST_SEMICOLON_INDEX} + 1")
+    # STRING(SUBSTRING "${CUDA_ARCH_LIST}" ${SPLIT_START_INDEX} -1 FILTERED_CUDA_ARCH_LIST)
+    # set(CMAKE_CUDA_ARCHITECTURES ${FILTERED_CUDA_ARCH_LIST})
+    ## ======================================================================================================================
     if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
         set(CMAKE_CUDA_ARCHITECTURES native)
+        message("CMAKE_CUDA_ARCHITECTURES is not set, using native arch: " ${CMAKE_CUDA_ARCHITECTURES})
+    else()
+        message("using arch: " ${CMAKE_CUDA_ARCHITECTURES})
     endif()
+
     set(cuda_kernel_srcs
         kernels/cuda/matmul.cpp
+        kernels/cuda/cat.cu
         kernels/cuda/layer_norm.cu
         kernels/cuda/group_norm.cu
         kernels/cuda/cast_dtype.cu
         kernels/cuda/att.cu
+        kernels/cuda/att_seq.cu
         kernels/cuda/ffn.cu
+        kernels/cuda/ffn_seq.cu
         kernels/cuda/fill.cu
+        kernels/cuda/flip.cu
+        kernels/cuda/pad.cu
+        kernels/cuda/repeat.cu
+        kernels/cuda/slice.cu
+        kernels/cuda/transpose.cu
         kernels/cuda/element_wise.cu
         kernels/cuda/allocator.cpp
     )
@@ -141,6 +165,7 @@ option(MSGPACK_USE_BOOST "" OFF)
 FetchContent_MakeAvailable(msgpack)
 
 add_library(faster_rwkv_internal
+        utils.cpp
         model.cpp 
         tensor.cpp
         tokenizer.cpp
@@ -149,11 +174,19 @@ add_library(faster_rwkv_internal
         kernels/cpu/allocator.cpp
         kernels/cpu/fill.cpp
         kernels/cpu/cast_dtype.cpp
+        kernels/cpu/repeat.cpp
+        kernels/cpu/transpose.cpp
+        kernels/cpu/slice.cpp
+        kernels/cpu/flip.cpp
+        kernels/cpu/pad.cpp
+        kernels/default/gather_ops.cpp
+        kernels/default/view_ops.cpp
         kernels/cpu/softmax.cpp
         kernels/default/att.cpp
         kernels/default/ffn.cpp
         kernels/default/init_model.cpp
         kernels/default/model_forward.cpp
+        kernels/default/model_forward_seq.cpp
         kernels/export-ncnn/kernels.cpp
         ${cuda_kernel_srcs}
         ${ncnn_kernel_srcs}

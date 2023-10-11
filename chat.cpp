@@ -114,7 +114,6 @@ int main(int argc, char **argv) {
     if (!kGlobalPenalty) {
       occurences.clear();
     }
-
     // std::cout << std::endl;
     // model.Run(tokenizer.encode("\n"), states);
   }
