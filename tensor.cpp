@@ -30,6 +30,11 @@ std::ostream &operator<<(std::ostream &os, const Shape &shape) {
   return os;
 }
 
+std::ostream &operator<<(std::ostream &os, DType shape) {
+  os << dtype_to_string(shape);
+  return os;
+}
+
 void print_tensor(const Tensor &t, const std::string &name) {
   std::cout << "Tensor " << name << std::endl;
   auto t_cpu = Copy(t, Device::kCPU);

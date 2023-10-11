@@ -17,7 +17,7 @@ namespace rwkv {
 // 2. Tensor Tensor::ToTensor(const T &backend_tensor)
 // 3. std::pair<T, std::vector<std::vector<T>>> GraphBackendForwardInternal(
 //         const Model *model, int id,
-//         const std::vector<std::vector<T>> &states)
+//         std::vector<std::vector<T>> &states)
 // 
 // And register the backend with:
 // KernelRegister xxxxx_model_forward_reg("model_forward", Device::kXXX,
@@ -61,7 +61,7 @@ template <> Tensor Tensor::ToTensor(const ncnn::Mat &ncnn_mat) {
 template <>
 std::pair<ncnn::Mat, std::vector<std::vector<ncnn::Mat>>>
 GraphBackendForwardInternal(const Model *model, int id,
-                            const std::vector<std::vector<ncnn::Mat>> &states) {
+                            std::vector<std::vector<ncnn::Mat>> &&states) {
   // Retrieve the NcnnExtra object from the model. It is created in
   // kernel/ncnn/init_model.cpp
   auto &extra = *std::any_cast<std::shared_ptr<NcnnExtra>>(model->extra());

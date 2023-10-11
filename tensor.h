@@ -70,6 +70,8 @@ inline std::string dtype_to_string(DType dtype) {
   }
 }
 
+std::ostream &operator<<(std::ostream &os, DType shape);
+
 inline LengthType num_elements(const std::vector<LengthType> &shape) {
   LengthType ret = 1;
   for (auto &x : shape) {

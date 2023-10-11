@@ -96,17 +96,21 @@ if (FR_ENABLE_ONNX)
     )
     FetchContent_MakeAvailable(onnx)
     # WIP
-    # option(onnxruntime_USE_FULL_PROTOBUF "" ON)
-    # FetchContent_Declare(
-    #     onnxruntime
-    #     GIT_REPOSITORY https://github.com/microsoft/onnxruntime
-    #     GIT_TAG 5af6279440a0db698b0afbfc3de655400562831f
-    #     SOURCE_SUBDIR cmake
-    #     SYSTEM
-    # )
-    # FetchContent_MakeAvailable(onnxruntime)
+    option(onnxruntime_USE_FULL_PROTOBUF "" ON)
+    option(onnxruntime_BUILD_UNIT_TESTS "Build ONNXRuntime unit tests" OFF)
+    option(onnxruntime_BUILD_SHARED_LIB "Build a shared library" ON)
+    FetchContent_Declare(
+        onnxruntime
+        GIT_REPOSITORY https://github.com/microsoft/onnxruntime
+        GIT_TAG 5af6279440a0db698b0afbfc3de655400562831f
+        SOURCE_SUBDIR cmake
+        SYSTEM
+    )
+    FetchContent_MakeAvailable(onnxruntime)
     set(onnx_kernel_srcs
         kernels/export-onnx/kernels.cpp
+        kernels/onnx/init_model.cpp
+        kernels/onnx/model_forward.cpp
     )
 endif()
 
@@ -152,7 +156,8 @@ if (FR_ENABLE_NCNN)
 endif()
 if (FR_ENABLE_ONNX)
     target_compile_definitions(faster_rwkv_internal PUBLIC FR_ENABLE_ONNX)
-    target_link_libraries(faster_rwkv_internal PRIVATE onnx)
+    target_link_libraries(faster_rwkv_internal PRIVATE onnxruntime onnx)
+    target_include_directories(faster_rwkv_internal PRIVATE /data/user/cangshui/tianchao/repos/faster-rwkv/build-debug/_deps/onnxruntime-src/include/onnxruntime/core/session/)
 endif()
 
 if (DEFINED ANDROID_NDK)
@@ -189,6 +194,10 @@ target_link_libraries(midi_music faster_rwkv)
 if (FR_ENABLE_ONNX)
     add_executable(export_onnx export_onnx.cpp)
     target_link_libraries(export_onnx faster_rwkv)
+
+    add_executable(test_onnx test_onnx.cpp)
+    target_link_libraries(test_onnx faster_rwkv)
+    target_include_directories(test_onnx PRIVATE /data/user/cangshui/tianchao/repos/faster-rwkv/build-debug/_deps/onnxruntime-src/include/onnxruntime/core/session/)
 endif()
 
 if (FR_BUILD_JNI)

@@ -30,6 +30,8 @@ Model::Model(const std::string &path, const std::string &strategy, std::any extr
       return Device::kCPU;
     } else if (dev_str == "ncnn") {
       return Device::kNCNN;
+    } else if (dev_str == "onnx") {
+      return Device::kONNX;
     } else {
       RV_UNIMPLEMENTED();
     }
@@ -106,7 +108,8 @@ void Model::LoadStateFile(const std::string &path) {
 
 void Model::ResetStates() {
   _states.clear();
-  auto device = _act_device == Device::kNCNN ? Device::kCPU : _act_device;
+  // TODO:
+  auto device = (_act_device == Device::kNCNN || _act_device == Device::kONNX) ? Device::kCPU : _act_device;
   if (this->_version == "4") {
     for (int i = 0; i < _n_layer; i++) {
       _states.push_back({});
