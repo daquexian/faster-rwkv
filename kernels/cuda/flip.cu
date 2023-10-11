@@ -61,6 +61,8 @@ Tensor flip_internal(const Tensor &x, const std::vector<LengthType> &dims) {
     RV_CHECK(false);
   }
 
+#undef LAUNCH_FLIP_KERNEL
+
   cudaFree(src_shape_gpu);
   cudaFree(dims_gpu);
 

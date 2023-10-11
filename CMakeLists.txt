@@ -43,6 +43,7 @@ if (FR_ENABLE_CUDA)
     endif()
 
     set(cuda_kernel_srcs
+        kernels/cuda/activations/silu.cu
         kernels/cuda/matmul.cpp
         kernels/cuda/cat.cu
         kernels/cuda/layer_norm.cu

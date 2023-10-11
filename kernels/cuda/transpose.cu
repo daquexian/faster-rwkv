@@ -75,6 +75,8 @@ Tensor transpose_internal(const Tensor &x, int dim_a, int dim_b) {
     RV_UNIMPLEMENTED();
   }
 
+#undef LAUNCH_TRANSPOSE_KERNEL
+
   cudaError_t error = cudaGetLastError();
   if (error != cudaSuccess) {
     printf("transpose CUDA error: %s\n", cudaGetErrorString(error));
