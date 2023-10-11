@@ -75,12 +75,12 @@ Tensor vgather(const std::vector<Tensor> &x, const std::vector<int> &idx) {
     } else if (x[0].dtype() == DType::kInt8) {
       LAUNCH_VGATHER_KERNEL(vgather_internal_cuda, int8_t)
     } else {
-      RV_CHECK(false);
+      RV_UNIMPLEMENTED();
     }
   }
 #endif
   else {
-    RV_CHECK(false);
+    RV_UNIMPLEMENTED();
   }
 
 #undef LAUNCH_VGATHER_KERNEL

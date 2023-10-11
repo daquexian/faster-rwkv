@@ -114,7 +114,7 @@ Tensor ModelForward(const Model *model, Device device, int id,
           mark_as_output(state[1], "output_state_" + std::to_string(i) + "_1");
         }
         param_idx += 13;
-      } else if (model->_version == "5.1") {
+      } else if (model->_version == "5.1" || model->_version == "5.2") {
         std::tie(x, state[0], state[1]) = att_one_v5_1(
             x, state[0], state[1], params[param_idx], params[param_idx + 1],
             params[param_idx + 2], params[param_idx + 3], params[param_idx + 4],

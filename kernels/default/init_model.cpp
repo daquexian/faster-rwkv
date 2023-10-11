@@ -1,7 +1,6 @@
 #include <algorithm>
 #include <any>
 #include <fstream>
-#include <iostream>
 
 #include <msgpack.hpp>
 
@@ -63,7 +62,6 @@ inline void init_model(Model *model, Device device, const std::string &path,
   } else {
     model->_version = map["version"].as<std::string>();
   }
-
   if (model->_version.substr(0, 1) == "5") {
     model->_head_size = map["n_head"].as<int>();
     model->_n_att = map["n_att"].as<int>();
