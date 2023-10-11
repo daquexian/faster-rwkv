@@ -125,12 +125,12 @@ inline Tensor cat(const Tensor &a, const Tensor &b, int dim) {
 inline Tensor add(const Tensor &x, const Tensor &y) {
   // TODO: global device
   return KernelRegistry::Instance().Get<decltype(add) *>(
-      "add", Device::kNCNNMeta)(x, y);
+      "add", default_dispatch_device().value_or(x.device()))(x, y);
 }
 
 inline Tensor sub(float x, const Tensor &y) {
   return KernelRegistry::Instance().Get<Tensor (*)(float, const Tensor &)>(
-      "rsub_scalar", Device::kNCNNMeta)(x, y);
+      "rsub_scalar", default_dispatch_device().value_or(y.device()))(x, y);
 }
 
 inline Tensor sub(const Tensor &x, const Tensor &y) {
@@ -139,8 +139,8 @@ inline Tensor sub(const Tensor &x, const Tensor &y) {
 }
 
 inline Tensor mul(const Tensor &x, const Tensor &y) {
-  return KernelRegistry::Instance().Get<decltype(mul) *>("mul", x.device())(x,
-                                                                            y);
+  return KernelRegistry::Instance().Get<decltype(mul) *>(
+      "mul", default_dispatch_device().value_or(x.device()))(x, y);
 }
 
 inline Tensor div(const Tensor &x, const Tensor &y) {

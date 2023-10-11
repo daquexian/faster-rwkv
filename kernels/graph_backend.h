@@ -6,7 +6,7 @@ namespace rwkv {
 template <typename T>
 std::pair<T, std::vector<std::vector<T>>>
 GraphBackendForwardInternal(const Model *model, int id,
-                     const std::vector<std::vector<T>> &states);
+                     std::vector<std::vector<T>> &&states);
 
 template <typename T>
 Tensor GraphBackendForward(const Model *model, Device device, int id,
@@ -21,7 +21,7 @@ Tensor GraphBackendForward(const Model *model, Device device, int id,
   }
 
   auto [backend_output, new_backend_states] =
-      GraphBackendForwardInternal(model, id, backend_states);
+      GraphBackendForwardInternal(model, id, std::move(backend_states));
 
   for (int i = 0; i < states.size(); i++) {
     for (int j = 0; j < states[i].size(); j++) {

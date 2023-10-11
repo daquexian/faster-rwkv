@@ -56,15 +56,27 @@ ModelProto destory() {
 void ExportModel(const std::string &input_path,
                  const std::string &output_path) {
 
-  // NOTE: fp32 here is just a placeholder. The dtype used by ncnn is determined
-  // by the weight_dtype parameter.
+  default_dispatch_device() = Device::kONNXMeta;
   Model model(input_path, "export-onnx fp32");
   model.Run(0);
+  default_dispatch_device() = std::nullopt;
   ModelProto model_proto = destory();
   // save model_proto to output_path
   std::ofstream ofs(output_path, std::ios::binary);
   RV_CHECK(ofs.good());
   model_proto.SerializeToOstream(&ofs);
+  {
+    std::ofstream config_file(output_path + ".config");
+    config_file << "version: " << model.version() << std::endl;
+    config_file << "head_size: " << model.head_size() << std::endl;
+    config_file << "n_layer: " << model.n_layer() << std::endl;
+    config_file << "n_embd: " << model.n_embd() << std::endl;
+    config_file << "n_att: " << model.n_att() << std::endl;
+    config_file << "n_ffn: " << model.n_ffn() << std::endl;
+    std::string kOnnxImplVersion = "1";
+    config_file << "onnx_impl_version: " << kOnnxImplVersion << std::endl;
+    config_file.close();
+  }
 }
 
 DType _dtype = DType::kFloat32;
@@ -74,10 +86,12 @@ int fr_dtype_to_onnx_dtype(DType fr_dtype) {
     return TensorProto::FLOAT;
   } else if (fr_dtype == DType::kFloat16) {
     return TensorProto::FLOAT16;
+  } else if (fr_dtype == DType::kInt32) {
+    return TensorProto::INT32;
   } else if (fr_dtype == DType::kInt64) {
     return TensorProto::INT64;
   } else {
-    RV_UNIMPLEMENTED();
+    RV_UNIMPLEMENTED() << "Unsupported dtype: " << dtype_to_string(fr_dtype);
   }
 }
 
@@ -130,6 +144,18 @@ Tensor possible_initializer(const Tensor &x) {
   return output;
 }
 
+Tensor constant(const Tensor &x) {
+  RV_CHECK(x.device() == Device::kCPU);
+  return possible_initializer(x);
+}
+
+Tensor constant(const std::vector<int> &x) {
+  Tensor x_t = Tensor::FromPtr(const_cast<int *>(x.data()),
+                               {static_cast<long>(x.size())}, DType::kInt32,
+                               Device::kCPU);
+  return constant(x_t);
+}
+
 Tensor gather(const Tensor &x, const Tensor &index) {
   RV_CHECK(x.shape().size() == 2);
   RV_CHECK(index.shape().size() == 0);
@@ -138,6 +164,16 @@ Tensor gather(const Tensor &x, const Tensor &index) {
   node->set_op_type("Gather");
   node->add_input(x.name);
   node->add_input(index.name);
+  node->add_output(output.name);
+  return output;
+}
+
+Tensor reduce_mean(const Tensor& x) {
+  Shape output_shape(x.shape().size(), 1);
+  auto output = Tensor::Empty(output_shape, x.dtype(), x.device());
+  NodeProto *node = new_node();
+  node->set_op_type("ReduceMean");
+  node->add_input(x.name);
   node->add_output(output.name);
   return output;
 }
@@ -152,18 +188,75 @@ Tensor layernorm(const Tensor &x, const Tensor &_weight, const Tensor &_bias) {
   node->add_input(weight.name);
   node->add_input(bias.name);
   node->add_output(output.name);
+  return output;
+}
+
+Tensor concat(const std::vector<Tensor> &xs, int axis) {
+  RV_CHECK(xs.size() > 0);
+  RV_CHECK(axis == 1);
+  std::vector<Shape> x_shapes;
+  for (auto &x : xs) {
+    x_shapes.push_back(x.shape());
+  }
+  auto output = Tensor::Empty(shape::concat(x_shapes, axis), xs[0].dtype(),
+                              xs[0].device());
+  NodeProto *node = new_node();
+  node->set_op_type("Concat");
+  for (auto &x : xs) {
+    node->add_input(x.name);
+  }
+  node->add_output(output.name);
   node->add_attribute()->set_name("axis");
-  node->mutable_attribute(0)->set_i(1);
+  node->mutable_attribute(0)->set_i(axis);
   node->mutable_attribute(0)->set_type(onnx::AttributeProto::INT);
-  node->add_attribute()->set_name("epsilon");
-  node->mutable_attribute(1)->set_f(1e-5f);
-  node->mutable_attribute(1)->set_type(onnx::AttributeProto::FLOAT);
+  return output;
+}
+
+Tensor slice(const Tensor &x, const std::vector<int> &starts,
+             const std::vector<int> &ends, const std::vector<int> &axes) {
+  RV_CHECK(axes.size() == starts.size());
+  RV_CHECK(axes.size() == ends.size());
+  auto starts_t = constant(starts);
+  auto ends_t = constant(ends);
+  auto axes_t = constant(axes);
+  auto output = Tensor::Empty(shape::slice(x.shape(), starts, ends, axes),
+                              x.dtype(), x.device());
+  NodeProto *node = new_node();
+  node->set_op_type("Slice");
+  node->add_input(x.name);
+  node->add_input(starts_t.name);
+  node->add_input(ends_t.name);
+  node->add_input(axes_t.name);
+  node->add_output(output.name);
+  return output;
+}
+
+Tensor reshape(const Tensor &x, const Shape &shape) {
+  Tensor shape_cpu_tensor = Tensor::FromPtr(const_cast<int64_t *>(shape.data()),
+                                            {static_cast<long>(shape.size())},
+                                            DType::kInt64, Device::kCPU);
+  auto shape_tensor = constant(shape_cpu_tensor);
+  Tensor output = Tensor::Empty(shape, x.dtype(), x.device());
+  NodeProto *node = new_node();
+  node->set_op_type("Reshape");
+  node->add_input(x.name);
+  node->add_input(shape_tensor.name);
+  node->add_output(output.name);
   return output;
 }
 
 Tensor matmul(const Tensor &_x, const Tensor &_y) {
   auto x = possible_initializer(_x);
   auto y = possible_initializer(_y);
+  if (x.shape().size() == 1) {
+    auto expected_out_shape = shape::matmul(x.shape(), y.shape());
+    RV_CHECK(y.shape().size() == 2);
+    auto x_reshaped = reshape(x, {1, x.shape()[0]});
+    auto res = matmul(x_reshaped, y);
+    res = reshape(res, {res.shape()[1]});
+    RV_CHECK(res.shape() == expected_out_shape);
+    return res;
+  }
   auto output =
       Tensor::Empty(shape::matmul(x.shape(), y.shape()), x.dtype(), x.device());
   NodeProto *node = new_node();
@@ -202,8 +295,8 @@ Tensor rsub_scalar(float x, const Tensor &_y) {
   Tensor output = Tensor::Empty(y.shape(), y.dtype(), y.device());
   NodeProto *node = new_node();
   node->set_op_type("Sub");
-  node->add_input(y.name);
   node->add_input(x_t.name);
+  node->add_input(y.name);
   node->add_output(output.name);
   return output;
 }
@@ -235,18 +328,41 @@ Tensor sigmoid(const Tensor &x) {
   return output;
 }
 
-Tensor reshape(const Tensor &x, const Shape &shape) {
-  Tensor output = Tensor::Empty(shape, x.dtype(), x.device());
+Tensor sqrt(const Tensor &x) {
+  Tensor output = Tensor::Empty(x.shape(), x.dtype(), x.device());
   NodeProto *node = new_node();
-  node->set_op_type("Reshape");
+  node->set_op_type("Sqrt");
   node->add_input(x.name);
-  Tensor shape_cpu_tensor = Tensor::FromPtr(const_cast<int64_t *>(shape.data()),
-                                            {static_cast<long>(shape.size())},
-                                            DType::kInt64, Device::kCPU);
-  auto shape_tensor = possible_initializer(shape_cpu_tensor);
-  node->add_input(shape_tensor.name);
   node->add_output(output.name);
   return output;
+}
+
+Tensor layernorm_fallback(const Tensor &x, const Tensor &_weight, const Tensor &_bias) {
+  auto weight = possible_initializer(_weight);
+  auto bias = possible_initializer(_bias);
+  auto x_subed = x - reduce_mean(x);
+  auto x_subed_square = x_subed * x_subed;
+  auto x_subed_square_mean = reduce_mean(x_subed_square);
+  static const Tensor eps = constant_scalar(1e-5);
+  auto x_subed_square_mean_sqrt = sqrt(x_subed_square_mean + eps);
+  return weight * (x_subed / x_subed_square_mean_sqrt) + bias;
+}
+
+Tensor groupnorm(const Tensor &x, int num_groups, const Tensor &_weight,
+                 const Tensor &_bias) {
+  auto weight = possible_initializer(_weight);
+  auto bias = possible_initializer(_bias);
+  int len = x.shape()[1];
+  RV_CHECK(len % num_groups == 0);
+  int group_size = len / num_groups;
+  std::vector<Tensor> ln_outs;
+  for (int i = 0; i < num_groups; i++) {
+    auto x_slice = slice(x, {i * group_size}, {(i + 1) * group_size}, {1});
+    auto w_slice = slice(weight, {i * group_size}, {(i + 1) * group_size}, {0});
+    auto b_slice = slice(bias, {i * group_size}, {(i + 1) * group_size}, {0});
+    ln_outs.push_back(layernorm_fallback(x_slice, w_slice, b_slice));
+  }
+  return concat(ln_outs, 1);
 }
 
 Tensor mark_as_output(const Tensor &x, const std::string &name) {
@@ -254,7 +370,6 @@ Tensor mark_as_output(const Tensor &x, const std::string &name) {
   output->set_name(name);
   output->mutable_type()->mutable_tensor_type()->set_elem_type(
       fr_dtype_to_onnx_dtype(_dtype));
-  std::cout << "output name: " << name << ", dim: " << x.shape() << std::endl;
   for (auto dim : x.shape()) {
     output->mutable_type()
         ->mutable_tensor_type()
@@ -273,7 +388,7 @@ Tensor mark_as_output(const Tensor &x, const std::string &name) {
 
 KernelRegister allocator_reg("allocator", Device::kONNXMeta, null_allocator);
 
-KernelRegister layernorm_reg("layernorm", Device::kONNXMeta, layernorm);
+KernelRegister layernorm_reg("layernorm", Device::kONNXMeta, layernorm_fallback);
 KernelRegister groupnorm_reg("groupnorm", Device::kONNXMeta, groupnorm);
 KernelRegister matmul_reg("matmul", Device::kONNXMeta, matmul);
 KernelRegister add_reg("add", Device::kONNXMeta, add);

@@ -46,7 +46,8 @@ Shape matmul(const Shape &x, const Shape &y) {
 Shape broadcast_binary(const Shape &x, const Shape &y) {
   auto nrank = std::max(x.size(), y.size());
   Shape output_shape(nrank);
-  for (int i = nrank - 1, x_idx = x.size() - 1, y_idx = y.size() - 1; i >= 0; i--, x_idx--, y_idx--) {
+  for (int i = nrank - 1, x_idx = x.size() - 1, y_idx = y.size() - 1; i >= 0;
+       i--, x_idx--, y_idx--) {
     if (x_idx < 0) {
       output_shape[i] = y[y_idx];
     } else if (y_idx < 0) {
@@ -63,5 +64,37 @@ Shape broadcast_binary(const Shape &x, const Shape &y) {
   }
   return output_shape;
 }
+
+Shape concat(const std::vector<Shape> &xs, int axis) {
+  RV_CHECK(xs.size() > 0);
+  RV_CHECK(axis >= 0 && axis < xs[0].size());
+  Shape output_shape = xs[0];
+  for (int i = 1; i < xs.size(); i++) {
+    RV_CHECK(xs[i].size() == output_shape.size());
+    for (int j = 0; j < xs[i].size(); j++) {
+      if (j == axis) {
+        output_shape[j] += xs[i][j];
+      } else {
+        RV_CHECK(xs[i][j] == output_shape[j]);
+      }
+    }
+  }
+  return output_shape;
+}
+
+Shape slice(const Shape &x, const std::vector<int> &starts,
+    const std::vector<int> &ends, const std::vector<int> &axes) {
+  RV_CHECK(starts.size() == ends.size());
+  RV_CHECK(starts.size() == axes.size());
+  Shape output_shape = x;
+  for (int i = 0; i < starts.size(); i++) {
+    RV_CHECK(starts[i] >= 0 && starts[i] < x[axes[i]]);
+    RV_CHECK(ends[i] >= 0 && ends[i] <= x[axes[i]]);
+    RV_CHECK(starts[i] < ends[i]);
+    output_shape[axes[i]] = ends[i] - starts[i];
+  }
+  return output_shape;
+}
+
 } // namespace shape
 } // namespace rwkv

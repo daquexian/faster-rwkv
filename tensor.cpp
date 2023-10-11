@@ -14,6 +14,11 @@
 namespace rwkv {
 Range Range::All = Range(0, 0, 0);
 
+std::optional<Device>& default_dispatch_device() {
+  static std::optional<Device> _default_dispatch_device = std::nullopt;
+  return _default_dispatch_device;
+}
+
 // operator<< for Shape
 std::ostream &operator<<(std::ostream &os, const Shape &shape) {
   os << "(";
@@ -24,6 +29,11 @@ std::ostream &operator<<(std::ostream &os, const Shape &shape) {
     }
   }
   os << ")";
+  return os;
+}
+
+std::ostream &operator<<(std::ostream &os, DType shape) {
+  os << dtype_to_string(shape);
   return os;
 }
 

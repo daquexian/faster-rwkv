@@ -6,14 +6,14 @@
 int main(int argc, char **argv) {
   if (argc != 3) {
     std::cerr
-        << "Usage: ./export_ncnn <input path> <output prefix>"
+        << "Usage: " << argv[0] << " <input path> <output prefix>"
         << std::endl;
     return 1;
   }
   if (std::ifstream ifs(argv[1]); !ifs.good()) {
     std::cerr << "Failed to open " << argv[1] << std::endl;
     std::cerr
-        << "Usage: ./export_ncnn <input path> <output prefix>"
+        << "Usage: " << argv[0] << " <input path> <output prefix>"
         << std::endl;
     return 1;
   }
