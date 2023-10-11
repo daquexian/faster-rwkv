@@ -6,7 +6,13 @@ include(FetchContent)
 
 option(FR_ENABLE_CUDA "Enable CUDA" OFF)
 # ONNX support is a WIP
+option(FR_ENABLE_ONNX_EXPORTING "Enable ONNX exporting" OFF)
 option(FR_ENABLE_ONNX "Enable ONNX" OFF)
+if (FR_ENABLE_ONNX OR FR_ENABLE_ONNX_EXPORTING)
+    option(FR_BUILD_PROTOBUF "Build protobuf (needed by onnx)" ON)
+else()
+    option(FR_BUILD_PROTOBUF "Build protobuf (needed by onnx)" OFF)
+endif()
 option(FR_ENABLE_NCNN "Enable NCNN" ON)
 option(FR_BUILD_PYTHON "" OFF)
 if (DEFINED ANDROID_NDK)
@@ -78,7 +84,7 @@ if (FR_ENABLE_NCNN)
     )
 endif()
 
-if (FR_ENABLE_ONNX)
+if (FR_BUILD_PROTOBUF)
     option(protobuf_BUILD_TESTS "Build tests" OFF)
     FetchContent_Declare(
         protobuf
@@ -88,6 +94,9 @@ if (FR_ENABLE_ONNX)
         SOURCE_SUBDIR cmake
     )
     FetchContent_MakeAvailable(protobuf)
+endif()
+
+if (FR_ENABLE_ONNX OR FR_ENABLE_ONNX_EXPORTING)
     FetchContent_Declare(
         onnx
         GIT_REPOSITORY https://github.com/onnx/onnx
@@ -95,10 +104,19 @@ if (FR_ENABLE_ONNX)
         SYSTEM
     )
     FetchContent_MakeAvailable(onnx)
+    if (FR_ENABLE_ONNX_EXPORTING)
+        set(onnx_kernel_srcs
+            kernels/export-onnx/kernels.cpp
+        )
+    endif()
+endif()
+if (FR_ENABLE_ONNX)
     # WIP
     option(onnxruntime_USE_FULL_PROTOBUF "" ON)
     option(onnxruntime_BUILD_UNIT_TESTS "Build ONNXRuntime unit tests" OFF)
     option(onnxruntime_BUILD_SHARED_LIB "Build a shared library" ON)
+    option(onnxruntime_DISABLE_RTTI "Disable RTTI" OFF)
+    option(onnxruntime_DISABLE_EXCEPTIONS "Disable exception handling. Requires onnxruntime_MINIMAL_BUILD currently." OFF)
     FetchContent_Declare(
         onnxruntime
         GIT_REPOSITORY https://github.com/microsoft/onnxruntime
@@ -107,8 +125,7 @@ if (FR_ENABLE_ONNX)
         SYSTEM
     )
     FetchContent_MakeAvailable(onnxruntime)
-    set(onnx_kernel_srcs
-        kernels/export-onnx/kernels.cpp
+    list(APPEND onnx_kernel_srcs
         kernels/onnx/init_model.cpp
         kernels/onnx/model_forward.cpp
     )
@@ -154,10 +171,16 @@ endif()
 if (FR_ENABLE_NCNN)
     target_compile_definitions(faster_rwkv_internal PUBLIC FR_ENABLE_NCNN)
 endif()
-if (FR_ENABLE_ONNX)
+if (FR_ENABLE_ONNX_EXPORTING)
     target_compile_definitions(faster_rwkv_internal PUBLIC FR_ENABLE_ONNX)
-    target_link_libraries(faster_rwkv_internal PRIVATE onnxruntime onnx)
-    target_include_directories(faster_rwkv_internal PRIVATE /data/user/cangshui/tianchao/repos/faster-rwkv/build-debug/_deps/onnxruntime-src/include/onnxruntime/core/session/)
+    target_link_libraries(faster_rwkv_internal PRIVATE onnx)
+endif()
+if (FR_ENABLE_ONNX)
+    target_link_libraries(faster_rwkv_internal PRIVATE onnxruntime)
+    target_include_directories(faster_rwkv_internal PRIVATE
+        /data/user/cangshui/tianchao/repos/faster-rwkv/build-debug/_deps/onnxruntime-src/include/onnxruntime/core/session/
+        /data/user/cangshui/tianchao/repos/faster-rwkv/build-debug/_deps/onnxruntime-src/include/
+    )
 endif()
 
 if (DEFINED ANDROID_NDK)
@@ -191,13 +214,9 @@ target_link_libraries(abc_music faster_rwkv)
 add_executable(midi_music midi_music.cpp)
 target_link_libraries(midi_music faster_rwkv)
 
-if (FR_ENABLE_ONNX)
+if (FR_ENABLE_ONNX_EXPORTING)
     add_executable(export_onnx export_onnx.cpp)
     target_link_libraries(export_onnx faster_rwkv)
-
-    add_executable(test_onnx test_onnx.cpp)
-    target_link_libraries(test_onnx faster_rwkv)
-    target_include_directories(test_onnx PRIVATE /data/user/cangshui/tianchao/repos/faster-rwkv/build-debug/_deps/onnxruntime-src/include/onnxruntime/core/session/)
 endif()
 
 if (FR_BUILD_JNI)

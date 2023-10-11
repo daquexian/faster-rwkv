@@ -3,6 +3,9 @@
 #include <sstream>
 
 #include <experimental_onnxruntime_cxx_api.h>
+#ifdef __ANDROID__
+#include <onnxruntime/core/providers/nnapi/nnapi_provider_factory.h>
+#endif
 
 #include <kernels/kernels.h>
 #include <kernels/onnx/extra.h>
@@ -21,6 +24,19 @@ void init_model(Model *model, Device device, const std::string &path,
                 const std::string &strategy, const std::any &extra) {
   auto env = std::make_shared<Ort::Env>();
   Ort::SessionOptions session_options;
+  if (std::getenv("VERBOSE") != nullptr) {
+    session_options.SetLogSeverityLevel(OrtLoggingLevel::ORT_LOGGING_LEVEL_VERBOSE);
+  }
+#ifdef __ANDROID__
+  if (std::getenv("NNAPI") != nullptr) {
+    uint32_t nnapi_flags = 0;
+    if (std::getenv("NNAPI_FP16") != nullptr) {
+      nnapi_flags |= NNAPI_FLAG_USE_FP16;
+    }
+    Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_Nnapi(session_options, nnapi_flags));
+  }
+#endif
+
   std::string _path(path);
   auto session = std::make_shared<Ort::Experimental::Session>(*env, _path,
                                                               session_options);
