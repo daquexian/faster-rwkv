@@ -1,13 +1,11 @@
-if (NOT TARGET onnxruntime)
-  # onnxruntime contains gtest already
-  FetchContent_Declare(
-          gtest
-          GIT_REPOSITORY https://github.com/google/googletest.git
-          GIT_TAG v1.14.0
-          SYSTEM
-          )
-  FetchContent_MakeAvailable(gtest)
-endif()
+# onnxruntime contains gtest already
+FetchContent_Declare(
+      gtest
+      GIT_REPOSITORY https://github.com/google/googletest.git
+      GIT_TAG v1.14.0
+      SYSTEM
+      )
+FetchContent_MakeAvailable(gtest)
 enable_testing()
 add_executable(test_model test_model.cpp)
 target_link_libraries(test_model gtest_main faster_rwkv)
