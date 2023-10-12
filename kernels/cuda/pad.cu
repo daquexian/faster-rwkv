@@ -99,6 +99,8 @@ Tensor pad_internal(const Tensor &x, const std::vector<LengthType> &paddings,
     RV_UNIMPLEMENTED();
   }
 
+#undef LAUNCH_PAD_KERNEL
+
   cudaFree(src_shape_gpu);
   cudaFree(dst_shape_gpu);
   cudaFree(paddings_gpu);

@@ -48,7 +48,8 @@ for x in w.keys():
     if int(version) == 5 and 'att.time_decay' in x:
         n_head = w[x].shape[0]
         d['n_head'] = n_head
-
+        if(len(w[x].shape) > 1 and w[x].shape[1] > 1):
+            version = max(5.2, version)
 
 d['version'] = str(version)
 d['n_layer'] = n_layer

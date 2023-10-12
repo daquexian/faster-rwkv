@@ -2,14 +2,15 @@
 #include <cuda_runtime.h>
 
 #include "element_wise.cuh"
-#include <tensor.h>
 #include <kernels/registry.h>
+#include <tensor.h>
 
 namespace rwkv {
 namespace cuda {
 
 Tensor layer_norm_op(const Tensor &x, const Tensor &weight, const Tensor &bias);
-Tensor group_norm_op(const Tensor& x, int num_groups, const Tensor& weight, const Tensor& bias);
+Tensor group_norm_op(const Tensor &x, int num_groups, const Tensor &weight,
+                     const Tensor &bias);
 
 namespace {
 // Equivalent Python code:
@@ -111,6 +112,45 @@ struct Mix {
   }
 };
 
+struct MixWithG {
+  const half *xx;
+  const half *sx;
+  const half *k_mix;
+  const half *v_mix;
+  const half *r_mix;
+  const half *g_mix;
+  /* out */ half *kx;
+  /* out */ half *vx;
+  /* out */ half *rx;
+  /* out */ half *gx;
+
+  __device__ void operator()(int i) const {
+    half xx_ = xx[i];
+    half sx_ = sx[i];
+    half k_mix_ = k_mix[i];
+    half v_mix_ = v_mix[i];
+    half r_mix_ = r_mix[i];
+    half g_mix_ = g_mix[i];
+    kx[i] = __hadd(__hmul(xx_, k_mix_),
+                   __hmul(sx_, __hsub(__float2half(1), k_mix_)));
+    vx[i] = __hadd(__hmul(xx_, v_mix_),
+                   __hmul(sx_, __hsub(__float2half(1), v_mix_)));
+    rx[i] = __hadd(__hmul(xx_, r_mix_),
+                   __hmul(sx_, __hsub(__float2half(1), r_mix_)));
+    gx[i] = __hadd(__hmul(xx_, g_mix_),
+                   __hmul(sx_, __hsub(__float2half(1), g_mix_)));
+  }
+};
+
+struct InplaceSiLU {
+  half *x;
+  __device__ void operator()(int i) const {
+    half value = x[i];
+    x[i] = __hdiv(value, __hadd(__float2half(1.0f),
+                                __float2half(__expf(-__half2float(value)))));
+  }
+};
+
 struct InplaceSigmoid {
   __device__ __forceinline__ void operator()(int i) const {
     ptr[i] = __float2half(1.0 / (1.0 + exp(-__half2float(ptr[i]))));
@@ -126,19 +166,30 @@ struct InplaceAdd {
   const half *x;
 };
 
+struct InplaceMulOther {
+  __device__ __forceinline__ void operator()(int i) const {
+    x[i] = __hmul(x[i], other[i]);
+  }
+  half *x;
+  const half *other;
+};
+
 } // namespace
 
 void gemm_cublas_tensor(const Tensor &a, const Tensor &b, Tensor &c);
-Tensor cast_dtype(const Tensor& x, DType dtype);
+Tensor cast_dtype(const Tensor &x, DType dtype);
 
-Tensor _ATT(const Tensor& x, const Tensor& ln_w, const Tensor& ln_b, const Tensor& sx, const Tensor& k_mix,
-            const Tensor& v_mix, const Tensor& r_mix, const Tensor& kw,
-            /* imm */ Tensor& kx, const Tensor& vw, /* imm */ Tensor& vx, const Tensor& rw,
-            /* imm */ Tensor& rx, const Tensor& ow, const Tensor& t_first,
-            /* imm */ Tensor& k, const Tensor& pp, const Tensor& ww, const Tensor& aa, const Tensor& bb,
-            const Tensor& t_decay, /* imm */ Tensor& v, /* in & out */ Tensor& r,
-            /* out */ Tensor& x_plus_out, /* out */ Tensor& t1,
-            /* out */ Tensor& t2, /* out */ Tensor& p) {
+Tensor _ATT(const Tensor &x, const Tensor &ln_w, const Tensor &ln_b,
+            const Tensor &sx, const Tensor &k_mix, const Tensor &v_mix,
+            const Tensor &r_mix, const Tensor &kw,
+            /* imm */ Tensor &kx, const Tensor &vw, /* imm */ Tensor &vx,
+            const Tensor &rw,
+            /* imm */ Tensor &rx, const Tensor &ow, const Tensor &t_first,
+            /* imm */ Tensor &k, const Tensor &pp, const Tensor &ww,
+            const Tensor &aa, const Tensor &bb, const Tensor &t_decay,
+            /* imm */ Tensor &v, /* in & out */ Tensor &r,
+            /* out */ Tensor &x_plus_out, /* out */ Tensor &t1,
+            /* out */ Tensor &t2, /* out */ Tensor &p) {
   Tensor xx = cuda::layer_norm_op(x, ln_w, ln_b);
   element_wise(Mix{xx.data_ptr<half>(), sx.data_ptr<half>(),
                    k_mix.data_ptr<half>(), v_mix.data_ptr<half>(),
@@ -166,15 +217,15 @@ Tensor _ATT(const Tensor& x, const Tensor& ln_w, const Tensor& ln_b, const Tenso
 }
 
 Tensor _ATT_ONE_V5(const Tensor &x, const Tensor &s, const Tensor &ln_w,
-                   const Tensor &ln_b,
-                   const Tensor& lx_w, const Tensor& lx_b, const Tensor& sx, const Tensor& k_mix,
-            const Tensor& v_mix, const Tensor& r_mix, const Tensor& kw,
-            Tensor& kx, const Tensor& vw, Tensor& vx, const Tensor& rw,
-            Tensor& rx, const Tensor& ow, const Tensor& t_first,
-            Tensor& k,
-            const Tensor& t_decay, Tensor& v, Tensor& r, Tensor& decayed_s,
-            Tensor& x_plus_out, Tensor& a, Tensor& out_temp1, Tensor& out_temp2,
-            LengthType H, LengthType S) {
+                   const Tensor &ln_b, const Tensor &lx_w, const Tensor &lx_b,
+                   const Tensor &sx, const Tensor &k_mix, const Tensor &v_mix,
+                   const Tensor &r_mix, const Tensor &kw, Tensor &kx,
+                   const Tensor &vw, Tensor &vx, const Tensor &rw, Tensor &rx,
+                   const Tensor &ow, const Tensor &t_first, Tensor &k,
+                   const Tensor &t_decay, Tensor &v, Tensor &r,
+                   Tensor &decayed_s, Tensor &x_plus_out, Tensor &a,
+                   Tensor &out_temp1, Tensor &out_temp2, LengthType H,
+                   LengthType S) {
   Tensor xx = cuda::layer_norm_op(x, ln_w, ln_b);
 
   element_wise(Mix{xx.data_ptr<half>(), sx.data_ptr<half>(),
@@ -193,13 +244,18 @@ Tensor _ATT_ONE_V5(const Tensor &x, const Tensor &s, const Tensor &ln_w,
 
   gemm_cublas_tensor(k, v, a);
 
-  element_wise(OneV5MulAdd{static_cast<int>(s.size(1) * s.size(2)), t_first.data_ptr<float>(), a.data_ptr<float>(), s.data_ptr<float>(), t_decay.data_ptr<float>(), out_temp2.data_ptr<float>(), decayed_s.data_ptr<float>()}, s.numel());
+  element_wise(OneV5MulAdd{static_cast<int>(s.size(1) * s.size(2)),
+                           t_first.data_ptr<float>(), a.data_ptr<float>(),
+                           s.data_ptr<float>(), t_decay.data_ptr<float>(),
+                           out_temp2.data_ptr<float>(),
+                           decayed_s.data_ptr<float>()},
+               s.numel());
 
   gemm_cublas_tensor(r, out_temp2, out_temp1);
   out_temp1 = out_temp1.flatten().unsqueeze(0);
 
   Tensor out_temp3 = cuda::group_norm_op(out_temp1, H, lx_w, lx_b).flatten();
-  
+
   Tensor out_temp4 = cast_dtype(out_temp3, DType::kFloat16);
   gemm_cublas_tensor(out_temp4, ow, x_plus_out);
   element_wise(InplaceAdd{x_plus_out.data_ptr<half>(), x.data_ptr<half>()},
@@ -208,26 +264,82 @@ Tensor _ATT_ONE_V5(const Tensor &x, const Tensor &s, const Tensor &ln_w,
   return xx;
 }
 
-inline std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor>
-att(const Tensor& x, const Tensor& sx, const Tensor& aa, const Tensor& bb, const Tensor& pp, const Tensor& ln_w,
-    const Tensor& ln_b, const Tensor& k_mix, const Tensor& v_mix, const Tensor& r_mix, const Tensor& t_decay,
-    const Tensor& t_first, const Tensor& kw, const Tensor& vw, const Tensor& rw, const Tensor& ow) {
+Tensor _ATT_ONE_V5_1(const Tensor &x, const Tensor &s, const Tensor &ln_w,
+                     const Tensor &ln_b, const Tensor &lx_w, const Tensor &lx_b,
+                     const Tensor &sx, const Tensor &k_mix, const Tensor &v_mix,
+                     const Tensor &r_mix, const Tensor &g_mix, const Tensor &kw,
+                     Tensor &kx, const Tensor &vw, Tensor &vx, const Tensor &rw,
+                     Tensor &rx, const Tensor &gw, Tensor &gx, const Tensor &ow,
+                     const Tensor &t_first, Tensor &k, const Tensor &t_decay,
+                     Tensor &v, Tensor &r, Tensor &g, Tensor &decayed_s,
+                     Tensor &x_plus_out, Tensor &a, Tensor &out_temp1,
+                     Tensor &out_temp2, LengthType H, LengthType S) {
+  Tensor xx = cuda::layer_norm_op(x, ln_w, ln_b);
 
-  // kx = torch.empty_like(x)
-  // vx = torch.empty_like(x)
-  // rx = torch.empty_like(x)
-  //
-  // k_t = torch.empty((kw.shape[0],), dtype=torch.float32, device=x.device)
-  // v_t = torch.empty((vw.shape[0],), dtype=torch.float32, device=x.device)
-  // r_t = torch.empty((rw.shape[0],), dtype=torch.float16, device=x.device)
-  // x_plus_out_t = torch.empty_like(x)
-  // t1_t = torch.empty_like(x, dtype=torch.float32)
-  // t2_t = torch.empty_like(x, dtype=torch.float32)
-  // p_t = torch.empty_like(x, dtype=torch.float32)
-  //             xx = torch.ops.rwkv.att_one(x, ln_w, ln_b, sx, k_mix, v_mix,
-  //             r_mix, kw, kx, vw, vx, rw, rx, ow, t_first, k_t, pp, ow, aa,
-  //             bb, t_decay, v_t, r_t, x_plus_out_t, t1_t, t2_t, p_t)
-  // return x_plus_out_t, xx, t1_t, t2_t, p_t
+  element_wise(MixWithG{xx.data_ptr<half>(), sx.data_ptr<half>(),
+                        k_mix.data_ptr<half>(), v_mix.data_ptr<half>(),
+                        r_mix.data_ptr<half>(), g_mix.data_ptr<half>(),
+                        kx.data_ptr<half>(), vx.data_ptr<half>(),
+                        rx.data_ptr<half>(), gx.data_ptr<half>()},
+               x.numel());
+
+  gemm_cublas_tensor(kx, kw, k);
+  gemm_cublas_tensor(vx, vw, v);
+  gemm_cublas_tensor(rx, rw, r);
+  gemm_cublas_tensor(gx, gw, g);
+  element_wise(InplaceSiLU{g.data_ptr<half>()}, g.numel());
+
+  r = r.view({H, 1, S});
+  k = k.view({H, S, 1});
+  v = v.view({H, 1, S});
+
+  gemm_cublas_tensor(k, v, a);
+
+  // print_n(a, "a", a.numel() - 30, 30);
+  // print_n(s, "s", s.numel() - 30, 30);
+  // print_n(t_first, "t_first", t_first.numel() - 30, 30);
+
+  element_wise(OneV5MulAdd{static_cast<int>(s.size(2)),
+                           t_first.data_ptr<float>(), a.data_ptr<float>(),
+                           s.data_ptr<float>(), t_decay.data_ptr<float>(),
+                           out_temp2.data_ptr<float>(),
+                           decayed_s.data_ptr<float>()},
+               s.numel());
+
+  // print_n(r, "r", r.numel() - 30, 30);
+  // print_n(out_temp2, "out_temp2", out_temp2.numel() - 30, 30);
+  gemm_cublas_tensor(r, out_temp2, out_temp1);
+  out_temp1 = out_temp1.flatten().unsqueeze(0);
+
+  // print_n(out_temp1, "out_temp1", out_temp1.numel() - 30, 30);
+
+  Tensor out_temp3 = cuda::group_norm_op(out_temp1, H, lx_w, lx_b).flatten();
+
+  // print_n(g, "g", g.numel() - 30, 30);
+  // print_n(out_temp3, "out_temp3", out_temp3.numel() - 30, 30);
+
+  Tensor out_temp4 = cast_dtype(out_temp3, DType::kFloat16);
+  element_wise(InplaceMulOther{out_temp4.data_ptr<half>(), g.data_ptr<half>()},
+               out_temp4.numel());
+  // print_n(out_temp4, "out_temp4", out_temp4.numel() - 30, 30);
+  gemm_cublas_tensor(out_temp4, ow, x_plus_out);
+  // print_n(x_plus_out, "x_plus_out", x_plus_out.numel() - 30, 30);
+  // print_n(ow, "ow", ow.numel() - 30, 30);
+  element_wise(InplaceAdd{x_plus_out.data_ptr<half>(), x.data_ptr<half>()},
+               x.numel());
+
+  // print_n(x_plus_out, "x_plus_out", x_plus_out.numel() - 30, 30);
+  // exit(0);
+
+  return xx;
+}
+
+inline std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor>
+att(const Tensor &x, const Tensor &sx, const Tensor &aa, const Tensor &bb,
+    const Tensor &pp, const Tensor &ln_w, const Tensor &ln_b,
+    const Tensor &k_mix, const Tensor &v_mix, const Tensor &r_mix,
+    const Tensor &t_decay, const Tensor &t_first, const Tensor &kw,
+    const Tensor &vw, const Tensor &rw, const Tensor &ow) {
 
   auto kx = Tensor::Empty(x.sizes(), x.dtype(), x.device());
   auto vx = Tensor::Empty(x.sizes(), x.dtype(), x.device());
@@ -268,7 +380,8 @@ att_one_v5(const Tensor &x, const Tensor &sx, const Tensor &s,
 
   auto decayed_s = Tensor::Empty(s.sizes(), DType::kFloat32, s.device());
   auto a = Tensor::Empty(s.sizes(), DType::kFloat32, s.device());
-  auto out_temp1 = Tensor::Empty({s.size(0), 1, s.size(2)}, DType::kFloat32, s.device());
+  auto out_temp1 =
+      Tensor::Empty({s.size(0), 1, s.size(2)}, DType::kFloat32, s.device());
   auto out_temp2 = Tensor::Empty(s.sizes(), DType::kFloat32, s.device());
 
   Tensor xx = _ATT_ONE_V5(x, s, ln_w, ln_b, lx_w, lx_b, sx, k_mix, v_mix, r_mix,
@@ -277,8 +390,43 @@ att_one_v5(const Tensor &x, const Tensor &sx, const Tensor &s,
   return std::make_tuple(x_plus_out, xx, decayed_s);
 }
 
+std::tuple<Tensor, Tensor, Tensor>
+att_one_v5_1(const Tensor &x, const Tensor &sx, const Tensor &s,
+             const Tensor &ln_w, const Tensor &ln_b, const Tensor &lx_w,
+             const Tensor &lx_b, const Tensor &k_mix, const Tensor &v_mix,
+             const Tensor &r_mix, const Tensor &g_mix, const Tensor &t_decay,
+             const Tensor &t_first, const Tensor &kw, const Tensor &vw,
+             const Tensor &rw, const Tensor &gw, const Tensor &ow) {
+
+  auto kx = Tensor::Empty(x.sizes(), x.dtype(), x.device());
+  auto vx = Tensor::Empty(x.sizes(), x.dtype(), x.device());
+  auto rx = Tensor::Empty(x.sizes(), x.dtype(), x.device());
+  auto gx = Tensor::Empty(x.sizes(), x.dtype(), x.device());
+  auto k = Tensor::Empty({kw.size(0)}, DType::kFloat32, x.device());
+  auto v = Tensor::Empty({vw.size(0)}, DType::kFloat32, x.device());
+  auto r = Tensor::Empty({rw.size(0)}, DType::kFloat32, x.device());
+  auto g = Tensor::Empty({gw.size(0)}, gx.dtype(), x.device());
+  auto x_plus_out = Tensor::Empty(x.sizes(), x.dtype(), x.device());
+
+  auto H = t_decay.size(0);
+  auto S = x.size(x.shape().size() - 1) / H;
+
+  auto decayed_s = Tensor::Empty(s.sizes(), DType::kFloat32, s.device());
+  auto a = Tensor::Empty(s.sizes(), DType::kFloat32, s.device());
+  auto out_temp1 =
+      Tensor::Empty({s.size(0), 1, s.size(2)}, DType::kFloat32, s.device());
+  auto out_temp2 = Tensor::Empty(s.sizes(), DType::kFloat32, s.device());
+
+  Tensor xx = _ATT_ONE_V5_1(x, s, ln_w, ln_b, lx_w, lx_b, sx, k_mix, v_mix,
+                            r_mix, g_mix, kw, kx, vw, vx, rw, rx, gw, gx, ow,
+                            t_first, k, t_decay, v, r, g, decayed_s, x_plus_out,
+                            a, out_temp1, out_temp2, H, S);
+  return std::make_tuple(x_plus_out, xx, decayed_s);
+}
+
 KernelRegister att_reg("att", Device::kCUDA, att);
 KernelRegister att_one_v5_reg("att_one_v5", Device::kCUDA, att_one_v5);
+KernelRegister att_one_v5_1_reg("att_one_v5_1", Device::kCUDA, att_one_v5_1);
 
 } // namespace cuda
 } // namespace rwkv

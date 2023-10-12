@@ -236,6 +236,15 @@ inline Tensor repeat(const Tensor &x, const std::vector<LengthType> &repeats) {
       "repeat", x.device())(x, repeats);
 }
 
+/* Activations  */
+
+inline Tensor silu(const Tensor &x) {
+  return KernelRegistry::Instance().Get<decltype(silu) *>("silu",
+                                                          x.device())(x);
+}
+
+/* ===========  */
+
 inline Tensor mark_as_output(const Tensor &x, const std::string &name) {
   return KernelRegistry::Instance().Get<decltype(mark_as_output) *>(
       "mark_as_output", x.device())(x, name);

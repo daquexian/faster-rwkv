@@ -48,7 +48,7 @@ enum class Device {
   kNCNN,
   kONNX,
 };
-std::optional<Device>& default_dispatch_device();
+std::optional<Device> &default_dispatch_device();
 
 template <typename T> inline const DType dtype_v = DType::kFloat32;
 template <> inline const DType dtype_v<float16> = DType::kFloat16;
