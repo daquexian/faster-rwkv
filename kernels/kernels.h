@@ -62,6 +62,19 @@ att_one_v5_1(const Tensor &x, const Tensor &sx, const Tensor &s,
              t_decay, t_first, kw, vw, rw, gw, ow);
 }
 
+inline std::tuple<Tensor, Tensor, Tensor>
+att_seq_v5_2(const Tensor &x, const Tensor &sx, const Tensor &s,
+             const Tensor &ln_w, const Tensor &ln_b, const Tensor &lx_w,
+             const Tensor &lx_b, const Tensor &k_mix, const Tensor &v_mix,
+             const Tensor &r_mix, const Tensor &g_mix, const Tensor &t_decay,
+             const Tensor &t_first, const Tensor &kw, const Tensor &vw,
+             const Tensor &rw, const Tensor &gw, const Tensor &ow, int n_att) {
+  auto tmp = KernelRegistry::Instance().Get<decltype(att_seq_v5_2) *>(
+      "att_seq_v5_2", x.device());
+  return tmp(x, sx, s, ln_w, ln_b, lx_w, lx_b, k_mix, v_mix, r_mix, g_mix,
+             t_decay, t_first, kw, vw, rw, gw, ow, n_att);
+}
+
 //         def cuda_ffn_one_fp16(self, x, sx, ln_w, ln_b, k_mix, r_mix, kw, vw,
 //         rw, kmx, krx, kmy, kry, vmx, vrx, vmy, vry, rmx, rrx, rmy, rry):
 inline std::tuple<Tensor, Tensor> ffn(const Tensor &x, const Tensor &sx,
