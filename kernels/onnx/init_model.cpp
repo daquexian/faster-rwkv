@@ -84,8 +84,6 @@ void init_model(Model *model, Device device, const std::string &path,
   };
 
   model->_version = get_value("version");
-  model->_act_dtype = str_to_dtype(get_value("act_dtype", "fp32"));
-  model->_weight_dtype = str_to_dtype(get_value("weight_dtype", "fp32"));
   model->_head_size = std::stoi(get_value("head_size"));
   // overwrite these fields if it is new model (having config file)
   model->_n_embd = std::stoi(get_value("n_embd"));

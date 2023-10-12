@@ -1,9 +1,17 @@
 #include <kernels/kernels.h>
 #include <kernels/registry.h>
 #include <tensor.h>
+#include <iostream>
 
 namespace rwkv {
 namespace def {
+
+Tensor cast_to_float32_if_needed(const Tensor &x) {
+  if (x.dtype() == DType::kFloat32) {
+    return x;
+  }
+  return cast_dtype(x, DType::kFloat32);
+}
 
 std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor>
 att(const Tensor &x, const Tensor &sx, const Tensor &aa, const Tensor &bb,
@@ -53,16 +61,18 @@ att_one_v5(const Tensor &x, const Tensor &sx, const Tensor &s,
   auto H = t_decay.size(0);
   auto S = x.size(x.shape().size() - 1) / H;
 
-  auto r = matmul(rx, rw).view({H, 1, S});
-  auto k = matmul(kx, kw).view({H, S, 1});
-  auto v = matmul(vx, vw).view({H, 1, S});
+  auto r = cast_to_float32_if_needed(matmul(rx, rw)).view({H, 1, S});
+  auto k = cast_to_float32_if_needed(matmul(kx, kw)).view({H, S, 1});
+  auto v = cast_to_float32_if_needed(matmul(vx, vw)).view({H, 1, S});
 
   auto a = matmul(k, v);
   auto out = matmul(r, t_first * a + s);
   auto decayed_s = a + t_decay * s;
+  std::cout << "decayed_s dtype: " << decayed_s.dtype() << std::endl;
 
   out = out.flatten();
   out = groupnorm(out.unsqueeze(0), static_cast<int>(H), lx_w, lx_b).flatten();
+  out = cast_dtype(out, x.dtype());
   out = matmul(out, ow);
 
   return {x + out, xx, decayed_s};

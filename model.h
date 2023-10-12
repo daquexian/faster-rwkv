@@ -28,6 +28,8 @@ struct Model {
   const std::string &version() const { return _version; }
   const std::any &extra() const { return _extra; }
 
+  DType weight_dtype() const { return _weight_dtype; }
+
   // TODO:
   std::vector<Tensor> _embd_weights;
 

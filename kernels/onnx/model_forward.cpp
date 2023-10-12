@@ -30,6 +30,8 @@ template <> Ort::Value Tensor::FromTensor() const {
   ONNXTensorElementDataType onnx_dtype;
   if (fr_dtype == DType::kFloat32) {
     onnx_dtype = ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT;
+  } else if (fr_dtype == DType::kFloat16) {
+    onnx_dtype = ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16;
   } else {
     RV_UNIMPLEMENTED() << "Unsupported dtype: " << fr_dtype;
   }
@@ -43,6 +45,8 @@ template <> Tensor Tensor::ToTensor(const Ort::Value &ort_value) {
   DType fr_dtype;
   if (onnx_dtype == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT) {
     fr_dtype = DType::kFloat32;
+  } else if (onnx_dtype == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16) {
+    fr_dtype = DType::kFloat16;
   } else {
     RV_UNIMPLEMENTED() << "Unsupported onnx dtype: " << onnx_dtype;
   }

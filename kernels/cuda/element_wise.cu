@@ -12,7 +12,7 @@ struct InplaceScalarDiv {
 };
 } // namespace
 
-Tensor& scalar_div_(Tensor& x, float divisor) {
+Tensor scalar_div_(Tensor& x, float divisor) {
   half divisor_half = __float2half(divisor);
   element_wise(InplaceScalarDiv{x.data_ptr<half>(), divisor_half}, x.numel());
   return x;

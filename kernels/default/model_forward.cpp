@@ -30,14 +30,15 @@ Tensor ModelForward(const Model *model, Device device, int id,
       Tensor embd_weights_cpu =
           Tensor::Empty({static_cast<long>(model->_embd_weights.size()),
                          model->_embd_weights[0].shape()[0]},
-                        DType::kFloat32, Device::kCPU);
+                        model->weight_dtype(), Device::kCPU);
       {
-        float *ptr = embd_weights_cpu.data_ptr<float>();
+        float16 *ptr = embd_weights_cpu.data_ptr<float16>();
         for (int i = 0; i < model->_embd_weights.size(); i++) {
           for (int j = 0; j < model->_n_embd; j++) {
             // embd weights in .fr are always fp16
-            *ptr++ = static_cast<float>(
-                model->_embd_weights[i].data_ptr<float16>()[j]);
+            // *ptr++ = static_cast<float>(
+            //     model->_embd_weights[i].data_ptr<float16>()[j]);
+            *ptr++ = model->_embd_weights[i].data_ptr<float16>()[j];
           }
         }
       }
@@ -75,7 +76,7 @@ Tensor ModelForward(const Model *model, Device device, int id,
             "state_" + std::to_string(i) + "_" + std::to_string(j);
         auto &state_tensor = states[i][j];
         state_tensor = onnxmeta::add_input(state_tensor.shape(),
-                                           DType::kFloat32, state_name);
+                                           state_tensor.dtype(), state_name);
       }
     }
   }

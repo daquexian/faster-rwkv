@@ -19,6 +19,12 @@ using onnx::TensorProto;
 using onnx::ValueInfoProto;
 
 static const int kOpsetVersion = 18;
+static const int kExternalDataThreshold = 1024;
+
+// static means internal linkage
+static std::ofstream external_data_file;
+static std::string external_data_filename;
+static size_t external_data_offset;
 
 int *get_unique_op_id_ptr() {
   static int _unique_id = 0;
@@ -37,9 +43,7 @@ NodeProto *new_node() {
   return node;
 }
 
-void init() {}
-
-ModelProto destory() {
+ModelProto Finish() {
   ModelProto model;
   model.set_ir_version(7);
   model.add_opset_import()->set_domain("");
@@ -57,10 +61,14 @@ void ExportModel(const std::string &input_path,
                  const std::string &output_path) {
 
   default_dispatch_device() = Device::kONNXMeta;
-  Model model(input_path, "export-onnx fp32");
+  external_data_filename = output_path + ".bin";
+  external_data_file.open(external_data_filename, std::ios::binary);
+  RV_CHECK(external_data_file.good());
+  external_data_offset = 0;
+  Model model(input_path, "export-onnx fp16");
   model.Run(0);
   default_dispatch_device() = std::nullopt;
-  ModelProto model_proto = destory();
+  ModelProto model_proto = Finish();
   // save model_proto to output_path
   std::ofstream ofs(output_path, std::ios::binary);
   RV_CHECK(ofs.good());
@@ -78,8 +86,6 @@ void ExportModel(const std::string &input_path,
     config_file.close();
   }
 }
-
-DType _dtype = DType::kFloat32;
 
 int fr_dtype_to_onnx_dtype(DType fr_dtype) {
   if (fr_dtype == DType::kFloat32) {
@@ -110,15 +116,24 @@ Tensor add_input(const Shape &shape, DType dtype, const std::string &name) {
   return output;
 }
 
-Tensor constant_scalar(float x) {
-  Tensor output = Tensor::Empty({1}, DType::kFloat32, Device::kONNXMeta);
+Tensor constant_scalar(float x, DType dtype) {
+  Tensor output = Tensor::Empty({1}, dtype, Device::kONNXMeta);
   NodeProto *node = new_node();
   node->set_op_type("Constant");
   node->add_output(output.name);
   node->add_attribute()->set_name("value");
   node->mutable_attribute(0)->set_type(onnx::AttributeProto::TENSOR);
-  node->mutable_attribute(0)->mutable_t()->set_data_type(TensorProto::FLOAT);
-  node->mutable_attribute(0)->mutable_t()->add_float_data(x);
+  node->mutable_attribute(0)->mutable_t()->set_data_type(
+      fr_dtype_to_onnx_dtype(dtype));
+  if (dtype == DType::kFloat32) {
+    node->mutable_attribute(0)->mutable_t()->mutable_raw_data()->assign(
+        reinterpret_cast<const char *>(&x), sizeof(float));
+  } else {
+    RV_CHECK(dtype == DType::kFloat16);
+    float16 x_fp16 = static_cast<float16>(x);
+    node->mutable_attribute(0)->mutable_t()->mutable_raw_data()->assign(
+        reinterpret_cast<const char *>(&x_fp16), sizeof(float16));
+  }
   node->mutable_attribute(0)->mutable_t()->mutable_dims()->Add(1);
   return output;
 }
@@ -135,12 +150,37 @@ Tensor possible_initializer(const Tensor &x) {
   node->add_output(output.name);
   node->add_attribute()->set_name("value");
   node->mutable_attribute(0)->set_type(onnx::AttributeProto::TENSOR);
-  node->mutable_attribute(0)->mutable_t()->set_data_type(
-      fr_dtype_to_onnx_dtype(x.dtype()));
-  node->mutable_attribute(0)->mutable_t()->mutable_raw_data()->assign(
-      static_cast<const char *>(x.data_ptr<>()), x.numel() * x.elem_size());
-  node->mutable_attribute(0)->mutable_t()->mutable_dims()->CopyFrom(
-      {x.shape().begin(), x.shape().end()});
+  auto *tensor_proto = node->mutable_attribute(0)->mutable_t();
+  tensor_proto->set_data_type(fr_dtype_to_onnx_dtype(x.dtype()));
+  size_t size = x.numel() * x.elem_size();
+  if (size > kExternalDataThreshold) {
+    tensor_proto->set_data_location(TensorProto::EXTERNAL);
+    tensor_proto->mutable_external_data()->Add();
+    tensor_proto->mutable_external_data()->Add();
+    tensor_proto->mutable_external_data()->Add();
+    tensor_proto->mutable_external_data()->Mutable(0)->set_key("offset");
+    tensor_proto->mutable_external_data()->Mutable(0)->set_value(
+        std::to_string(external_data_offset));
+    tensor_proto->mutable_external_data()->Mutable(1)->set_key("length");
+    tensor_proto->mutable_external_data()->Mutable(1)->set_value(
+        std::to_string(x.numel() * x.elem_size()));
+    tensor_proto->mutable_external_data()->Mutable(2)->set_key("location");
+    tensor_proto->mutable_external_data()->Mutable(2)->set_value(
+        external_data_filename);
+    external_data_file.write(static_cast<const char *>(x.data_ptr<>()), size);
+    external_data_offset += size;
+    if (external_data_offset % 4096 != 0) {
+      size_t padding_size = 4096 - external_data_offset % 4096;
+      external_data_offset += padding_size;
+      for (size_t i = 0; i < padding_size; i++) {
+        external_data_file.put(0);
+      }
+    }
+  } else {
+    node->mutable_attribute(0)->mutable_t()->mutable_raw_data()->assign(
+        static_cast<const char *>(x.data_ptr<>()), x.numel() * x.elem_size());
+  }
+  tensor_proto->mutable_dims()->CopyFrom({x.shape().begin(), x.shape().end()});
   return output;
 }
 
@@ -168,7 +208,7 @@ Tensor gather(const Tensor &x, const Tensor &index) {
   return output;
 }
 
-Tensor reduce_mean(const Tensor& x) {
+Tensor reduce_mean(const Tensor &x) {
   Shape output_shape(x.shape().size(), 1);
   auto output = Tensor::Empty(output_shape, x.dtype(), x.device());
   NodeProto *node = new_node();
@@ -289,9 +329,14 @@ BROADCAST_BINARY_OP(mul, "Mul")
 BROADCAST_BINARY_OP(div, "Div")
 BROADCAST_BINARY_OP(maximum, "Max")
 
+Tensor scalar_div(Tensor &x, float y) {
+  Tensor y_t = constant_scalar(y, x.dtype());
+  return div(x, y_t);
+}
+
 Tensor rsub_scalar(float x, const Tensor &_y) {
   auto y = possible_initializer(_y);
-  Tensor x_t = constant_scalar(x);
+  Tensor x_t = constant_scalar(x, y.dtype());
   Tensor output = Tensor::Empty(y.shape(), y.dtype(), y.device());
   NodeProto *node = new_node();
   node->set_op_type("Sub");
@@ -337,13 +382,14 @@ Tensor sqrt(const Tensor &x) {
   return output;
 }
 
-Tensor layernorm_fallback(const Tensor &x, const Tensor &_weight, const Tensor &_bias) {
+Tensor layernorm_fallback(const Tensor &x, const Tensor &_weight,
+                          const Tensor &_bias) {
   auto weight = possible_initializer(_weight);
   auto bias = possible_initializer(_bias);
   auto x_subed = x - reduce_mean(x);
   auto x_subed_square = x_subed * x_subed;
   auto x_subed_square_mean = reduce_mean(x_subed_square);
-  static const Tensor eps = constant_scalar(1e-5);
+  const Tensor eps = constant_scalar(1e-5, x_subed_square_mean.dtype());
   auto x_subed_square_mean_sqrt = sqrt(x_subed_square_mean + eps);
   return weight * (x_subed / x_subed_square_mean_sqrt) + bias;
 }
@@ -368,8 +414,9 @@ Tensor groupnorm(const Tensor &x, int num_groups, const Tensor &_weight,
 Tensor mark_as_output(const Tensor &x, const std::string &name) {
   ValueInfoProto *output = graph.add_output();
   output->set_name(name);
+  std::cout << "output " << name << " dtype: " << x.dtype() << std::endl;
   output->mutable_type()->mutable_tensor_type()->set_elem_type(
-      fr_dtype_to_onnx_dtype(_dtype));
+      fr_dtype_to_onnx_dtype(x.dtype()));
   for (auto dim : x.shape()) {
     output->mutable_type()
         ->mutable_tensor_type()
@@ -386,21 +433,37 @@ Tensor mark_as_output(const Tensor &x, const std::string &name) {
   return output_tensor;
 }
 
+Tensor cast_dtype(const Tensor &x, DType dtype) {
+  Tensor output = Tensor::Empty(x.shape(), dtype, x.device());
+  NodeProto *node = new_node();
+  node->set_op_type("Cast");
+  node->add_input(x.name);
+  node->add_output(output.name);
+  node->add_attribute()->set_name("to");
+  node->mutable_attribute(0)->set_i(fr_dtype_to_onnx_dtype(dtype));
+  node->mutable_attribute(0)->set_type(onnx::AttributeProto::INT);
+  return output;
+}
+
 KernelRegister allocator_reg("allocator", Device::kONNXMeta, null_allocator);
 
-KernelRegister layernorm_reg("layernorm", Device::kONNXMeta, layernorm_fallback);
+KernelRegister layernorm_reg("layernorm", Device::kONNXMeta,
+                             layernorm_fallback);
 KernelRegister groupnorm_reg("groupnorm", Device::kONNXMeta, groupnorm);
 KernelRegister matmul_reg("matmul", Device::kONNXMeta, matmul);
 KernelRegister add_reg("add", Device::kONNXMeta, add);
 KernelRegister sub_reg("sub", Device::kONNXMeta, sub);
 KernelRegister mul_reg("mul", Device::kONNXMeta, mul);
 KernelRegister div_reg("div", Device::kONNXMeta, div);
+KernelRegister inplace_scalar_div_reg("scalar_div_", Device::kONNXMeta,
+                                      scalar_div);
 KernelRegister maximum_reg("maximum", Device::kONNXMeta, maximum);
 KernelRegister rsub_reg("rsub_scalar", Device::kONNXMeta, rsub_scalar);
 KernelRegister exp_reg("exp", Device::kONNXMeta, exp);
 KernelRegister relu_reg("relu", Device::kONNXMeta, relu);
 KernelRegister sigmoid_reg("sigmoid", Device::kONNXMeta, sigmoid);
 KernelRegister reshape_reg("reshape", Device::kONNXMeta, reshape);
+KernelRegister cast_dtype_reg("cast_dtype", Device::kONNXMeta, cast_dtype);
 KernelRegister mark_as_output_reg("mark_as_output", Device::kONNXMeta,
                                   mark_as_output);
 

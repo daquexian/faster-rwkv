@@ -92,7 +92,7 @@ inline Tensor &fill_(Tensor &x, float val) {
                                                            x.device())(x, val);
 }
 
-inline Tensor &scalar_div_(Tensor &x, float val) {
+inline Tensor scalar_div_(Tensor &x, float val) {
   return KernelRegistry::Instance().Get<decltype(scalar_div_) *>(
       "scalar_div_", x.device())(x, val);
 }
