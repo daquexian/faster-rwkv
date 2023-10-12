@@ -28,7 +28,7 @@ Tensor ModelForwardSeq(const Model *model, Device device,
                        bool full_output) {
   Tensor x = [&]() -> Tensor {
 #ifdef FR_ENABLE_ONNX
-    RV_UNIMPLEMENTED()
+    RV_UNIMPLEMENTED();
     // if (model->_act_device == Device::kONNXMeta) {
     //   Tensor input_id = onnxmeta::add_input({}, DType::kInt64, "input_id");
     //   Tensor embd_weights_cpu =

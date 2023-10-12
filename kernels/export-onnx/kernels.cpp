@@ -20,6 +20,10 @@ using onnx::ValueInfoProto;
 
 static const int kOpsetVersion = 18;
 static const int kExternalDataThreshold = 1024;
+// we do not use opset 17 layernorm by default (even if it is available)
+// because it is not supported by NNAPI, CoreML, etc.
+static const bool kUseOpset17LayerNorm =
+    std::getenv("FR_ONNX_USE_OPSET17_LAYERNORM");
 
 // static means internal linkage
 static std::ofstream external_data_file;
@@ -218,7 +222,8 @@ Tensor reduce_mean(const Tensor &x) {
   return output;
 }
 
-Tensor layernorm(const Tensor &x, const Tensor &_weight, const Tensor &_bias) {
+Tensor layernorm_opset17(const Tensor &x, const Tensor &_weight,
+                         const Tensor &_bias) {
   auto output = Tensor::Empty(x.shape(), x.dtype(), x.device());
   auto weight = possible_initializer(_weight);
   auto bias = possible_initializer(_bias);
@@ -373,6 +378,10 @@ Tensor sigmoid(const Tensor &x) {
   return output;
 }
 
+Tensor silu(const Tensor &x) {
+  return x * sigmoid(x);
+}
+
 Tensor sqrt(const Tensor &x) {
   Tensor output = Tensor::Empty(x.shape(), x.dtype(), x.device());
   NodeProto *node = new_node();
@@ -394,6 +403,14 @@ Tensor layernorm_fallback(const Tensor &x, const Tensor &_weight,
   return weight * (x_subed / x_subed_square_mean_sqrt) + bias;
 }
 
+Tensor layernorm(const Tensor &x, const Tensor &_weight, const Tensor &_bias) {
+  if (kUseOpset17LayerNorm) {
+    return layernorm_opset17(x, _weight, _bias);
+  } else {
+    return layernorm_fallback(x, _weight, _bias);
+  }
+}
+
 Tensor groupnorm(const Tensor &x, int num_groups, const Tensor &_weight,
                  const Tensor &_bias) {
   auto weight = possible_initializer(_weight);
@@ -406,7 +423,7 @@ Tensor groupnorm(const Tensor &x, int num_groups, const Tensor &_weight,
     auto x_slice = slice(x, {i * group_size}, {(i + 1) * group_size}, {1});
     auto w_slice = slice(weight, {i * group_size}, {(i + 1) * group_size}, {0});
     auto b_slice = slice(bias, {i * group_size}, {(i + 1) * group_size}, {0});
-    ln_outs.push_back(layernorm_fallback(x_slice, w_slice, b_slice));
+    ln_outs.push_back(layernorm(x_slice, w_slice, b_slice));
   }
   return concat(ln_outs, 1);
 }
@@ -414,7 +431,6 @@ Tensor groupnorm(const Tensor &x, int num_groups, const Tensor &_weight,
 Tensor mark_as_output(const Tensor &x, const std::string &name) {
   ValueInfoProto *output = graph.add_output();
   output->set_name(name);
-  std::cout << "output " << name << " dtype: " << x.dtype() << std::endl;
   output->mutable_type()->mutable_tensor_type()->set_elem_type(
       fr_dtype_to_onnx_dtype(x.dtype()));
   for (auto dim : x.shape()) {
@@ -447,8 +463,7 @@ Tensor cast_dtype(const Tensor &x, DType dtype) {
 
 KernelRegister allocator_reg("allocator", Device::kONNXMeta, null_allocator);
 
-KernelRegister layernorm_reg("layernorm", Device::kONNXMeta,
-                             layernorm_fallback);
+KernelRegister layernorm_reg("layernorm", Device::kONNXMeta, layernorm);
 KernelRegister groupnorm_reg("groupnorm", Device::kONNXMeta, groupnorm);
 KernelRegister matmul_reg("matmul", Device::kONNXMeta, matmul);
 KernelRegister add_reg("add", Device::kONNXMeta, add);
@@ -462,6 +477,7 @@ KernelRegister rsub_reg("rsub_scalar", Device::kONNXMeta, rsub_scalar);
 KernelRegister exp_reg("exp", Device::kONNXMeta, exp);
 KernelRegister relu_reg("relu", Device::kONNXMeta, relu);
 KernelRegister sigmoid_reg("sigmoid", Device::kONNXMeta, sigmoid);
+KernelRegister silu_reg("silu", Device::kONNXMeta, silu);
 KernelRegister reshape_reg("reshape", Device::kONNXMeta, reshape);
 KernelRegister cast_dtype_reg("cast_dtype", Device::kONNXMeta, cast_dtype);
 KernelRegister mark_as_output_reg("mark_as_output", Device::kONNXMeta,

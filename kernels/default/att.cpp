@@ -1,7 +1,7 @@
+#include <iostream>
 #include <kernels/kernels.h>
 #include <kernels/registry.h>
 #include <tensor.h>
-#include <iostream>
 
 namespace rwkv {
 namespace def {
@@ -68,7 +68,6 @@ att_one_v5(const Tensor &x, const Tensor &sx, const Tensor &s,
   auto a = matmul(k, v);
   auto out = matmul(r, t_first * a + s);
   auto decayed_s = a + t_decay * s;
-  std::cout << "decayed_s dtype: " << decayed_s.dtype() << std::endl;
 
   out = out.flatten();
   out = groupnorm(out.unsqueeze(0), static_cast<int>(H), lx_w, lx_b).flatten();
@@ -78,8 +77,45 @@ att_one_v5(const Tensor &x, const Tensor &sx, const Tensor &s,
   return {x + out, xx, decayed_s};
 }
 
+std::tuple<Tensor, Tensor, Tensor>
+att_one_v5_1(const Tensor &x, const Tensor &sx, const Tensor &s,
+             const Tensor &ln_w, const Tensor &ln_b, const Tensor &lx_w,
+             const Tensor &lx_b, const Tensor &k_mix, const Tensor &v_mix,
+             const Tensor &r_mix, const Tensor &g_mix, const Tensor &t_decay,
+             const Tensor &t_first, const Tensor &kw, const Tensor &vw,
+             const Tensor &rw, const Tensor &gw, const Tensor &ow) {
+
+  auto xx = layernorm(x, ln_w, ln_b);
+  // auto [kx, vx, rx] = time_mix()
+  auto kx = xx * k_mix + sx * (1 - k_mix);
+  auto vx = xx * v_mix + sx * (1 - v_mix);
+  auto rx = xx * r_mix + sx * (1 - r_mix);
+  auto gx = xx * g_mix + sx * (1 - g_mix);
+
+  auto H = t_decay.size(0);
+  auto S = x.size(x.shape().size() - 1) / H;
+
+  auto r = cast_to_float32_if_needed(matmul(rx, rw)).view({H, 1, S});
+  auto k = cast_to_float32_if_needed(matmul(kx, kw)).view({H, S, 1});
+  auto v = cast_to_float32_if_needed(matmul(vx, vw)).view({H, 1, S});
+  auto g = silu(matmul(xx, gw));
+
+  auto a = matmul(k, v);
+  auto out = matmul(r, t_first * a + s);
+  auto decayed_s = a + t_decay * s;
+
+  out = out.flatten();
+  out = groupnorm(out.unsqueeze(0), static_cast<int>(H), lx_w, lx_b).flatten();
+  out = cast_dtype(out, x.dtype()) * g;
+  out = matmul(out, ow);
+
+  return {x + out, xx, decayed_s};
+}
+
 KernelRegister att_reg_2("att", Device::kONNXMeta, att);
 KernelRegister att_one_v5_reg("att_one_v5", Device::kONNXMeta, att_one_v5);
+KernelRegister att_one_v5_1_reg("att_one_v5_1", Device::kONNXMeta,
+                                att_one_v5_1);
 
 } // namespace def
 } // namespace rwkv
