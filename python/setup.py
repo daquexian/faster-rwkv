@@ -99,10 +99,14 @@ class CmakeBuild(setuptools.Command):
 
         with cd(CMAKE_BUILD_DIR):
             build_type = "Release"
+            if "CI" not in os.environ:
+                generator_arg = ["-GNinja"]
+            else:
+                generator_arg = []
             # configure
             cmake_args = [
                 CMAKE,
-                "-GNinja",
+                *generator_arg,
                 f"-DPYTHON_INCLUDE_DIR={sysconfig.get_path('include')}",
                 f"-DPYTHON_EXECUTABLE={sys.executable}",
                 "-DFR_BUILD_PYTHON=ON",
