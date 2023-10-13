@@ -52,7 +52,7 @@ PYBIND11_MODULE(fr_python, m) {
           }))
       .def("_run", py::overload_cast<const std::vector<int> &>(&Model::Run))
       .def("_run", py::overload_cast<int>(&Model::Run))
-      .def("states", &Model::states)
+      .def("states", py::overload_cast<>(&Model::states, py::const_))
       .def("reset_states", &Model::ResetStates);
 
   py::class_<Tensor, std::shared_ptr<Tensor>>(m, "_Tensor",
