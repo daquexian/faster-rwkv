@@ -205,11 +205,9 @@ jobs:
         submodules: recursive
         fetch-depth: 0
     - name: Install cibuildwheel
-      run: python -m pip install cibuildwheel==2.16.2
+      run: python3 -m pip install cibuildwheel==2.16.2
     - name: Build wheels
-      run: python -m cibuildwheel --output-dir wheelhouse export_onnx/python
-    - name: Build rwkv2onnx wheels
-      uses: pypa/cibuildwheel@v2.11.4
+      run: python3 -m cibuildwheel --output-dir wheelhouse export_onnx/python
     - uses: actions/upload-artifact@v3
       with:
         name: python-dist
