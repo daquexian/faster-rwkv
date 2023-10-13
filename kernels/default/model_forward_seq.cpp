@@ -102,6 +102,20 @@ Tensor ModelForwardSeq(const Model *model, Device device,
         param_idx += 13;
       } else if (model->_version == "5.1") {
         RV_UNIMPLEMENTED();
+      } else if (model->_version == "5.2") {
+        std::tie(x, state[0], state[1]) = att_seq_v5_2(
+            x, state[0], state[1], params[param_idx], params[param_idx + 1],
+            params[param_idx + 2], params[param_idx + 3], params[param_idx + 4],
+            params[param_idx + 5], params[param_idx + 6], params[param_idx + 7],
+            params[param_idx + 8], params[param_idx + 9],
+            params[param_idx + 10], params[param_idx + 11],
+            params[param_idx + 12], params[param_idx + 13],
+            params[param_idx + 14], model->n_att());
+        if (device == Device::kNCNNMeta || device == Device::kONNXMeta) {
+          mark_as_output(state[0], "output_state_" + std::to_string(i) + "_0");
+          mark_as_output(state[1], "output_state_" + std::to_string(i) + "_1");
+        }
+        param_idx += 15;
       } else {
         RV_UNIMPLEMENTED();
       }

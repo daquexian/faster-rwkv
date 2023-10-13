@@ -44,6 +44,46 @@ struct AttSeqMix {
   }
 };
 
+struct AttSeqMixWithG {
+  const half *xx;
+  const half *sx;
+  const half *k_mix;
+  const half *v_mix;
+  const half *r_mix;
+  const half *g_mix;
+  /* out */ half *kx;
+  /* out */ half *vx;
+  /* out */ half *rx;
+  /* out */ half *gx;
+  LengthType mix_numel;
+
+  __device__ void operator()(int i) const {
+    half xx_ = xx[i];
+    half sx_ = sx[i];
+    half k_mix_ = k_mix[i % mix_numel];
+    half v_mix_ = v_mix[i % mix_numel];
+    half r_mix_ = r_mix[i % mix_numel];
+    half g_mix_ = g_mix[i % mix_numel];
+    kx[i] = __hadd(__hmul(xx_, k_mix_),
+                   __hmul(sx_, __hsub(__float2half(1), k_mix_)));
+    vx[i] = __hadd(__hmul(xx_, v_mix_),
+                   __hmul(sx_, __hsub(__float2half(1), v_mix_)));
+    rx[i] = __hadd(__hmul(xx_, r_mix_),
+                   __hmul(sx_, __hsub(__float2half(1), r_mix_)));
+    gx[i] = __hadd(__hmul(xx_, g_mix_),
+                   __hmul(sx_, __hsub(__float2half(1), g_mix_)));
+  }
+};
+
+struct InplaceSiLU {
+  half *x;
+  __device__ void operator()(int i) const {
+    half value = x[i];
+    x[i] = __hdiv(value, __hadd(__float2half(1.0f),
+                                __float2half(__expf(-__half2float(value)))));
+  }
+};
+
 struct OnePairAdd {
   const float *a;
   const float *b;
@@ -65,6 +105,14 @@ struct NoBroadcastMul {
   /* out */ float *c;
 
   __device__ void operator()(int i) const { c[i] = a[i] * b[i]; }
+};
+
+struct NoBroadcastMulHalf {
+  const half *a;
+  const half *b;
+  /* out */ half *c;
+
+  __device__ void operator()(int i) const { c[i] = __hmul(a[i], b[i]); }
 };
 
 struct SingleSideBroadcastMul {
@@ -207,6 +255,173 @@ Tensor _ATT_SEQ_V5(const Tensor &x, const Tensor &s, const Tensor &ln_w,
   return xx;
 }
 
+template <typename F, int N>
+__global__ void
+rwkv5_2_kernel_forward(const int B, const int T, const int C, const int H,
+                       float *__restrict__ _state, const F *__restrict__ _r,
+                       const F *__restrict__ _k, const F *__restrict__ _v,
+                       const float *__restrict__ _w, const F *__restrict__ _u,
+                       F *__restrict__ _y) {
+  const int b = blockIdx.x / H;
+  const int h = blockIdx.x % H;
+  const int i = threadIdx.x;
+  _w += h * N;
+  _u += h * N;
+  _state += h * N * N + i * N; // wrong if B > 1 !!!
+
+  __shared__ float r[N], k[N], u[N], w[N];
+
+  float state[N];
+#pragma unroll
+  for (int j = 0; j < N; j++)
+    state[j] = _state[j];
+
+  __syncthreads();
+  u[i] = float(_u[i]);
+  w[i] = _w[i];
+  __syncthreads();
+
+  for (int t = b * T * C + h * N + i; t < (b + 1) * T * C + h * N + i; t += C) {
+    __syncthreads();
+    r[i] = float(_r[t]);
+    k[i] = float(_k[t]);
+    __syncthreads();
+
+    const float v = float(_v[t]);
+    float y = 0;
+
+#pragma unroll
+    for (int j = 0; j < N; j += 4) {
+      const float4 &r_ = (float4 &)(r[j]);
+      const float4 &k_ = (float4 &)(k[j]);
+      const float4 &w_ = (float4 &)(w[j]);
+      const float4 &u_ = (float4 &)(u[j]);
+      float4 &s = (float4 &)(state[j]);
+      float4 x;
+
+      x.x = k_.x * v;
+      x.y = k_.y * v;
+      x.z = k_.z * v;
+      x.w = k_.w * v;
+
+      y += r_.x * (u_.x * x.x + s.x);
+      y += r_.y * (u_.y * x.y + s.y);
+      y += r_.z * (u_.z * x.z + s.z);
+      y += r_.w * (u_.w * x.w + s.w);
+
+      s.x = s.x * w_.x + x.x;
+      s.y = s.y * w_.y + x.y;
+      s.z = s.z * w_.z + x.z;
+      s.w = s.w * w_.w + x.w;
+    }
+    _y[t] = F(y);
+  }
+#pragma unroll
+  for (int j = 0; j < N; j++)
+    _state[j] = state[j];
+}
+
+void cuda_forward_fp16(int B, int T, int C, int H, float *state, const half *r,
+                       const half *k, const half *v, const float *w,
+                       const half *u, half *y) {
+  int N = C / H;
+  if (N == 64) {
+    rwkv5_2_kernel_forward<half, 64>
+        <<<dim3(B * H), dim3(N)>>>(B, T, C, H, state, r, k, v, w, u, y);
+  } else {
+    RV_UNIMPLEMENTED();
+  }
+}
+void cuda_forward_fp32(int B, int T, int C, int H, float *state, const float *r,
+                       const float *k, const float *v, const float *w,
+                       const float *u, float *y) {
+  int N = C / H;
+  if (N == 64) {
+    rwkv5_2_kernel_forward<float, 64>
+        <<<dim3(B * H), dim3(N)>>>(B, T, C, H, state, r, k, v, w, u, y);
+  } else {
+    RV_UNIMPLEMENTED();
+  }
+}
+
+inline Tensor rwkv5_2_internal(int B, int T, int C, int H, Tensor &state,
+                               const Tensor &r, const Tensor &k,
+                               const Tensor &v, const Tensor &w,
+                               const Tensor &u) {
+  auto y = Tensor::Empty({B, T, C}, r.dtype(), w.device());
+  if (r.dtype() == DType::kFloat32) {
+    cuda_forward_fp32(B, T, C, H, state.data_ptr<float>(), r.data_ptr<float>(),
+                      k.data_ptr<float>(), v.data_ptr<float>(),
+                      w.data_ptr<float>(), u.data_ptr<float>(),
+                      y.data_ptr<float>());
+  } else if (r.dtype() == DType::kFloat16) {
+    cuda_forward_fp16(B, T, C, H, state.data_ptr<float>(), r.data_ptr<half>(),
+                      k.data_ptr<half>(), v.data_ptr<half>(),
+                      w.data_ptr<float>(), u.data_ptr<half>(),
+                      y.data_ptr<half>());
+  } else {
+    RV_UNIMPLEMENTED();
+  }
+  return y;
+}
+
+Tensor _ATT_SEQ_V5_2(const Tensor &x, const Tensor &s, const Tensor &ln_w,
+                     const Tensor &ln_b, const Tensor &lx_w, const Tensor &lx_b,
+                     const Tensor &sx, const Tensor &k_mix, const Tensor &v_mix,
+                     const Tensor &r_mix, const Tensor &g_mix, const Tensor &kw,
+                     Tensor &kx, const Tensor &vw, Tensor &vx, const Tensor &rw,
+                     Tensor &rx, const Tensor &gw, Tensor &gx, const Tensor &ow,
+                     const Tensor &t_first, Tensor &k, const Tensor &t_decay,
+                     Tensor &v, Tensor &r, Tensor &g, Tensor &decayed_s,
+                     Tensor &x_plus_out, LengthType H, LengthType N,
+                     LengthType T, int n_att) {
+  decayed_s = Copy(s, s.device());
+  Tensor xx = cuda::layer_norm_op(x, ln_w, ln_b);
+  Tensor converted_sx =
+      cat(unsqueeze(sx, 0), xx.slice({Range(0, 1, -1), Range::All}), 0);
+
+  element_wise(
+      AttSeqMixWithG{xx.data_ptr<half>(), converted_sx.data_ptr<half>(),
+                     k_mix.data_ptr<half>(), v_mix.data_ptr<half>(),
+                     r_mix.data_ptr<half>(), g_mix.data_ptr<half>(),
+                     kx.data_ptr<half>(), vx.data_ptr<half>(),
+                     rx.data_ptr<half>(), gx.data_ptr<half>(), k_mix.numel()},
+      x.numel());
+
+  gemm_cublas_tensor(rx, rw, r);
+  gemm_cublas_tensor(kx, kw, k);
+  gemm_cublas_tensor(vx, vw, v);
+  gemm_cublas_tensor(gx, gw, g);
+  element_wise(InplaceSiLU{g.data_ptr<half>()}, g.numel());
+
+  decayed_s = decayed_s.transpose(-1, -2);
+  // print_n(r, "r", 0, 30);
+  // print_n(k, "k", 0, 30);
+  // print_n(v, "v", 0, 30);
+  Tensor out =
+      rwkv5_2_internal(1, T, n_att, H, decayed_s, r, k, v, t_decay, t_first);
+  // print_n(out, "out", 0, 30);
+  decayed_s = decayed_s.transpose(-1, -2);
+
+  out = out.reshape({T, H * N});
+  out = group_norm_op(out, H, lx_w, lx_b);
+  out = cast_dtype(out, x.dtype());
+  element_wise(NoBroadcastMulHalf{out.data_ptr<half>(), g.data_ptr<half>(),
+                                  out.data_ptr<half>()},
+               out.numel());
+  gemm_cublas_tensor(out, ow, x_plus_out);
+  element_wise(
+      OnePairAddHalfInplace{x.data_ptr<half>(), x_plus_out.data_ptr<half>()},
+      x.numel());
+
+  // print_n(x_plus_out, "x_plus_out", 0, 30);
+  // exit(0);
+
+  xx = xx.slice({Range(-1, 1, xx.size(0)), Range::All}).squeeze(0);
+
+  return xx;
+}
+
 inline std::tuple<Tensor, Tensor, Tensor>
 att_seq_v5(const Tensor &x, const Tensor &sx, const Tensor &s,
            const Tensor &ln_w, const Tensor &ln_b, const Tensor &lx_w,
@@ -246,7 +461,39 @@ att_seq_v5(const Tensor &x, const Tensor &sx, const Tensor &s,
   return std::make_tuple(x_plus_out, xx, s_out);
 }
 
+std::tuple<Tensor, Tensor, Tensor>
+att_seq_v5_2(const Tensor &x, const Tensor &sx, const Tensor &s,
+             const Tensor &ln_w, const Tensor &ln_b, const Tensor &lx_w,
+             const Tensor &lx_b, const Tensor &k_mix, const Tensor &v_mix,
+             const Tensor &r_mix, const Tensor &g_mix, const Tensor &t_decay,
+             const Tensor &t_first, const Tensor &kw, const Tensor &vw,
+             const Tensor &rw, const Tensor &gw, const Tensor &ow, int n_att) {
+
+  auto kx = Tensor::Empty(x.sizes(), x.dtype(), x.device());
+  auto vx = Tensor::Empty(x.sizes(), x.dtype(), x.device());
+  auto rx = Tensor::Empty(x.sizes(), x.dtype(), x.device());
+  auto gx = Tensor::Empty(x.sizes(), x.dtype(), x.device());
+  auto k = Tensor::Empty({kx.size(0), kw.size(1)}, DType::kFloat32, x.device());
+  auto v = Tensor::Empty({vx.size(0), vw.size(1)}, DType::kFloat32, x.device());
+  auto r = Tensor::Empty({rx.size(0), rw.size(1)}, DType::kFloat32, x.device());
+  auto g = Tensor::Empty({gx.size(0), gw.size(1)}, gx.dtype(), x.device());
+  auto x_plus_out = Tensor::Empty(x.sizes(), x.dtype(), x.device());
+
+  auto H = t_decay.size(0);
+  auto N = x.size(x.shape().size() - 1) / H;
+  auto T = x.size(0);
+
+  auto decayed_s = Tensor::Empty(s.sizes(), DType::kFloat32, s.device());
+
+  Tensor xx =
+      _ATT_SEQ_V5_2(x, s, ln_w, ln_b, lx_w, lx_b, sx, k_mix, v_mix, r_mix,
+                    g_mix, kw, kx, vw, vx, rw, rx, gw, gx, ow, t_first, k,
+                    t_decay, v, r, g, decayed_s, x_plus_out, H, N, T, n_att);
+  return std::make_tuple(x_plus_out, xx, decayed_s);
+}
+
 KernelRegister att_seq_v5_reg("att_seq_v5", Device::kCUDA, att_seq_v5);
+KernelRegister att_seq_v5_2_reg("att_seq_v5_2", Device::kCUDA, att_seq_v5_2);
 
 } // namespace cuda
 } // namespace rwkv
