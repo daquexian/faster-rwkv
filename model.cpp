@@ -145,7 +145,7 @@ void Model::ResetStates() {
   }
 }
 
-Tensor CopyToCPUIfAvailable(Tensor x) {
+static Tensor CopyToCPUIfAvailable(Tensor x) {
   // TODO: more elegant
   try {
     return Copy(x, Device::kCPU);
@@ -164,30 +164,16 @@ Tensor Model::Run(const std::vector<int> &ids) {
   }
   if (ids.size() == 1) {
     return CopyToCPUIfAvailable(
-        ModelForward(this, this->_act_device, ids[0], _states));
+        ModelForward(this, this->_act_device, ids[0]));
   } else {
-    // TODO: Remove the fallback after adding ncnn implementation of seq mode.
-#if FR_ENABLE_CUDA
     return CopyToCPUIfAvailable(
-        ModelForwardSeq(this, this->_act_device, ids, _states, false));
-#else
-    {
-      for (int i = 0; i < ids.size(); ++i) {
-        auto id = ids[i];
-        auto out = ModelForward(this, this->_act_device, id, _states);
-        if (i == ids.size() - 1) {
-          return CopyToCPUIfAvailable(out);
-        }
-      }
-      RV_UNIMPLEMENTED();
-    }
-#endif
+        ModelForwardSeq(this, this->_act_device, ids, false));
   }
 }
 
 Tensor Model::Run(int id) {
   return CopyToCPUIfAvailable(
-      ModelForward(this, this->_act_device, id, _states));
+      ModelForward(this, this->_act_device, id));
 }
 
 } // namespace rwkv

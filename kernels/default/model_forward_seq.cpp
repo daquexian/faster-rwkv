@@ -22,10 +22,33 @@ namespace rwkv {
 
 namespace def {
 
-Tensor ModelForwardSeq(const Model *model, Device device,
-                       const std::vector<int> &id,
-                       std::vector<std::vector<Tensor>> &states,
+static Tensor CopyToCPUIfAvailable(Tensor x) {
+  // TODO: more elegant
+  try {
+    return Copy(x, Device::kCPU);
+  } catch (std::exception &e) {
+    return x;
+  }
+}
+
+Tensor ModelForwardSeqFallback(Model *model, Device device,
+                       const std::vector<int> &ids,
                        bool full_output) {
+  RV_CHECK(!full_output) << "full_output is not supported in fallback mode";
+  for (int i = 0; i < ids.size(); ++i) {
+    auto id = ids[i];
+    auto out = ModelForward(model, model->_act_device, id);
+    if (i == ids.size() - 1) {
+      return CopyToCPUIfAvailable(out);
+    }
+  }
+  RV_UNIMPLEMENTED();
+}
+
+Tensor ModelForwardSeq(Model *model, Device device,
+                       const std::vector<int> &id,
+                       bool full_output) {
+  auto &states = model->states();
   Tensor x = [&]() -> Tensor {
 #ifdef FR_ENABLE_ONNX
     RV_UNIMPLEMENTED();
@@ -161,13 +184,13 @@ Tensor ModelForwardSeq(const Model *model, Device device,
 } // namespace def
 
 KernelRegister model_forward_seq_reg_1("model_forward_seq", Device::kCPU,
-                                       ModelForwardSeq);
+                                       ModelForwardSeqFallback);
 KernelRegister model_forward_seq_reg_2("model_forward_seq", Device::kCUDA,
                                        ModelForwardSeq);
-KernelRegister model_forward_seq_reg_3("model_forward_seq", Device::kNCNNMeta,
-                                       ModelForwardSeq);
-KernelRegister model_forward_seq_reg_4("model_forward_seq", Device::kONNXMeta,
-                                       ModelForwardSeq);
+KernelRegister model_forward_seq_reg_3("model_forward_seq", Device::kNCNN,
+                                       ModelForwardSeqFallback);
+KernelRegister model_forward_seq_reg_4("model_forward_seq", Device::kONNX,
+                                       ModelForwardSeqFallback);
 
 } // namespace def
 } // namespace rwkv

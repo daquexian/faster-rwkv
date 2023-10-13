@@ -20,6 +20,7 @@ struct Model {
   void ResetStates();
   void set_states(const States &states);
   const States &states() const { return _states; }
+  States &states() { return _states; }
   const int head_size() const { return _head_size; }
   const int n_layer() const { return _n_layer; }
   const int n_embd() const { return _n_embd; }

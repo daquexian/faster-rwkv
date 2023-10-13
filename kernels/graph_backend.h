@@ -9,8 +9,8 @@ GraphBackendForwardInternal(const Model *model, int id,
                      std::vector<std::vector<T>> &&states);
 
 template <typename T>
-Tensor GraphBackendForward(const Model *model, Device device, int id,
-                           std::vector<std::vector<Tensor>> &states) {
+Tensor GraphBackendForward(Model *model, Device device, int id) {
+  auto &states = model->states();
 
   std::vector<std::vector<T>> backend_states(states.size());
   for (int i = 0; i < states.size(); i++) {

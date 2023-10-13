@@ -271,18 +271,16 @@ inline void init_model(Model *model, Device device, const std::string &path,
       model, device, path, strategy, extra);
 }
 
-inline Tensor ModelForward(const Model *model, Device device, int id,
-                           std::vector<std::vector<Tensor>> &states) {
+inline Tensor ModelForward(Model *model, Device device, int id) {
   return KernelRegistry::Instance().Get<decltype(ModelForward) *>(
-      "model_forward", device)(model, device, id, states);
+      "model_forward", device)(model, device, id);
 }
 
-inline Tensor ModelForwardSeq(const Model *model, Device device,
+inline Tensor ModelForwardSeq(Model *model, Device device,
                               const std::vector<int> &id,
-                              std::vector<std::vector<Tensor>> &states,
                               bool full_output /*= false*/) {
   return KernelRegistry::Instance().Get<decltype(ModelForwardSeq) *>(
-      "model_forward_seq", device)(model, device, id, states, full_output);
+      "model_forward_seq", device)(model, device, id, full_output);
 }
 
 inline Allocator &allocator(Device device) {

@@ -26,6 +26,8 @@ void init_model(Model *model, Device device, const std::string &path,
   Ort::SessionOptions session_options;
   if (std::getenv("VERBOSE") != nullptr) {
     session_options.SetLogSeverityLevel(OrtLoggingLevel::ORT_LOGGING_LEVEL_VERBOSE);
+  } else {
+    session_options.SetLogSeverityLevel(OrtLoggingLevel::ORT_LOGGING_LEVEL_ERROR);
   }
 #ifdef __ANDROID__
   if (std::getenv("NNAPI") != nullptr) {
