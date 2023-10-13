@@ -18,7 +18,7 @@ using onnx::NodeProto;
 using onnx::TensorProto;
 using onnx::ValueInfoProto;
 
-static const int kOpsetVersion = 18;
+static const int kOpsetVersion = 17;
 static const int kExternalDataThreshold = 1024;
 // we do not use opset 17 layernorm by default (even if it is available)
 // because it is not supported by NNAPI, CoreML, etc.
@@ -62,14 +62,14 @@ ModelProto Finish() {
 }
 
 void ExportModel(const std::string &input_path,
-                 const std::string &output_path) {
+                 const std::string &output_path, const std::string& dtype) {
 
   default_dispatch_device() = Device::kONNXMeta;
   external_data_filename = output_path + ".bin";
   external_data_file.open(external_data_filename, std::ios::binary);
   RV_CHECK(external_data_file.good());
   external_data_offset = 0;
-  Model model(input_path, "export-onnx fp16");
+  Model model(input_path, "export-onnx " + dtype);
   model.Run(0);
   default_dispatch_device() = std::nullopt;
   ModelProto model_proto = Finish();
@@ -312,8 +312,6 @@ Tensor matmul(const Tensor &_x, const Tensor &_y) {
   return output;
 }
 
-// TODO: add shape inference
-
 #define BROADCAST_BINARY_OP(op, onnx_type)                                     \
   Tensor op(const Tensor &_x, const Tensor &_y) {                              \
     auto x = possible_initializer(_x);                                         \
@@ -336,7 +334,9 @@ BROADCAST_BINARY_OP(maximum, "Max")
 
 Tensor scalar_div(Tensor &x, float y) {
   Tensor y_t = constant_scalar(y, x.dtype());
-  return div(x, y_t);
+  auto ret = div(x, y_t);
+  x = ret;
+  return ret;
 }
 
 Tensor rsub_scalar(float x, const Tensor &_y) {

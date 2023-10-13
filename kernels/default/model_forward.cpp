@@ -32,14 +32,34 @@ Tensor ModelForward(Model *model, Device device, int id) {
                          model->_embd_weights[0].shape()[0]},
                         model->weight_dtype(), Device::kCPU);
       {
-        float16 *ptr = embd_weights_cpu.data_ptr<float16>();
-        for (int i = 0; i < model->_embd_weights.size(); i++) {
-          for (int j = 0; j < model->_n_embd; j++) {
-            // embd weights in .fr are always fp16
-            // *ptr++ = static_cast<float>(
-            //     model->_embd_weights[i].data_ptr<float16>()[j]);
-            *ptr++ = model->_embd_weights[i].data_ptr<float16>()[j];
+        auto fr_embd_dtype = model->_embd_weights[0].dtype();
+        auto weight_dtype = model->weight_dtype();
+        if (fr_embd_dtype == DType::kFloat16 &&
+            weight_dtype == DType::kFloat32) {
+          auto *ptr = embd_weights_cpu.data_ptr<float>();
+          for (int i = 0; i < model->_embd_weights.size(); i++) {
+            for (int j = 0; j < model->_n_embd; j++) {
+              *ptr++ = model->_embd_weights[i].data_ptr<float16>()[j];
+            }
           }
+        } else if (fr_embd_dtype == DType::kFloat32 &&
+                   weight_dtype == DType::kFloat32) {
+          auto *ptr = embd_weights_cpu.data_ptr<float>();
+          for (int i = 0; i < model->_embd_weights.size(); i++) {
+            for (int j = 0; j < model->_n_embd; j++) {
+              *ptr++ = model->_embd_weights[i].data_ptr<float>()[j];
+            }
+          }
+        } else if (fr_embd_dtype == DType::kFloat16 &&
+                   weight_dtype == DType::kFloat16) {
+          auto *ptr = embd_weights_cpu.data_ptr<float16>();
+          for (int i = 0; i < model->_embd_weights.size(); i++) {
+            for (int j = 0; j < model->_n_embd; j++) {
+              *ptr++ = model->_embd_weights[i].data_ptr<float16>()[j];
+            }
+          }
+        } else {
+          RV_UNIMPLEMENTED();
         }
       }
       if (model->_act_device == Device::kNCNNMeta) {

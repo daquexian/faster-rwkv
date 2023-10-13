@@ -29,6 +29,8 @@ void init_model(Model *model, Device device, const std::string &path,
   } else {
     session_options.SetLogSeverityLevel(OrtLoggingLevel::ORT_LOGGING_LEVEL_ERROR);
   }
+  // ORT optimization has a bug on rwkv models with layernorm 17
+  session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_DISABLE_ALL);
 #ifdef __ANDROID__
   if (std::getenv("NNAPI") != nullptr) {
     uint32_t nnapi_flags = 0;
