@@ -249,8 +249,7 @@ add_executable(midi_music midi_music.cpp)
 target_link_libraries(midi_music faster_rwkv)
 
 if (FR_ENABLE_ONNX_EXPORTING)
-    add_executable(export_onnx export_onnx.cpp)
-    target_link_libraries(export_onnx faster_rwkv)
+    add_subdirectory(export_onnx)
 endif()
 
 if (FR_BUILD_JNI)

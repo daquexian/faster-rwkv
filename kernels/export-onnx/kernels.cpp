@@ -22,6 +22,7 @@ static const int kOpsetVersion = 17;
 static const int kExternalDataThreshold = 1024;
 // we do not use opset 17 layernorm by default (even if it is available)
 // because it is not supported by NNAPI, CoreML, etc.
+// What's more, it seems more unstable than the fallback implementation.
 static const bool kUseOpset17LayerNorm =
     std::getenv("FR_ONNX_USE_OPSET17_LAYERNORM");
 

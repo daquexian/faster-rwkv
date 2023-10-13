@@ -16,7 +16,7 @@ import setuptools.command.build_py
 import setuptools.command.develop
 
 PYTHON_DIR = os.path.realpath(os.path.dirname(__file__))
-TOP_DIR = os.path.dirname(PYTHON_DIR)
+TOP_DIR = os.path.dirname(os.path.dirname(PYTHON_DIR))
 CMAKE_BUILD_DIR = os.path.join(PYTHON_DIR, ".setuptools-cmake-build")
 
 WINDOWS = os.name == "nt"
@@ -105,8 +105,12 @@ class CmakeBuild(setuptools.Command):
                 "-GNinja",
                 f"-DPYTHON_INCLUDE_DIR={sysconfig.get_path('include')}",
                 f"-DPYTHON_EXECUTABLE={sys.executable}",
-                "-DFR_BUILD_PYTHON=ON",
+                "-DFR_ENABLE_ONNX_EXPORTING=ON",
+                "-DFR2ONNX_BUILD_PYTHON=ON",
+                "-DFR_BUILD_PYTHON=OFF",
                 "-DFR_BUILD_JNI=OFF",
+                "-DFR_BUILD_ONNX=OFF",
+                "-DFR_ENABLE_NCNN=OFF",
                 # "-DFR_ENABLE_CUDA=ON",
                 "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON",
                 f"-DPY_EXT_SUFFIX={get_ext_suffix() or ''}",
@@ -141,10 +145,6 @@ class CmakeBuild(setuptools.Command):
                 cmake_args.extend(extra_cmake_args)
             cmake_args.append(TOP_DIR)
             logging.info("Using cmake args: %s", cmake_args)
-            if "-DONNX_DISABLE_EXCEPTIONS=ON" in cmake_args:
-                raise RuntimeError(
-                    "-DONNX_DISABLE_EXCEPTIONS=ON option is only available for c++ builds. Python binding require exceptions to be enabled."
-                )
             if (
                 "PYTHONPATH" in os.environ
                 and "pip-build-env" in os.environ["PYTHONPATH"]
@@ -159,7 +159,7 @@ class CmakeBuild(setuptools.Command):
                 del os.environ["PYTHONPATH"]
             subprocess.check_call(cmake_args)
 
-            build_args = [CMAKE, "--build", os.curdir, "--target", "fr_python"]
+            build_args = [CMAKE, "--build", os.curdir, "--target", "rwkv2onnx_python"]
             if WINDOWS:
                 build_args.extend(["--config", build_type])
                 build_args.extend(["--", f"/maxcpucount:{self.jobs}"])
@@ -196,8 +196,8 @@ class BuildExt(setuptools.command.build_ext.build_ext):
                     lib_dir = debug_lib_dir
                 elif os.path.exists(release_lib_dir):
                     lib_dir = release_lib_dir
-            # fr_python library is defined in python/CMakelists.txt
-            lib_dir = os.path.join(lib_dir, "python")
+            # our python library is defined in export_onnx/python/CMakelists.txt
+            lib_dir = os.path.join(lib_dir, "export_onnx", "python")
             src = os.path.join(lib_dir, filename)
             dst = os.path.join(extension_dst_dir, filename)
             self.copy_file(src, dst)
@@ -212,7 +212,7 @@ CMD_CLASS = {
 # Extensions
 ################################################################################
 
-EXT_MODULES = [setuptools.Extension(name="fr_python", sources=[])]
+EXT_MODULES = [setuptools.Extension(name="rwkv2onnx_python", sources=[])]
 
 
 ################################################################################
@@ -226,4 +226,5 @@ setuptools.setup(
     if FR_WHEEL_PLATFORM_NAME is not None
     else {},
 )
+
 
