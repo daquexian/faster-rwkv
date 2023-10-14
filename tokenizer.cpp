@@ -71,7 +71,7 @@ Tokenizer::Tokenizer(std::filesystem::path path, void *asset_manager) {
   if (std::filesystem::is_directory(path)) {
     path /= "tokenizer";
   }
-  const std::string data = read_file(path, asset_manager);
+  const std::string data = read_file(path.string(), asset_manager);
 
   auto unpacker = msgpack::unpack(data.data(), data.size());
   auto obj = unpacker.get();
