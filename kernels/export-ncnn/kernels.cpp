@@ -310,7 +310,7 @@ Tensor gemv_a32w4(const Tensor &a, const Tensor &b) {
   const int K = b.shape()[0];
   RV_CHECK(K % 2 == 0);
   const int N = b.shape()[1];
-  static const int KT = 64;
+  static constexpr int KT = 64;
   // static const int effective_KT = KT / 2;
   Tensor B_int4_t = Tensor::Empty({K / 2, N}, DType::kInt8, Device::kCPU);
   constexpr int kGroupSize = 8;
@@ -325,7 +325,7 @@ Tensor gemv_a32w4(const Tensor &a, const Tensor &b) {
       Tensor::Empty({scales_t.numel() / 16}, DType::kFloat16, Device::kCPU);
   std::vector<float16> dq_scales_vec;
 
-  const int kBlockCols = 8;
+  static constexpr int kBlockCols = 8;
 
   std::vector<std::array<float, kBlockCols>> unquanted_scales_buffer;
   int kScaleGroupSize = 16;
