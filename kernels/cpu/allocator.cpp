@@ -11,6 +11,8 @@ public:
   void *DoAllocate(size_t size) {
 #ifdef __ANDROID__
     return malloc(size);
+#elif defined(_MSC_VER)
+    return _aligned_malloc(size, kAlignSize);
 #else
     return aligned_alloc(kAlignSize, size);
 #endif
