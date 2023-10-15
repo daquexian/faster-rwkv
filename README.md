@@ -94,6 +94,22 @@ Executables only:
 curl -L -s https://raw.githubusercontent.com/daquexian/faster-rwkv/master/download_binaries_and_models_termux.sh | bash -s 0
 ```
 
+### Export ONNX
+
+1. Generate a ChatRWKV weight file by `v2/convert_model.py` (in ChatRWKV repo) and strategy `cpu fp16`.
+
+2. Generate a faster-rwkv weight file by `tools/convert_weight.py`.
+
+3. Install `rwkv2onnx` python package by `pip install rwkv2onnx`.
+
+4. Convert by the following code (pure command line script will be coming soon)
+    ```python
+    import rwkv2onnx
+    faster_rwkv_weight_path = '...'
+    onnx_path = '...'
+    rwkv2onnx.convert(faster_rwkv_weight_path, onnx_path, 'fp16')
+    ```
+
 ### TODO
 
 - [x] JNI
@@ -104,8 +120,10 @@ curl -L -s https://raw.githubusercontent.com/daquexian/faster-rwkv/master/downlo
 - [x] ARM NEON int4 (>2x speedup compared to fp16)
 - [x] MIDI music models support
 - [x] custom initial state support
-- [ ] Raven models support
+- [x] export ONNX
 - [ ] seq mode
-- [ ] export ONNX
+    - [x] CUDA
+    - [ ] Others
+- [ ] Raven models support
 - [ ] more backends..
 - [ ] simplify model convertion
