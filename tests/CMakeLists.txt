@@ -35,3 +35,12 @@ endif()
 add_executable(run_abc_benchmark run_abc_benchmark.cpp)
 target_link_libraries(run_abc_benchmark faster_rwkv msgpack-cxx)
 
+
+set(benchmark_srcs
+        benchmark/random.cpp
+        benchmark/kernels/transpose.cpp
+    )
+
+add_executable(fr_benchmark ${benchmark_srcs})
+target_link_libraries(fr_benchmark faster_rwkv benchmark::benchmark)
+message("==========================================================")
