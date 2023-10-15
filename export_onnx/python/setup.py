@@ -190,18 +190,16 @@ class BuildExt(setuptools.command.build_ext.build_ext):
             fullname = self.get_ext_fullname(ext.name)
             filename = os.path.basename(self.get_ext_filename(fullname))
 
-            if not WINDOWS:
-                lib_dir = CMAKE_BUILD_DIR
-            else:
+            # our python library is defined in export_onnx/python/CMakelists.txt
+            lib_dir = os.path.join(CMAKE_BUILD_DIR, "export_onnx", "python")
+            if WINDOWS:
                 # Windows compiled extensions are stored in Release/Debug subfolders
-                debug_lib_dir = os.path.join(CMAKE_BUILD_DIR, "Debug")
-                release_lib_dir = os.path.join(CMAKE_BUILD_DIR, "Release")
+                debug_lib_dir = os.path.join(lib_dir, "Debug")
+                release_lib_dir = os.path.join(lib_dir, "Release")
                 if os.path.exists(debug_lib_dir):
                     lib_dir = debug_lib_dir
                 elif os.path.exists(release_lib_dir):
                     lib_dir = release_lib_dir
-            # our python library is defined in export_onnx/python/CMakelists.txt
-            lib_dir = os.path.join(lib_dir, "export_onnx", "python")
             src = os.path.join(lib_dir, filename)
             dst = os.path.join(extension_dst_dir, filename)
             self.copy_file(src, dst)
