@@ -316,7 +316,7 @@ Tensor gemv_a32w4(const Tensor &a, const Tensor &b) {
   constexpr int kGroupSize = 8;
   const bool double_quant = true;
   RV_CHECK(64 % kGroupSize == 0);
-  constexpr int kGroupNum = 64 / kGroupSize;
+  static constexpr int kGroupNum = 64 / kGroupSize;
   // a column --> kGroupNum scales
   Tensor scales_t =
       Tensor::Empty({K * N * kGroupNum / KT}, DType::kInt8, Device::kCPU);
