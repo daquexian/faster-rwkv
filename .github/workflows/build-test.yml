@@ -107,7 +107,7 @@ jobs:
     - name: Upload Python wheel
       uses: actions/upload-artifact@v3
       with:
-        name: python-package-distributions
+        name: fasterrwkv-wheels
         path: |
           python/fasterrwkv*.whl
 
@@ -170,7 +170,7 @@ jobs:
           build-android-aar/abc_music-android
           build-android-aar/midi_music-android
 
-  build_rwkv2onnx_wheels:
+  build-rwkv2onnx-wheels:
     env:
       # Only build universal2 package
       # Related issue: https://github.com/pypa/cibuildwheel/issues/1190
@@ -212,11 +212,34 @@ jobs:
       run: python -m cibuildwheel --output-dir wheelhouse export_onnx/python
     - uses: actions/upload-artifact@v3
       with:
-        name: python-dist
+        name: rwkv2onnx-wheels
         path: ./wheelhouse/*.whl
 
-  publish-to-pypi:
-    name: Publish Python 🐍 distribution 📦 to PyPI
+  publish-rwkv2onnx-to-pypi:
+    name: Publish rwkv2onnx Python 🐍 distribution 📦 to PyPI
+    if: ${{ github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags/v') }}
+    needs:
+    - build-rwkv2onnx-wheels
+    runs-on: ubuntu-latest
+
+    environment:
+      name: pypi
+      url: https://pypi.org/p/rwkv2onnx
+    permissions:
+      id-token: write  # IMPORTANT: mandatory for trusted publishing
+
+    steps:
+    - name: Download all the dists
+      uses: actions/download-artifact@v3
+      with:
+        name: rwkv2onnx-wheels
+        path: dist/
+          
+    - name: Publish distribution 📦 to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+
+  publish-fasterrwkv-to-pypi:
+    name: Publish fasterrwkv Python 🐍 distribution 📦 to PyPI
     if: ${{ github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags/v') }}
     needs:
     - build-and-test
@@ -232,7 +255,7 @@ jobs:
     - name: Download all the dists
       uses: actions/download-artifact@v3
       with:
-        name: python-package-distributions
+        name: fasterrwkv-wheels
         path: dist/
           
     - name: Publish distribution 📦 to PyPI
