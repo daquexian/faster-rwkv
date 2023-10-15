@@ -14,14 +14,18 @@ Tensor uniform(const Shape &shape, float low, float high, DType dtype,
     for (LengthType i = 0; i < ret.numel(); i++) {
       data[i] = dis(gen);
     }
-  } else if (device == Device::kCUDA) {
+  }
+#if FR_ENABLE_CUDA
+  else if (device == Device::kCUDA) {
     std::vector<float> vec(ret.numel());
     for (LengthType i = 0; i < ret.numel(); i++) {
       vec[i] = dis(gen);
     }
     cudaMemcpy(data, vec.data(), ret.numel() * sizeof(float),
                cudaMemcpyHostToDevice);
-  } else {
+  }
+#endif
+  else {
     RV_UNIMPLEMENTED();
   }
   return cast_dtype(ret, dtype);
