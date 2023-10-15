@@ -193,7 +193,7 @@ jobs:
       CIBW_BUILD: "cp3?-* cp310-* cp311-*"
       CIBW_SKIP: "cp36-* *-win32 *-manylinux_i686 *-musllinux_*"
       CIBW_ENVIRONMENT: CI=1 CMAKE_ARGS="-DONNX_USE_PROTOBUF_SHARED_LIBS=OFF -DProtobuf_USE_STATIC_LIBS=ON"
-      CIBW_ENVIRONMENT_WINDOWS: CI=1 USE_MSVC_STATIC_RUNTIME=0 CMAKE_ARGS="-DONNX_USE_PROTOBUF_SHARED_LIBS=OFF -DProtobuf_USE_STATIC_LIBS=ON"
+      CIBW_ENVIRONMENT_WINDOWS: CI=1 CMAKE_ARGS="-DONNX_USE_PROTOBUF_SHARED_LIBS=OFF -DProtobuf_USE_STATIC_LIBS=ON"
     name: Build wheels on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:

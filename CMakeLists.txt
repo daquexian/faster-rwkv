@@ -27,6 +27,7 @@ if (DEFINED ANDROID_NDK)
 else()
     option(FR_BUILD_JNI "" OFF)
 endif()
+option(FR_MSVC_STATIC_RUNTIME "" OFF)
 
 if(NOT DEFINED CMAKE_POSITION_INDEPENDENT_CODE)
   set(CMAKE_POSITION_INDEPENDENT_CODE ON)
@@ -118,6 +119,7 @@ endif()
 
 if (FR_BUILD_PROTOBUF)
     option(protobuf_BUILD_TESTS "Build tests" OFF)
+    option(protobuf_MSVC_STATIC_RUNTIME "" ${FR_USE_MSVC_STATIC_RUNTIME})
     FetchContent_Declare(
         protobuf
         GIT_REPOSITORY https://github.com/protocolbuffers/protobuf
@@ -135,6 +137,7 @@ if (FR_ENABLE_ONNX OR FR_ENABLE_ONNX_EXPORTING)
         GIT_TAG v1.14.0
         SYSTEM
     )
+    option(ONNX_USE_MSVC_STATIC_RUNTIME "" ${FR_USE_MSVC_STATIC_RUNTIME})
     FetchContent_MakeAvailable(onnx)
     if (FR_ENABLE_ONNX_EXPORTING)
         set(onnx_kernel_srcs
