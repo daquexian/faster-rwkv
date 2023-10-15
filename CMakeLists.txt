@@ -1,4 +1,11 @@
 cmake_minimum_required(VERSION 3.25)
+
+# For std::filesystem in onnx optimizer
+# Must be a cache variable and be set before project()
+# Reference: https://cmake.org/cmake/help/latest/variable/CMAKE_OSX_DEPLOYMENT_TARGET.html
+# It can be a normal variable if policy CMP0126 is set to NEW.
+set(CMAKE_OSX_DEPLOYMENT_TARGET 10.15 CACHE STRING "Minimum OS X deployment version")
+
 project(faster-rwkv CXX)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -21,6 +28,7 @@ else()
     option(FR_BUILD_JNI "" OFF)
 endif()
 option(FR_ENABLE_TEST "Enable the tests of faster-rwkv" OFF)
+option(FR_MSVC_STATIC_RUNTIME "" OFF)
 
 if(NOT DEFINED CMAKE_POSITION_INDEPENDENT_CODE)
   set(CMAKE_POSITION_INDEPENDENT_CODE ON)
@@ -112,6 +120,7 @@ endif()
 
 if (FR_BUILD_PROTOBUF)
     option(protobuf_BUILD_TESTS "Build tests" OFF)
+    option(protobuf_MSVC_STATIC_RUNTIME "" ${FR_USE_MSVC_STATIC_RUNTIME})
     FetchContent_Declare(
         protobuf
         GIT_REPOSITORY https://github.com/protocolbuffers/protobuf
@@ -129,6 +138,7 @@ if (FR_ENABLE_ONNX OR FR_ENABLE_ONNX_EXPORTING)
         GIT_TAG v1.14.0
         SYSTEM
     )
+    option(ONNX_USE_MSVC_STATIC_RUNTIME "" ${FR_USE_MSVC_STATIC_RUNTIME})
     FetchContent_MakeAvailable(onnx)
     if (FR_ENABLE_ONNX_EXPORTING)
         set(onnx_kernel_srcs
@@ -250,8 +260,7 @@ add_executable(midi_music midi_music.cpp)
 target_link_libraries(midi_music faster_rwkv)
 
 if (FR_ENABLE_ONNX_EXPORTING)
-    add_executable(export_onnx export_onnx.cpp)
-    target_link_libraries(export_onnx faster_rwkv)
+    add_subdirectory(export_onnx)
 endif()
 
 if (FR_BUILD_JNI)

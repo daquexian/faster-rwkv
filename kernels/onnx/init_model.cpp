@@ -26,7 +26,11 @@ void init_model(Model *model, Device device, const std::string &path,
   Ort::SessionOptions session_options;
   if (std::getenv("VERBOSE") != nullptr) {
     session_options.SetLogSeverityLevel(OrtLoggingLevel::ORT_LOGGING_LEVEL_VERBOSE);
+  } else {
+    session_options.SetLogSeverityLevel(OrtLoggingLevel::ORT_LOGGING_LEVEL_ERROR);
   }
+  // ORT optimization has a bug on rwkv models with layernorm 17
+  session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_DISABLE_ALL);
 #ifdef __ANDROID__
   if (std::getenv("NNAPI") != nullptr) {
     uint32_t nnapi_flags = 0;
@@ -84,8 +88,6 @@ void init_model(Model *model, Device device, const std::string &path,
   };
 
   model->_version = get_value("version");
-  model->_act_dtype = str_to_dtype(get_value("act_dtype", "fp32"));
-  model->_weight_dtype = str_to_dtype(get_value("weight_dtype", "fp32"));
   model->_head_size = std::stoi(get_value("head_size"));
   // overwrite these fields if it is new model (having config file)
   model->_n_embd = std::stoi(get_value("n_embd"));

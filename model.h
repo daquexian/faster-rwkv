@@ -20,6 +20,7 @@ struct Model {
   void ResetStates();
   void set_states(const States &states);
   const States &states() const { return _states; }
+  States &states() { return _states; }
   const int head_size() const { return _head_size; }
   const int n_layer() const { return _n_layer; }
   const int n_embd() const { return _n_embd; }
@@ -27,6 +28,8 @@ struct Model {
   const int n_ffn() const { return _n_ffn; }
   const std::string &version() const { return _version; }
   const std::any &extra() const { return _extra; }
+
+  DType weight_dtype() const { return _weight_dtype; }
 
   // TODO:
   std::vector<Tensor> _embd_weights;

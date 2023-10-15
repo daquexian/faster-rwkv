@@ -19,8 +19,8 @@ namespace rwkv {
 
 namespace def {
 
-Tensor ModelForward(const Model *model, Device device, int id,
-                    std::vector<std::vector<Tensor>> &states) {
+Tensor ModelForward(Model *model, Device device, int id) {
+  auto &states = model->states();
   Tensor x = [&]() -> Tensor {
     if (model->_act_device == Device::kNCNNMeta
 #ifdef FR_ENABLE_ONNX
@@ -30,15 +30,36 @@ Tensor ModelForward(const Model *model, Device device, int id,
       Tensor embd_weights_cpu =
           Tensor::Empty({static_cast<long>(model->_embd_weights.size()),
                          model->_embd_weights[0].shape()[0]},
-                        DType::kFloat32, Device::kCPU);
+                        model->weight_dtype(), Device::kCPU);
       {
-        float *ptr = embd_weights_cpu.data_ptr<float>();
-        for (int i = 0; i < model->_embd_weights.size(); i++) {
-          for (int j = 0; j < model->_n_embd; j++) {
-            // embd weights in .fr are always fp16
-            *ptr++ = static_cast<float>(
-                model->_embd_weights[i].data_ptr<float16>()[j]);
+        auto fr_embd_dtype = model->_embd_weights[0].dtype();
+        auto weight_dtype = model->weight_dtype();
+        if (fr_embd_dtype == DType::kFloat16 &&
+            weight_dtype == DType::kFloat32) {
+          auto *ptr = embd_weights_cpu.data_ptr<float>();
+          for (int i = 0; i < model->_embd_weights.size(); i++) {
+            for (int j = 0; j < model->_n_embd; j++) {
+              *ptr++ = model->_embd_weights[i].data_ptr<float16>()[j];
+            }
           }
+        } else if (fr_embd_dtype == DType::kFloat32 &&
+                   weight_dtype == DType::kFloat32) {
+          auto *ptr = embd_weights_cpu.data_ptr<float>();
+          for (int i = 0; i < model->_embd_weights.size(); i++) {
+            for (int j = 0; j < model->_n_embd; j++) {
+              *ptr++ = model->_embd_weights[i].data_ptr<float>()[j];
+            }
+          }
+        } else if (fr_embd_dtype == DType::kFloat16 &&
+                   weight_dtype == DType::kFloat16) {
+          auto *ptr = embd_weights_cpu.data_ptr<float16>();
+          for (int i = 0; i < model->_embd_weights.size(); i++) {
+            for (int j = 0; j < model->_n_embd; j++) {
+              *ptr++ = model->_embd_weights[i].data_ptr<float16>()[j];
+            }
+          }
+        } else {
+          RV_UNIMPLEMENTED();
         }
       }
       if (model->_act_device == Device::kNCNNMeta) {
@@ -75,7 +96,7 @@ Tensor ModelForward(const Model *model, Device device, int id,
             "state_" + std::to_string(i) + "_" + std::to_string(j);
         auto &state_tensor = states[i][j];
         state_tensor = onnxmeta::add_input(state_tensor.shape(),
-                                           DType::kFloat32, state_name);
+                                           state_tensor.dtype(), state_name);
       }
     }
   }

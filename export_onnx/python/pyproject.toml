@@ -3,13 +3,13 @@ requires = [ "setuptools", "setuptools-scm" ]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "fasterrwkv"
+name = "rwkv2onnx"
 dynamic = [ "version" ]
 keywords = [ "deep-learning", "RWKV" ]
 authors = [
     { name = "daquexian", email = "daquexian566@gmail.com" },
 ]
-description = "Faster RWKV"
+description = "RWKV to ONNX (powered by Faster RWKV)"
 readme = "README.md"
 requires-python = ">=3.8"
 classifiers = [
@@ -21,4 +21,5 @@ dependencies = [
 ]
 
 [tool.setuptools_scm]
-root = ".."
+root = "../.."
+

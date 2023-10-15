@@ -5,6 +5,11 @@ FetchContent_Declare(
       GIT_TAG v1.14.0
       SYSTEM
       )
+if (FR_MSVC_STATIC_RUNTIME)
+    option(gtest_force_shared_crt "" OFF)
+else()
+    option(gtest_force_shared_crt "" ON)
+endif()
 FetchContent_MakeAvailable(gtest)
 enable_testing()
 add_executable(test_model test_model.cpp)
