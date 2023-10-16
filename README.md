@@ -96,19 +96,11 @@ curl -L -s https://raw.githubusercontent.com/daquexian/faster-rwkv/master/downlo
 
 ### Export ONNX
 
-1. Generate a ChatRWKV weight file by `v2/convert_model.py` (in ChatRWKV repo) and strategy `cpu fp16`.
+1. Install `rwkv2onnx` python package by `pip install rwkv2onnx`.
 
-2. Generate a faster-rwkv weight file by `tools/convert_weight.py`.
+2. Clone https://github.com/BlinkDL/ChatRWKV
 
-3. Install `rwkv2onnx` python package by `pip install rwkv2onnx`.
-
-4. Convert by the following code (pure command line script will be coming soon)
-    ```python
-    import rwkv2onnx
-    faster_rwkv_weight_path = '...'
-    onnx_path = '...'
-    rwkv2onnx.convert(faster_rwkv_weight_path, onnx_path, 'fp16')
-    ```
+3. Run `rwkv2onnx <input path> <output path> <ChatRWKV path>`. For example, `rwkv2onnx ~/RWKV-5-World-0.1B-v1-20230803-ctx4096.pth ~/RWKV-5-0.1B.onnx ~/ChatRWKV`
 
 ### TODO
 

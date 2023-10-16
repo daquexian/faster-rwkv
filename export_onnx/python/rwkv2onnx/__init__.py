@@ -15,7 +15,7 @@ def convert(input_path, output_path, dtype, chatrwkv_repo_path):
     if not os.path.exists(cr_convert_script_path):
         raise RuntimeError(f'ChatRWKV path "{chatrwkv_repo_path}" does not contain v2/convert_model.py')
     with tempfile.TemporaryDirectory() as tmpdirname:
-        print('Converting...')
+        print('Converting... (Powered by Faster RWKV)')
         # must end with .pth
         cr_converted_file = os.path.join(tmpdirname, 'cr_converted.pth')
         fr_file = os.path.join(tmpdirname, 'fr')
