@@ -11,6 +11,6 @@ using namespace rwkv;
 PYBIND11_MODULE(rwkv2onnx_python, m) {
   m.doc() = "rwkv2onnx python binding";
 
-  m.def("convert", &onnxmeta::ExportModel, "Convert a model to ONNX format");
+  m.def("fr_to_onnx", &onnxmeta::ExportModel, "Convert Faster RWKV model to ONNX format");
 }
 

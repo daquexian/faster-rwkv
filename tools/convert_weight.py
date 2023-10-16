@@ -6,7 +6,7 @@ import torch
 import msgpack
 
 
-def convert(input_path, output_path):
+def convert_to_fr(input_path, output_path):
     w = torch.load(input_path, map_location=torch.device('cpu'))
 
     d = {'embd_weights': [], 'weights': {}}
@@ -56,4 +56,4 @@ def convert(input_path, output_path):
 
 
 if __name__ == '__main__':
-    convert(sys.argv[1], sys.argv[2])
+    convert_to_fr(sys.argv[1], sys.argv[2])

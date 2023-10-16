@@ -17,8 +17,12 @@ classifiers = [
 ]
 dependencies = [
     "importlib_resources",
-    "numpy",
+    "msgpack",
+    "rich",
 ]
+
+[project.scripts]
+rwkv2onnx = "rwkv2onnx:main"
 
 [tool.setuptools_scm]
 root = "../.."

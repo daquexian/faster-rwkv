@@ -204,6 +204,9 @@ class BuildExt(setuptools.command.build_ext.build_ext):
             dst = os.path.join(extension_dst_dir, filename)
             self.copy_file(src, dst)
 
+        self.copy_file(os.path.join(TOP_DIR, "tools", "convert_weight.py"),
+                       os.path.join(PYTHON_DIR, "rwkv2onnx", "convert_to_fr.py"))
+
 
 CMD_CLASS = {
     "cmake_build": CmakeBuild,
