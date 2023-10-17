@@ -1,4 +1,5 @@
 #include <fstream>
+#include <filesystem>
 
 #include <kernels/allocator.h>
 #include <kernels/registry.h>
@@ -8,6 +9,8 @@
 
 #include <onnx/checker.h>
 #include <onnx/onnx_pb.h>
+
+namespace fs = std::filesystem;
 
 namespace rwkv {
 namespace onnxmeta {
@@ -28,7 +31,7 @@ static const bool kUseOpset17LayerNorm =
 
 // static means internal linkage
 static std::ofstream external_data_file;
-static std::string external_data_filename;
+static std::string external_data_relative_filename;
 static size_t external_data_offset;
 
 int *get_unique_op_id_ptr() {
@@ -66,9 +69,12 @@ void ExportModel(const std::string &input_path,
                  const std::string &output_path, const std::string& dtype) {
 
   default_dispatch_device() = Device::kONNXMeta;
-  external_data_filename = output_path + ".bin";
+  fs::create_directories(fs::path(output_path).parent_path());
+  std::string external_data_filename = output_path + ".bin";
   external_data_file.open(external_data_filename, std::ios::binary);
-  RV_CHECK(external_data_file.good());
+  RV_CHECK(external_data_file.good()) << "Create file " << external_data_filename
+                                      << " failed.";
+  external_data_relative_filename = fs::path(external_data_filename).filename();
   external_data_offset = 0;
   Model model(input_path, "export-onnx " + dtype);
   model.Run(0);
@@ -171,7 +177,7 @@ Tensor possible_initializer(const Tensor &x) {
         std::to_string(x.numel() * x.elem_size()));
     tensor_proto->mutable_external_data()->Mutable(2)->set_key("location");
     tensor_proto->mutable_external_data()->Mutable(2)->set_value(
-        external_data_filename);
+        external_data_relative_filename);
     external_data_file.write(static_cast<const char *>(x.data_ptr<>()), size);
     external_data_offset += size;
     if (external_data_offset % 4096 != 0) {
