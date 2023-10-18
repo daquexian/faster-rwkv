@@ -1,5 +1,5 @@
-#include <fstream>
 #include <filesystem>
+#include <fstream>
 
 #include <kernels/allocator.h>
 #include <kernels/registry.h>
@@ -65,16 +65,17 @@ ModelProto Finish() {
   return model;
 }
 
-void ExportModel(const std::string &input_path,
-                 const std::string &output_path, const std::string& dtype) {
+void ExportModel(const std::string &input_path, const std::string &output_path,
+                 const std::string &dtype) {
 
   default_dispatch_device() = Device::kONNXMeta;
   fs::create_directories(fs::path(output_path).parent_path());
   std::string external_data_filename = output_path + ".bin";
   external_data_file.open(external_data_filename, std::ios::binary);
-  RV_CHECK(external_data_file.good()) << "Create file " << external_data_filename
-                                      << " failed.";
-  external_data_relative_filename = fs::path(external_data_filename).filename();
+  RV_CHECK(external_data_file.good())
+      << "Create file " << external_data_filename << " failed.";
+  external_data_relative_filename =
+      fs::path(external_data_filename).filename().string();
   external_data_offset = 0;
   Model model(input_path, "export-onnx " + dtype);
   model.Run(0);
@@ -385,9 +386,7 @@ Tensor sigmoid(const Tensor &x) {
   return output;
 }
 
-Tensor silu(const Tensor &x) {
-  return x * sigmoid(x);
-}
+Tensor silu(const Tensor &x) { return x * sigmoid(x); }
 
 Tensor sqrt(const Tensor &x) {
   Tensor output = Tensor::Empty(x.shape(), x.dtype(), x.device());
