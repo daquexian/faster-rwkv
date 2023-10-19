@@ -19,12 +19,12 @@ Faster RWKV int4 量化目前使用 NF4 量化方法（https://arxiv.org/abs/230
 
 - int4
   
-  - 量化：入口是 kernels/export-ncnn/kernels.cpp 的 gemv_a32w4 函数，NF4 映射表在 quantize_nf4 函数中。
+  - 量化：入口是 kernels.cpp 的 gemv_a32w4 函数，NF4 映射表在 quantize_nf4 函数中。
     
   - 反量化：反量化和 gemv kernel 融合在一起（以获得推理加速），kernel 在 [daquexian/ncnn](https://github.com/daquexian/ncnn) gemv 分支的 src/layer/arm/gemva32w4_arm_asimdhp.cpp 中
     
 - int8
   
-  - 量化：入口是 kernels/export-ncnn/kernels.cpp 的 gemv_a32w8 函数。
+  - 量化：入口是 kernels.cpp 的 gemv_a32w8 函数。
     
   - 反量化：[daquexian/ncnn](https://github.com/daquexian/ncnn) gemv 分支的 src/layer/arm/gemva32w8.cpp 中
