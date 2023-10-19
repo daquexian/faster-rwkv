@@ -5,7 +5,7 @@
 Faster RWKV （以及市面上大部分大模型）的量化方式属于 weight only 量化，和 CNN 时代流行的量化方式有较大不同：
 
 - 传统量化：将权重和激活值都量化为 int8，kernel 内使用 int8 定点运算。
-
+  
 - weight only 量化：不量化激活值，将权重量化为 int8 或者 int4，计算时反量化为 fp16，以 fp16 精度进行计算，掉点较小，且仍能加速大模型推理（因为 batch=1 时大模型推理是 memory bound 的，对权重的量化缓解了带宽瓶颈）。
   
 
@@ -28,3 +28,8 @@ Faster RWKV int4 量化目前使用 NF4 量化方法（https://arxiv.org/abs/230
   - 量化：入口是 kernels.cpp 的 gemv_a32w8 函数。
     
   - 反量化：[daquexian/ncnn](https://github.com/daquexian/ncnn) gemv 分支的 src/layer/arm/gemva32w8.cpp 中
+    
+#### 其他相关资料
+
+- https://zhuanlan.zhihu.com/p/645308698
+- NF4 和 double quantization：[[2305.14314] QLoRA: Efficient Finetuning of Quantized LLMs](https://arxiv.org/abs/2305.14314)
