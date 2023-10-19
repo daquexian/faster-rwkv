@@ -1,6 +1,6 @@
-### int8/int4 量化
+## int8/int4 量化
 
-#### weight only 量化
+### weight only 量化
 
 Faster RWKV （以及市面上大部分大模型）的量化方式属于 weight only 量化，和 CNN 时代流行的量化方式有较大不同：
 
@@ -11,11 +11,11 @@ Faster RWKV （以及市面上大部分大模型）的量化方式属于 weight 
 
 此外，在 weight only 量化中，为了降低量化损失，会将每 G 个权重分为一组，每组计算出一个 scale（显然 G 越小，量化越精确，但 scale 所占空间会更大，kernel 也会更加复杂）。在 Faster RWKV int8 量化中 G=64，也就是每 64 个权重为一组，在 int4 量化中，G=8，同时 scale 也会以 64 个为一组再次进行 int8 量化（double quantization），降低 scale 所占的空间。
 
-#### NF4
+### NF4
 
 Faster RWKV int4 量化目前使用 NF4 量化方法（https://arxiv.org/abs/2305.14314）。NF4 是一个将 [-1, 1] 范围内的 float 数值映射为 int4 数值的映射表（例如将 0.6427869200706482 ~ 0.8614784181118011 映射为 15）。它是在权重符合正态分布的假设下，量化损失最低的量化方式。
 
-#### 代码位置
+### 代码位置
 
 - int4
   
@@ -29,7 +29,8 @@ Faster RWKV int4 量化目前使用 NF4 量化方法（https://arxiv.org/abs/230
     
   - 反量化：[daquexian/ncnn](https://github.com/daquexian/ncnn) gemv 分支的 src/layer/arm/gemva32w8.cpp 中
     
-#### 其他相关资料
+
+### 其他相关资料
 
 - https://zhuanlan.zhihu.com/p/645308698
 - NF4 和 double quantization：[[2305.14314] QLoRA: Efficient Finetuning of Quantized LLMs](https://arxiv.org/abs/2305.14314)
