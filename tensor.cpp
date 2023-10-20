@@ -72,11 +72,6 @@ Tensor Copy(const Tensor &x, Device device, bool always_copy) {
                cudaMemcpyHostToDevice);
     return y;
   }
-  if (device == Device::kCUDA && x.device() == Device::kCUDA) {
-    cudaMemcpy(y.data_ptr(), x.data_ptr(), x.numel() * x.elem_size(),
-               cudaMemcpyDeviceToDevice);
-    return y;
-  }
 #endif
 
 #ifdef FR_ENABLE_ONNX
