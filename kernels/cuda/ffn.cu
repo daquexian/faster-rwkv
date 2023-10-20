@@ -81,8 +81,7 @@ Tensor _FFN(const Tensor &x, const Tensor &sx, const Tensor &ln_w,
   element_wise(InplaceReLUAndSquare{vx}, kw.size(1));
   gemm_cublas(vx, vw.data_ptr<half>(), x_plus_out.data_ptr<half>(), 1, 1,
               vw.size(1), vw.size(0));
-  element_wise(InplaceFma{x_plus_out.data_ptr<half>(), r, x.data_ptr<half>()},
-               x_plus_out.numel());
+  x_plus_out = x_plus_out * r_t + x;
   return xx;
 }
 

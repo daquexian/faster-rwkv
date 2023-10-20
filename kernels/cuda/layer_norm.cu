@@ -20,6 +20,7 @@ limitations under the License.
 
 #include <kernels/cuda/layer_norm.cuh>
 #include <kernels/registry.h>
+#include "kernels/kernels.h"
 #include <tensor.h>
 
 namespace rwkv {
@@ -98,8 +99,11 @@ void LayerNormForwardGpu(const int64_t num_instances, const int64_t norm_size,
 
 } // namespace layer_norm
 
-Tensor layer_norm_op(const Tensor &x, const Tensor &weight,
-                     const Tensor &bias) {
+Tensor layer_norm_op(const Tensor &_x, const Tensor &_weight,
+                     const Tensor &_bias) {
+  Tensor x = cast_dtype(_x, DType::kFloat32);
+  Tensor weight = cast_dtype(_weight, DType::kFloat32);
+  Tensor bias = cast_dtype(_bias, DType::kFloat32);
   Tensor out = Tensor::Empty(x.sizes(), x.dtype(), x.device());
   RV_CHECK(x.sizes().size() <= 2);
   int m, k;
@@ -126,7 +130,7 @@ Tensor layer_norm_op(const Tensor &x, const Tensor &weight,
   } else {
     RV_CHECK(false);
   }
-  return out;
+  return cast_dtype(out, _x.dtype());
 }
 
 KernelRegister layer_norm_reg("layernorm", Device::kCUDA, layer_norm_op);

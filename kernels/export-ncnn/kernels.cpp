@@ -311,7 +311,6 @@ Tensor gemv_a32w4(const Tensor &a, const Tensor &b) {
   RV_CHECK(K % 2 == 0);
   const int N = b.shape()[1];
   static constexpr int KT = 64;
-  // static const int effective_KT = KT / 2;
   Tensor B_int4_t = Tensor::Empty({K / 2, N}, DType::kInt8, Device::kCPU);
   constexpr int kGroupSize = 8;
   const bool double_quant = true;
@@ -365,11 +364,6 @@ Tensor gemv_a32w4(const Tensor &a, const Tensor &b) {
           col_datas[i % kBlockCols][i / kBlockCols] = block_data[i];
         }
 
-        // a column --> two scales/zero_points
-        // calculate scale and zero point
-        // float[i] = int[i] * scale + zero_point
-        // int[i] = (float[i] - zero_point) / scale
-        // scale = (max - min) / 255
         for (int col = 0; col < kBlockCols; col++) {
           const auto &col_data = col_datas[col];
           RV_CHECK(col_data.size() == 64);

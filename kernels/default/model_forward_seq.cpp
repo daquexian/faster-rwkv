@@ -48,11 +48,15 @@ Tensor ModelForwardSeqFallback(Model *model, Device device,
 Tensor ModelForwardSeq(Model *model, Device device,
                        const std::vector<int> &id,
                        bool full_output) {
+  if (std::getenv("FR_FORCE_ONE_MODE")) {
+    RV_CHECK(!full_output) << "full_output is not supported in fallback mode";
+    return ModelForwardSeqFallback(model, device, id, full_output);
+  }
   auto &states = model->states();
   Tensor x = [&]() -> Tensor {
 #ifdef FR_ENABLE_ONNX
-    RV_UNIMPLEMENTED();
-    // if (model->_act_device == Device::kONNXMeta) {
+    if (model->_act_device == Device::kONNXMeta) {
+      RV_UNIMPLEMENTED();
     //   Tensor input_id = onnxmeta::add_input({}, DType::kInt64, "input_id");
     //   Tensor embd_weights_cpu =
     //       Tensor::Empty({static_cast<long>(model->_embd_weights.size()),
@@ -72,6 +76,7 @@ Tensor ModelForwardSeq(Model *model, Device device,
     //   Tensor embd_weights = onnxmeta::possible_initializer(embd_weights_cpu);
     //   return onnxmeta::gather(embd_weights, input_id);
     //   }
+    }
 #endif
     return vgather(model->_embd_weights, id);
   }();
