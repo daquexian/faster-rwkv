@@ -1,4 +1,4 @@
-from fr_python import _Tensor, Model, Sampler, Tokenizer
+from fr_python import _Tensor, Model, Sampler, Tokenizer, layernorm
 
 import numpy as np
 from importlib.metadata import version, PackageNotFoundError

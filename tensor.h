@@ -63,6 +63,9 @@ using Shape = std::vector<LengthType>;
 // operator<< for Shape
 std::ostream &operator<<(std::ostream &os, const Shape &shape);
 
+void print_n(const float16* ptr, int n, const std::string& name);
+void print_n(const float* ptr, int n, const std::string& name);
+
 inline std::string dtype_to_string(DType dtype) {
   if (dtype == DType::kFloat32) {
     return "fp32";

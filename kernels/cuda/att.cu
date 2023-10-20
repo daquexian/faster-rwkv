@@ -1,5 +1,6 @@
 #include <cuda_fp16.h>
 #include <cuda_runtime.h>
+#include <fstream>
 
 #include "element_wise.cuh"
 #include <kernels/registry.h>
@@ -179,6 +180,23 @@ struct InplaceMulOther {
 void gemm_cublas_tensor(const Tensor &a, const Tensor &b, Tensor &c);
 Tensor cast_dtype(const Tensor &x, DType dtype);
 
+static void save_tensor(const Tensor &_t, const std::string &name) {
+  return;
+  auto t = Copy(_t, Device::kCPU);
+  std::ofstream f("/tmp/" + name, std::ios::binary | std::ios::out);
+  if (t.dtype() == DType::kFloat16) {
+    for (int i = 0; i < t.numel(); ++i) {
+      f.write((char *)&t.data_ptr<float16>()[i], sizeof(float16));
+    }
+  } else if (t.dtype() == DType::kFloat32) {
+    for (int i = 0; i < t.numel(); ++i) {
+      f.write((char *)&t.data_ptr<float>()[i], sizeof(float));
+    }
+  } else {
+    RV_UNIMPLEMENTED();
+  }
+}
+
 Tensor _ATT(const Tensor &x, const Tensor &ln_w, const Tensor &ln_b,
             const Tensor &sx, const Tensor &k_mix, const Tensor &v_mix,
             const Tensor &r_mix, const Tensor &kw,
@@ -190,17 +208,34 @@ Tensor _ATT(const Tensor &x, const Tensor &ln_w, const Tensor &ln_b,
             /* imm */ Tensor &v, /* in & out */ Tensor &r,
             /* out */ Tensor &x_plus_out, /* out */ Tensor &t1,
             /* out */ Tensor &t2, /* out */ Tensor &p) {
+  static int i = 0;
+  save_tensor(x, "x_att_fr" + std::to_string(i));
   Tensor xx = cuda::layer_norm_op(x, ln_w, ln_b);
+  save_tensor(xx, "xx_att_fr" + std::to_string(i));
   element_wise(Mix{xx.data_ptr<half>(), sx.data_ptr<half>(),
                    k_mix.data_ptr<half>(), v_mix.data_ptr<half>(),
                    r_mix.data_ptr<half>(), kx.data_ptr<half>(),
                    vx.data_ptr<half>(), rx.data_ptr<half>()},
                x.numel());
+  save_tensor(sx, "sx_att_fr" + std::to_string(i));
+  save_tensor(k_mix, "k_mix_att_fr" + std::to_string(i));
+  save_tensor(v_mix, "v_mix_att_fr" + std::to_string(i));
+  save_tensor(r_mix, "r_mix_att_fr" + std::to_string(i));
+  save_tensor(kx, "kx_att_fr" + std::to_string(i));
+  save_tensor(vx, "vx_att_fr" + std::to_string(i));
+  save_tensor(rx, "rx_att_fr" + std::to_string(i));
 
   gemm_cublas_tensor(kx, kw, k);
+  save_tensor(kw, "kw_att_fr" + std::to_string(i));
+  save_tensor(k, "k_att_fr" + std::to_string(i));
   gemm_cublas_tensor(vx, vw, v);
+  save_tensor(vw, "vw_att_fr" + std::to_string(i));
+  save_tensor(v, "v_att_fr" + std::to_string(i));
   gemm_cublas_tensor(rx, rw, r);
+  save_tensor(rw, "rw_att_fr" + std::to_string(i));
+  save_tensor(r, "r_att_fr_before_sigmoid" + std::to_string(i));
   element_wise(InplaceSigmoid{r.data_ptr<half>()}, r.numel());
+  save_tensor(r, "r_att_fr" + std::to_string(i));
 
   element_wise(WkvForwardOne{t_first.data_ptr<float>(), k.data_ptr<float>(),
                              pp.data_ptr<float>(), aa.data_ptr<float>(),
@@ -209,10 +244,23 @@ Tensor _ATT(const Tensor &x, const Tensor &ln_w, const Tensor &ln_b,
                              t2.data_ptr<float>(), p.data_ptr<float>(),
                              r.data_ptr<half>()},
                x.numel());
+  save_tensor(t_first, "t_first_att_fr" + std::to_string(i));
+  save_tensor(pp, "pp_att_fr" + std::to_string(i));
+  save_tensor(aa, "aa_att_fr" + std::to_string(i));
+  save_tensor(bb, "bb_att_fr" + std::to_string(i));
+  save_tensor(t_decay, "t_decay_att_fr" + std::to_string(i));
+  save_tensor(t1, "t1_att_fr" + std::to_string(i));
+  save_tensor(t2, "t2_att_fr" + std::to_string(i));
+  save_tensor(p, "p_att_fr" + std::to_string(i));
+  save_tensor(r, "rwkv_att_fr" + std::to_string(i));
 
   gemm_cublas_tensor(r, ow, x_plus_out);
+  save_tensor(ow, "ow_att_fr" + std::to_string(i));
+  save_tensor(x_plus_out, "x_plus_out_att_fr_before_add" + std::to_string(i));
   element_wise(InplaceAdd{x_plus_out.data_ptr<half>(), x.data_ptr<half>()},
                x.numel());
+  save_tensor(x_plus_out, "x_plus_out_att_fr" + std::to_string(i));
+  i++;
   return xx;
 }
 
@@ -227,6 +275,7 @@ Tensor _ATT_ONE_V5(const Tensor &x, const Tensor &s, const Tensor &ln_w,
                    Tensor &out_temp1, Tensor &out_temp2, LengthType H,
                    LengthType S) {
   Tensor xx = cuda::layer_norm_op(x, ln_w, ln_b);
+  print_tensor(xx, "xx");
 
   element_wise(Mix{xx.data_ptr<half>(), sx.data_ptr<half>(),
                    k_mix.data_ptr<half>(), v_mix.data_ptr<half>(),
@@ -234,6 +283,9 @@ Tensor _ATT_ONE_V5(const Tensor &x, const Tensor &s, const Tensor &ln_w,
                    vx.data_ptr<half>(), rx.data_ptr<half>()},
                x.numel());
 
+  print_tensor(kx, "kx");
+  print_tensor(vx, "vx");
+  print_tensor(rx, "rx");
   gemm_cublas_tensor(kx, kw, k);
   gemm_cublas_tensor(vx, vw, v);
   gemm_cublas_tensor(rx, rw, r);
@@ -243,6 +295,7 @@ Tensor _ATT_ONE_V5(const Tensor &x, const Tensor &s, const Tensor &ln_w,
   v = v.view({H, 1, S});
 
   gemm_cublas_tensor(k, v, a);
+  print_tensor(a, "a");
 
   element_wise(OneV5MulAdd{static_cast<int>(s.size(1) * s.size(2)),
                            t_first.data_ptr<float>(), a.data_ptr<float>(),
@@ -253,13 +306,16 @@ Tensor _ATT_ONE_V5(const Tensor &x, const Tensor &s, const Tensor &ln_w,
 
   gemm_cublas_tensor(r, out_temp2, out_temp1);
   out_temp1 = out_temp1.flatten().unsqueeze(0);
+  print_tensor(out_temp1, "out_temp1");
 
   Tensor out_temp3 = cuda::group_norm_op(out_temp1, H, lx_w, lx_b).flatten();
+  print_tensor(out_temp3, "out_temp3");
 
   Tensor out_temp4 = cast_dtype(out_temp3, DType::kFloat16);
   gemm_cublas_tensor(out_temp4, ow, x_plus_out);
   element_wise(InplaceAdd{x_plus_out.data_ptr<half>(), x.data_ptr<half>()},
                x.numel());
+  print_tensor(x_plus_out, "x_plus_out");
 
   return xx;
 }

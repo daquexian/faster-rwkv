@@ -8,6 +8,7 @@
 #include <sampler.h>
 #include <tensor.h>
 #include <tokenizer.h>
+#include <kernels/kernels.h>
 
 namespace py = pybind11;
 using namespace pybind11::literals;
@@ -22,6 +23,8 @@ Tensor FRTensorFromPyBuffer(py::buffer b) {
     dtype = DType::kFloat32;
   } else if (info.format == py::format_descriptor<int8_t>::format()) {
     dtype = DType::kInt8;
+  } else if (info.format == py::format_descriptor<int16_t>::format()) {
+    dtype = DType::kFloat16;
   } else {
     RV_UNIMPLEMENTED() << "Unsupported dtype: " << info.format;
   }
@@ -31,6 +34,12 @@ Tensor FRTensorFromPyBuffer(py::buffer b) {
 
 PYBIND11_MODULE(fr_python, m) {
   m.doc() = "faster-rwkv python binding";
+
+  m.def("layernorm", [](const Tensor &x, const Tensor &weight,
+                        const Tensor &bias) {
+    return layernorm(Copy(x, Device::kCUDA), Copy(weight, Device::kCUDA), Copy(bias, Device::kCUDA));
+    }
+        , "x"_a, "weight"_a, "bias"_a);
 
   py::class_<Tokenizer, std::shared_ptr<Tokenizer>>(m, "Tokenizer")
       .def(py::init<std::filesystem::path>())

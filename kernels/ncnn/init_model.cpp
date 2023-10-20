@@ -166,7 +166,7 @@ void init_model(Model *model, Device device, const std::string &_path,
 #endif
     }
     net->opt.use_fp16_packed = false;
-    net->opt.use_fp16_arithmetic = false;
+    net->opt.use_fp16_arithmetic = true;
     net->opt.use_fp16_storage = false;
     net->opt.use_bf16_storage = false;
   } else if (model->_weight_dtype == DType::kFloat16) {

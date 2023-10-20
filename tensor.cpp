@@ -37,7 +37,24 @@ std::ostream &operator<<(std::ostream &os, DType shape) {
   return os;
 }
 
+void print_n(const float* ptr, int n, const std::string& name) {
+  std::cout << "Tensor " << name << std::endl;
+  for (int i = 0; i < n; i++) {
+    std::cout << ptr[i] << ", ";
+  }
+  std::cout << std::endl;
+}
+
+void print_n(const float16* ptr, int n, const std::string& name) {
+  std::cout << "Tensor " << name << std::endl;
+  for (int i = 0; i < n; i++) {
+    std::cout << static_cast<float>(ptr[i]) << ", ";
+  }
+  std::cout << std::endl;
+}
+
 void print_tensor(const Tensor &t, const std::string &name) {
+  return;
   std::cout << "Tensor " << name << std::endl;
   auto t_cpu = Copy(t, Device::kCPU);
   if (t.dtype() == DType::kFloat32) {
