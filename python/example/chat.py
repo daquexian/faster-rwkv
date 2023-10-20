@@ -30,7 +30,6 @@ while True:
     start = time.time()
     prompt_ids = tokenizer.encode(prompt)
     encode_time = time.time() - start
-    print(f'{model.states()[0][0].numpy()=}')
     start = time.time()
     output = model(prompt_ids)
     response = ""
@@ -44,9 +43,11 @@ while True:
         output_str = tokenizer.decode(output_id)
         print(output_str, end="")
         response += output_str
+        # it is important to pass the stop word (DOUBLE_NEW_LINE) to the model,
+        # or it will stop incorrectly in the next iteration.
+        output = model(output_id)
         if response.endswith(DOUBLE_NEW_LINE):
             break
-        output = model(output_id)
     total_time = time.time() - start
     if SHOW_SPEED:
         total_time *= 1000

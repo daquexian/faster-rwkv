@@ -82,15 +82,13 @@ int main(int argc, char **argv) {
       auto output_str = tokenizer.decode(output_id);
       std::cout << output_str;
       response += output_str;
+      // it is important to pass the stop word (\n\n) to the model,
+      // or it will stop incorrectly in the next iteration.
+      output = Copy(model.Run(output_id), rwkv::Device::kCPU);
       if (response.size() >= 2 &&
           response.substr(response.size() - 2) == "\n\n") {
         break;
       }
-      // if (response.size() >= kUserPrefix.size() &&
-      // response.substr(response.size() - 7) == "\nUser: ") {
-      //   break;
-      // }
-      output = Copy(model.Run(output_id), rwkv::Device::kCPU);
     }
     auto model_time = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::system_clock::now() - tmp);
