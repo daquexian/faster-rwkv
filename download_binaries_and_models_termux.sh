@@ -23,7 +23,7 @@ else
 fi
 sleep 1
 rm -f chat
-aria2c -c -x16 -s16 https://github.com/daquexian/faster-rwkv/releases/download/v0.0.6/chat-android -o chat
+aria2c -c -x16 -s16 https://github.com/daquexian/faster-rwkv/releases/download/v0.0.14/chat-android -o chat
 chmod +x chat
 aria2c -c -x16 -s16 https://huggingface.co/daquexian/fr-models/resolve/02382cd/tokenizers/world_tokenizer -o world_tokenizer
 
