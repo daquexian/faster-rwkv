@@ -636,8 +636,9 @@ Tensor gemm(const Tensor &a, const Tensor &b) {
     fprintf(pp, " %s", b.name.c_str());
   }
   fprintf(pp, " %s", output.name.c_str());
-  fprintf(pp, " 4=%d 5=%d 7=%d 8=%d 9=%d", a_reshape.device() == Device::kCPU,
-          b.device() == Device::kCPU, constantM, constantN, constantK);
+  fprintf(pp, " 4=%d 5=%d 6=1 7=%d 8=%d 9=%d 10=-1",
+          a_reshape.device() == Device::kCPU, b.device() == Device::kCPU,
+          constantM, constantN, constantK);
   fprintf(pp, "\n");
   if (reshaped) {
     PRINT_OP_TYPE_AND_NAME("Reshape", 1, 1);

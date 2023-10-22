@@ -173,13 +173,18 @@ void init_model(Model *model, Device device, const std::string &_path,
     net->opt.use_fp16_packed = false;
     net->opt.use_fp16_arithmetic = false;
     net->opt.use_fp16_storage = false;
-    net->opt.use_bf16_storage = true;
+    net->opt.use_vulkan_compute = (std::getenv("FR_VULKAN") != nullptr);
+    // vulkan compute does not support bf16 storage
+    if (!net->opt.use_vulkan_compute) {
+      net->opt.use_bf16_storage = true;
+    }
   } else {
     RV_CHECK(model->_weight_dtype == DType::kFloat32);
     net->opt.use_fp16_packed = false;
     net->opt.use_fp16_arithmetic = false;
     net->opt.use_fp16_storage = false;
     net->opt.use_bf16_storage = false;
+    net->opt.use_vulkan_compute = (std::getenv("FR_VULKAN") != nullptr);
   }
   if (std::getenv("FR_THREADS")) {
     net->opt.num_threads = std::stoi(std::getenv("FR_THREADS"));
