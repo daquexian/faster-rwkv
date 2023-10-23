@@ -209,8 +209,8 @@ endif()
 if (FR_ENABLE_ONNX)
     target_link_libraries(faster_rwkv_internal PRIVATE onnxruntime)
     target_include_directories(faster_rwkv_internal PRIVATE
-        /data/user/cangshui/tianchao/repos/faster-rwkv/build-debug/_deps/onnxruntime-src/include/onnxruntime/core/session/
-        /data/user/cangshui/tianchao/repos/faster-rwkv/build-debug/_deps/onnxruntime-src/include/
+        ${CMAKE_BINARY_DIR}/_deps/onnxruntime-src/include/onnxruntime/core/session/
+        ${CMAKE_BINARY_DIR}/_deps/onnxruntime-src/include/
     )
 endif()
 
