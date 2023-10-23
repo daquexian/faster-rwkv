@@ -33,27 +33,7 @@ int main(int argc, char** argv) {
   std::vector<int> input_ids = tokenizer.encode(input);
   model.Run(input_ids);
 
-  States states = model.states();
-  std::vector<std::vector<std::unordered_map<std::string, msgpack::object>>> mp_states;
-
-  msgpack::zone z;
-  for (const auto& state : states) {
-    std::vector<std::unordered_map<std::string, msgpack::object>> mp_state;
-    for (const auto& s : state) {
-      std::unordered_map<std::string, msgpack::object> mp_s;
-      std::vector<char> data_vec;
-      data_vec.resize(s.numel() * s.elem_size());
-      memcpy(data_vec.data(), s.data_ptr(), s.numel() * s.elem_size());
-      mp_s["dtype"] = msgpack::object(dtype_to_string_in_msgpack(s.dtype()), z);
-      mp_s["data"] = msgpack::object(data_vec, z);
-      mp_s["shape"] = msgpack::object(s.shape(), z);
-      mp_state.push_back(mp_s);
-    }
-    mp_states.push_back(mp_state);
-  }
-
-  std::ofstream ofs(argv[5]);
-  msgpack::pack(ofs, mp_states);
+  model.SaveStateFile(argv[5]);
 
   return 0;
 }

@@ -32,6 +32,17 @@ TEST(Model, ncnn_fp16) {
   EXPECT_GT(output_ptr[0], -0.1);
   EXPECT_LT(output_ptr[9], -9.7);
   EXPECT_GT(output_ptr[9], -10.0);
+  static const std::string kStateFile = "/tmp/states";
+  model.SaveStateFile(kStateFile);
+
+  output = model.Run(0);
+  output_ptr = output.data_ptr<float>();
+  EXPECT_LT(output_ptr[0], -1.28);
+  EXPECT_GT(output_ptr[0], -1.61);
+  EXPECT_LT(output_ptr[9], -9.1);
+  EXPECT_GT(output_ptr[9], -9.6);
+
+  model.LoadStateFile(kStateFile);
   output = model.Run(0);
   output_ptr = output.data_ptr<float>();
   EXPECT_LT(output_ptr[0], -1.28);

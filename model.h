@@ -17,6 +17,8 @@ struct Model {
   Tensor Run(const std::vector<int> &id);
   Tensor Run(int id);
   void LoadStateFile(const std::string &path);
+  void LoadStateFile(const std::string &path, void* asset_manager);
+  void SaveStateFile(const std::string &path);
   void ResetStates();
   void set_states(const States &states);
   const States &states() const { return _states; }

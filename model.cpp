@@ -3,6 +3,7 @@
 #include "check.h"
 #include "kernels/kernels.h"
 #include <tensor.h>
+#include <utils.h>
 
 #ifdef FR_ENABLE_CUDA
 #include <cuda_runtime.h>
@@ -85,18 +86,48 @@ Model::Model(const std::string &path, const std::string &strategy,
   ResetStates();
 }
 
-void Model::LoadStateFile(const std::string &path) {
-  std::ifstream infile;
-  infile.open(path, std::ios::binary | std::ios::in);
-  infile.seekg(0, std::ios::end);
-  int64_t length = infile.tellg();
-  infile.seekg(0, std::ios::beg);
-  std::vector<char> data;
-  data.resize(length);
-  infile.read(data.data(), length);
-  infile.close();
+void Model::SaveStateFile(const std::string &path) {
+  std::vector<std::vector<std::unordered_map<std::string, msgpack::object>>> mp_states;
 
-  auto unpacker = msgpack::unpack(data.data(), length);
+  auto dtype_to_string_in_msgpack = [](DType dtype) {
+    if (dtype == DType::kFloat32) {
+      return "torch.float32";
+    } else if (dtype == DType::kFloat16) {
+      return "torch.float16";
+    } else if (dtype == DType::kInt8) {
+      return "torch.int8";
+    } else {
+      RV_UNIMPLEMENTED();
+    }
+  };
+  msgpack::zone z;
+  for (const auto& state : _states) {
+    std::vector<std::unordered_map<std::string, msgpack::object>> mp_state;
+    for (const auto& s : state) {
+      std::unordered_map<std::string, msgpack::object> mp_s;
+      std::vector<char> data_vec;
+      data_vec.resize(s.numel() * s.elem_size());
+      memcpy(data_vec.data(), s.data_ptr(), s.numel() * s.elem_size());
+      mp_s["dtype"] = msgpack::object(dtype_to_string_in_msgpack(s.dtype()), z);
+      mp_s["data"] = msgpack::object(data_vec, z);
+      mp_s["shape"] = msgpack::object(s.shape(), z);
+      mp_state.push_back(mp_s);
+    }
+    mp_states.push_back(mp_state);
+  }
+
+  std::ofstream ofs(path);
+  msgpack::pack(ofs, mp_states);
+}
+
+void Model::LoadStateFile(const std::string &path) {
+  return LoadStateFile(path, nullptr);
+}
+
+void Model::LoadStateFile(const std::string &path, void* asset_manager) {
+  const std::string data = read_file(path, asset_manager);
+
+  auto unpacker = msgpack::unpack(data.data(), data.length());
   auto obj = unpacker.get();
   auto states_mp = obj.as<std::vector<std::vector<msgpack::object>>>();
   RV_CHECK(states_mp.size() == _states.size());

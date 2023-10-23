@@ -83,6 +83,29 @@ extern "C" JNIEXPORT jfloatArray JNICALL Java_com_rwkv_faster_Model_runSeq(
   return result;
 }
 
+extern "C" JNIEXPORT void JNICALL Java_com_rwkv_faster_Model_loadStateFile(
+    JNIEnv *env, jobject obj /* this */, jstring jPath) {
+  auto model = getHandle<Model>(env, obj);
+  std::string path(to_cpp_string(env, jPath));
+  model->LoadStateFile(path);
+}
+
+extern "C" JNIEXPORT void JNICALL Java_com_rwkv_faster_Model_loadStateFileWithAssetManager(
+    JNIEnv *env, jobject obj /* this */, jstring jPath, jobject jAssetManager) {
+  auto model = getHandle<Model>(env, obj);
+  std::string path(to_cpp_string(env, jPath));
+  AAssetManager *asset_manager = AAssetManager_fromJava(env, jAssetManager);
+
+  model->LoadStateFile(path, asset_manager);
+}
+
+extern "C" JNIEXPORT void JNICALL Java_com_rwkv_faster_Model_saveStateFile(
+    JNIEnv *env, jobject obj /* this */, jstring jPath) {
+  auto model = getHandle<Model>(env, obj);
+  std::string path(to_cpp_string(env, jPath));
+  model->SaveStateFile(path);
+}
+
 extern "C" JNIEXPORT void JNICALL Java_com_rwkv_faster_WorldTokenizer_init(
     JNIEnv *env, jobject obj /* this */, jstring jPath) {
   std::string path(to_cpp_string(env, jPath));

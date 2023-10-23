@@ -1,4 +1,3 @@
-# onnxruntime contains gtest already
 FetchContent_Declare(
       gtest
       GIT_REPOSITORY https://github.com/google/googletest.git
@@ -48,4 +47,3 @@ set(benchmark_srcs
 
 add_executable(fr_benchmark ${benchmark_srcs})
 target_link_libraries(fr_benchmark faster_rwkv benchmark::benchmark)
-message("==========================================================")
