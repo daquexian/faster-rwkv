@@ -64,7 +64,7 @@ jobs:
 
     - name: Build
       run: |
-        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DFR_ENABLE_NCNN=ON -DFR_ENABLE_TEST=ON -GNinja
+        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DFR_ENABLE_NCNN=ON -DFR_ENABLE_TESTS=ON -GNinja
         cmake --build ${{github.workspace}}/build
 
     - name: Upload Executables
