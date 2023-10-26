@@ -23,6 +23,7 @@ void element_wise(Func func, int n) {
   // 256 is good enough on most GPUs
   // RV_CHECK(n % 128 == 0);
   if (n % 256 == 0) {
+    // TODO: min with ...
     _element_wise<<<n / 256, 256>>>(func, n, 0);
   } else {
     auto pieces = n / 256;

@@ -69,7 +69,7 @@ void ExportModel(const std::string &input_path, const std::string &output_path,
                  const std::string &dtype) {
 
   default_dispatch_device() = Device::kONNXMeta;
-  fs::create_directories(fs::path(output_path).parent_path());
+  fs::create_directories(fs::absolute(fs::path(output_path)).parent_path());
   std::string external_data_filename = output_path + ".bin";
   external_data_file.open(external_data_filename, std::ios::binary);
   RV_CHECK(external_data_file.good())
