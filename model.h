@@ -4,6 +4,7 @@
 #include <cassert>
 #include <memory>
 #include <string>
+#include <tuple>
 #include <unordered_map>
 #include <vector>
 
@@ -14,11 +15,16 @@ using States = std::vector<std::vector<Tensor>>;
 struct Model {
   Model(const std::string &path, const std::string &strategy);
   Model(const std::string &path, const std::string &strategy, std::any extra);
-  Tensor Run(const std::vector<int> &id);
-  Tensor Run(int id);
+  Tensor Run(const std::vector<int> &id, bool full_output = false,
+             States *states = nullptr);
+  Tensor Run(int id, States *states = nullptr);
+  std::tuple<int, std::vector<int>>
+  AssistedRun(int id, Model &assistant_model, int speculative_length,
+              std::function<int(const rwkv::Tensor &)> &sample_func);
   void LoadStateFile(const std::string &path);
-  void LoadStateFile(const std::string &path, void* asset_manager);
+  void LoadStateFile(const std::string &path, void *asset_manager);
   void SaveStateFile(const std::string &path);
+  std::shared_ptr<States> GenerateStates();
   void ResetStates();
   void set_states(const States &states);
   const States &states() const { return _states; }

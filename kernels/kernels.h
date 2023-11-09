@@ -1,6 +1,7 @@
 #pragma once
 
 #include "check.h"
+#include "model.h"
 #include <initializer_list>
 #include <kernels/allocator.h>
 #include <kernels/registry.h>
@@ -68,11 +69,12 @@ att_seq_v5_2(const Tensor &x, const Tensor &sx, const Tensor &s,
              const Tensor &lx_b, const Tensor &k_mix, const Tensor &v_mix,
              const Tensor &r_mix, const Tensor &g_mix, const Tensor &t_decay,
              const Tensor &t_first, const Tensor &kw, const Tensor &vw,
-             const Tensor &rw, const Tensor &gw, const Tensor &ow, int n_att) {
+             const Tensor &rw, const Tensor &gw, const Tensor &ow, int n_att,
+             bool full_state) {
   auto tmp = KernelRegistry::Instance().Get<decltype(att_seq_v5_2) *>(
       "att_seq_v5_2", x.device());
   return tmp(x, sx, s, ln_w, ln_b, lx_w, lx_b, k_mix, v_mix, r_mix, g_mix,
-             t_decay, t_first, kw, vw, rw, gw, ow, n_att);
+             t_decay, t_first, kw, vw, rw, gw, ow, n_att, full_state);
 }
 
 //         def cuda_ffn_one_fp16(self, x, sx, ln_w, ln_b, k_mix, r_mix, kw, vw,
@@ -89,10 +91,10 @@ inline std::tuple<Tensor, Tensor> ffn(const Tensor &x, const Tensor &sx,
 inline std::tuple<Tensor, Tensor>
 ffn_seq(const Tensor &x, const Tensor &sx, const Tensor &ln_w,
         const Tensor &ln_b, const Tensor &k_mix, const Tensor &r_mix,
-        const Tensor &kw, const Tensor &vw, const Tensor &rw) {
-  auto tmp =
-      KernelRegistry::Instance().Get<decltype(ffn) *>("ffn_seq", x.device());
-  return tmp(x, sx, ln_w, ln_b, k_mix, r_mix, kw, vw, rw);
+        const Tensor &kw, const Tensor &vw, const Tensor &rw, bool full_state) {
+  auto tmp = KernelRegistry::Instance().Get<decltype(ffn_seq) *>("ffn_seq",
+                                                                 x.device());
+  return tmp(x, sx, ln_w, ln_b, k_mix, r_mix, kw, vw, rw, full_state);
 }
 
 inline Tensor cast_dtype(const Tensor &x, DType dtype) {
@@ -249,6 +251,11 @@ inline Tensor repeat(const Tensor &x, const std::vector<LengthType> &repeats) {
       "repeat", x.device())(x, repeats);
 }
 
+inline Tensor reduce(const Tensor &x, const std::string &mode) {
+  return KernelRegistry::Instance().Get<decltype(reduce) *>(
+      "reduce", x.device())(x, mode);
+}
+
 /* Activations  */
 
 inline Tensor silu(const Tensor &x) {
@@ -271,16 +278,18 @@ inline void init_model(Model *model, Device device, const std::string &path,
       model, device, path, strategy, extra);
 }
 
-inline Tensor ModelForward(Model *model, Device device, int id) {
+inline Tensor ModelForward(Model *model, Device device, int id,
+                           States *states /*= nullptr*/) {
   return KernelRegistry::Instance().Get<decltype(ModelForward) *>(
-      "model_forward", device)(model, device, id);
+      "model_forward", device)(model, device, id, states);
 }
 
 inline Tensor ModelForwardSeq(Model *model, Device device,
                               const std::vector<int> &id,
-                              bool full_output /*= false*/) {
+                              bool full_output /*= false*/,
+                              States *states /*= nullptr*/) {
   return KernelRegistry::Instance().Get<decltype(ModelForwardSeq) *>(
-      "model_forward_seq", device)(model, device, id, full_output);
+      "model_forward_seq", device)(model, device, id, full_output, states);
 }
 
 inline Allocator &allocator(Device device) {

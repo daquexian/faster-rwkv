@@ -57,6 +57,7 @@ if (FR_ENABLE_CUDA)
         kernels/cuda/fill.cu
         kernels/cuda/flip.cu
         kernels/cuda/pad.cu
+        kernels/cuda/reduce.cu
         kernels/cuda/repeat.cu
         kernels/cuda/slice.cu
         kernels/cuda/transpose.cu
