@@ -32,12 +32,12 @@ static Tensor CopyToCPUIfAvailable(Tensor x) {
 }
 
 Tensor ModelForwardSeqFallback(Model *model, Device device,
-                       const std::vector<int> &ids,
-                       bool full_output) {
+                               const std::vector<int> &ids, bool full_output,
+                               States *input_states) {
   RV_CHECK(!full_output) << "full_output is not supported in fallback mode";
   for (int i = 0; i < ids.size(); ++i) {
     auto id = ids[i];
-    auto out = ModelForward(model, model->_act_device, id);
+    auto out = ModelForward(model, model->_act_device, id, input_states);
     if (i == ids.size() - 1) {
       return CopyToCPUIfAvailable(out);
     }
@@ -45,10 +45,14 @@ Tensor ModelForwardSeqFallback(Model *model, Device device,
   RV_UNIMPLEMENTED();
 }
 
-Tensor ModelForwardSeq(Model *model, Device device,
-                       const std::vector<int> &id,
-                       bool full_output) {
-  auto &states = model->states();
+/*
+ * full_state should be an empty vector and will be filled when return.
+ */
+Tensor ModelForwardSeq(Model *model, Device device, const std::vector<int> &id,
+                       bool full_output, States *input_states,
+                       bool full_state) {
+  auto &states = input_states != nullptr ? *input_states : model->states();
+  RV_CHECK(input_states != nullptr || !full_state);
   Tensor x = [&]() -> Tensor {
 #ifdef FR_ENABLE_ONNX
     RV_UNIMPLEMENTED();
@@ -111,6 +115,8 @@ Tensor ModelForwardSeq(Model *model, Device device,
       if (model->_version == "4") {
         RV_UNIMPLEMENTED();
       } else if (model->_version == "5") {
+        if (full_state)
+          RV_UNIMPLEMENTED();
         std::tie(x, state[0], state[1]) = att_seq_v5(
             x, state[0], state[1], params[param_idx], params[param_idx + 1],
             params[param_idx + 2], params[param_idx + 3], params[param_idx + 4],
@@ -126,14 +132,26 @@ Tensor ModelForwardSeq(Model *model, Device device,
       } else if (model->_version == "5.1") {
         RV_UNIMPLEMENTED();
       } else if (model->_version == "5.2") {
+        Tensor &state0 = state[0];
+        Tensor &state1 = state[1];
+        if (state0.sizes().size() > 1) {
+          state0 = state0.slice({Range(-1, 1, state0.size(0)), Range::All})
+                       .squeeze(0);
+        }
+        if (state1.sizes().size() > 3) {
+          state0 = state1
+                       .slice({Range(-1, 1, state1.size(0)), Range::All,
+                               Range::All, Range::All})
+                       .squeeze(0);
+        }
         std::tie(x, state[0], state[1]) = att_seq_v5_2(
-            x, state[0], state[1], params[param_idx], params[param_idx + 1],
+            x, state0, state1, params[param_idx], params[param_idx + 1],
             params[param_idx + 2], params[param_idx + 3], params[param_idx + 4],
             params[param_idx + 5], params[param_idx + 6], params[param_idx + 7],
             params[param_idx + 8], params[param_idx + 9],
             params[param_idx + 10], params[param_idx + 11],
             params[param_idx + 12], params[param_idx + 13],
-            params[param_idx + 14], model->n_att());
+            params[param_idx + 14], model->n_att(), full_state);
         if (device == Device::kNCNNMeta || device == Device::kONNXMeta) {
           mark_as_output(state[0], "output_state_" + std::to_string(i) + "_0");
           mark_as_output(state[1], "output_state_" + std::to_string(i) + "_1");
@@ -149,10 +167,17 @@ Tensor ModelForwardSeq(Model *model, Device device,
         offset = 2;
       }
 
+      Tensor &ffn_state = state[offset];
+      if (ffn_state.sizes().size() > 1) {
+        ffn_state =
+            ffn_state.slice({Range(-1, 1, ffn_state.size(0)), Range::All})
+                .squeeze(0);
+      }
+
       std::tie(x, state[offset]) = ffn_seq(
-          x, state[offset], params[param_idx], params[param_idx + 1],
+          x, ffn_state, params[param_idx], params[param_idx + 1],
           params[param_idx + 2], params[param_idx + 3], params[param_idx + 4],
-          params[param_idx + 5], params[param_idx + 6]);
+          params[param_idx + 5], params[param_idx + 6], full_state);
       if (device == Device::kNCNNMeta || device == Device::kONNXMeta) {
         mark_as_output(state[offset], "output_state_" + std::to_string(i) +
                                           "_" + std::to_string(offset));
@@ -171,6 +196,10 @@ Tensor ModelForwardSeq(Model *model, Device device,
     x = x.slice({Range(-1, 1, x.size(0)), Range::All}).squeeze(0);
   }
   x = layernorm(x, params[param_idx], params[param_idx + 1]);
+
+  if (params[param_idx + 2].dtype() == DType::kInt8) {
+    RV_UNIMPLEMENTED();
+  }
 
   //                 x = x @ w['head.weight']
   x = matmul(x, params[param_idx + 2]);

@@ -185,6 +185,50 @@ public:
   Tensor flip(LengthType dim) const { return flip({dim}); }
 
   template <typename T>
+  T get_item(const std::vector<LengthType> &indices) const {
+    RV_CHECK(indices.size() == this->sizes().size());
+    rwkv::LengthType offset = 0;
+    rwkv::LengthType base = 1;
+    for (int i = 0; i < indices.size(); i++) {
+      RV_CHECK(indices[i] < this->size(i));
+      offset += indices[i] * base;
+      base *= this->size(i);
+    }
+    if (this->device() == Device::kCPU) {
+      return this->data_ptr<T>()[offset];
+    } else if (this->device() == Device::kCUDA) {
+      T hostElement;
+      cudaMemcpy(&hostElement,
+                 static_cast<const void *>(this->data_ptr<T>() + offset),
+                 sizeof(T), cudaMemcpyDeviceToHost);
+      return hostElement;
+    } else {
+      RV_UNIMPLEMENTED();
+    }
+  }
+
+  template <typename T>
+  void set_item(const std::vector<LengthType> &indices, T value) {
+    RV_CHECK(indices.size() == this->sizes().size());
+    rwkv::LengthType offset = 0;
+    rwkv::LengthType base = 1;
+    for (int i = 0; i < indices.size(); i++) {
+      RV_CHECK(indices[i] < this->size(i));
+      offset += indices[i] * base;
+      base *= this->size(i);
+    }
+    if (this->device() == Device::kCPU) {
+      T *ptr = this->data_ptr<T>();
+      ptr[offset] = value;
+    } else if (this->device() == Device::kCUDA) {
+      cudaMemcpy(static_cast<void *>(this->data_ptr<T>() + offset), &value,
+                 sizeof(T), cudaMemcpyHostToDevice);
+    } else {
+      RV_UNIMPLEMENTED();
+    }
+  }
+
+  template <typename T>
   static Tensor Arange(T start, T interval, T end, DType dtype, Device device) {
     RV_CHECK(start < end && interval > 0 || start > end && interval < 0);
     RV_CHECK(device == Device::kCPU || device == Device::kCUDA);

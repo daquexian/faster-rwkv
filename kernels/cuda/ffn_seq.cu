@@ -66,7 +66,7 @@ Tensor _FFN_SEQ(const Tensor &x, const Tensor &sx, const Tensor &ln_w,
                 const Tensor &ln_b, const Tensor &k_mix, const Tensor &r_mix,
                 const Tensor &kw, const Tensor &vw, const Tensor &rw,
                 /* imm */ Tensor &buf, Tensor &kx, Tensor &rx, Tensor &vx,
-                Tensor &r, /* out */ Tensor &x_plus_out) {
+                Tensor &r, /* out */ Tensor &x_plus_out, bool full_state) {
   Tensor xx = cuda::layer_norm_op(x, ln_w, ln_b);
   Tensor sx_cat =
       sx.unsqueeze(0).cat(xx.slice({Range(0, 1, -1), Range::All}), 0);
@@ -83,14 +83,18 @@ Tensor _FFN_SEQ(const Tensor &x, const Tensor &sx, const Tensor &ln_w,
   element_wise(InplaceFma{x_plus_out.data_ptr<half>(), r.data_ptr<half>(),
                           x.data_ptr<half>()},
                x_plus_out.numel());
-  return xx.slice({Range(-1, 1, xx.size(0)), Range::All}).squeeze(0);
+  if (!full_state) {
+    return xx.slice({Range(-1, 1, xx.size(0)), Range::All}).squeeze(0);
+  } else {
+    return xx;
+  }
 }
 
 std::tuple<Tensor, Tensor> ffn_seq(const Tensor &x, const Tensor &sx,
                                    const Tensor &ln_w, const Tensor &ln_b,
                                    const Tensor &k_mix, const Tensor &r_mix,
                                    const Tensor &kw, const Tensor &vw,
-                                   const Tensor &rw) {
+                                   const Tensor &rw, bool full_state) {
   int krx_bytes = x.numel() * x.elem_size();
   int vx_bytes = x.size(0) * kw.size(1) * x.elem_size();
   int r_bytes = x.size(0) * rw.size(1) * x.elem_size();
@@ -104,7 +108,7 @@ std::tuple<Tensor, Tensor> ffn_seq(const Tensor &x, const Tensor &sx,
       Tensor::Empty({x.size(0), vw.size(1)}, DType::kFloat16, x.device());
   Tensor x_plus_out = Tensor::Empty(x.sizes(), x.dtype(), x.device());
   Tensor xx = _FFN_SEQ(x, sx, ln_w, ln_b, k_mix, r_mix, kw, vw, rw, buf, kx, rx,
-                       vx, r, x_plus_out);
+                       vx, r, x_plus_out, full_state);
   return std::make_tuple(x_plus_out, xx);
 }
 

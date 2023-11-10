@@ -57,6 +57,7 @@ if (FR_ENABLE_CUDA)
         kernels/cuda/fill.cu
         kernels/cuda/flip.cu
         kernels/cuda/pad.cu
+        kernels/cuda/reduce.cu
         kernels/cuda/repeat.cu
         kernels/cuda/slice.cu
         kernels/cuda/transpose.cu
@@ -170,6 +171,7 @@ add_library(faster_rwkv_internal
         sampler.cpp
         kernels/shape/shape_inference.cpp
         kernels/cpu/allocator.cpp
+        kernels/cpu/basic_math.cpp
         kernels/cpu/fill.cpp
         kernels/cpu/cast_dtype.cpp
         kernels/cpu/repeat.cpp
@@ -177,6 +179,8 @@ add_library(faster_rwkv_internal
         kernels/cpu/slice.cpp
         kernels/cpu/flip.cpp
         kernels/cpu/pad.cpp
+        kernels/cpu/reduce.cpp
+        kernels/cpu/activations/relu.cpp
         kernels/default/gather_ops.cpp
         kernels/default/view_ops.cpp
         kernels/cpu/softmax.cpp
@@ -238,6 +242,9 @@ target_link_libraries(bench_model benchmark::benchmark faster_rwkv)
 
 add_executable(chat chat.cpp)
 target_link_libraries(chat faster_rwkv)
+
+add_executable(speculative_chat speculative_chat.cpp)
+target_link_libraries(speculative_chat faster_rwkv)
 
 add_executable(abc_music abc_music.cpp)
 target_link_libraries(abc_music faster_rwkv)
