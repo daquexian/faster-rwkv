@@ -1,7 +1,5 @@
 
 #include "check.h"
-#include "element_wise.cuh"
-#include "util.cuh"
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
@@ -22,15 +20,14 @@ template <typename T> T naive_sum(const T *x, LengthType numel) {
   return res;
 }
 
-Tensor reduce_gpu(const Tensor &x, const std::string &mode) {
+Tensor reduce(const Tensor &x, const std::string &mode) {
   if (mode == "sum") {
     // compute
-    auto x_cpu = Copy(x, Device::kCPU);
     auto res = Tensor::Empty({1}, x.dtype(), x.device());
-    if (x_cpu.dtype() == DType::kFloat32) {
-      res.set_item({0}, naive_sum(x_cpu.data_ptr<float>(), x_cpu.numel()));
-    } else if (x_cpu.dtype() == DType::kFloat16) {
-      res.set_item({0}, naive_sum(x_cpu.data_ptr<float16>(), x_cpu.numel()));
+    if (x.dtype() == DType::kFloat32) {
+      res.set_item({0}, naive_sum(x.data_ptr<float>(), x.numel()));
+    } else if (x.dtype() == DType::kFloat16) {
+      res.set_item({0}, naive_sum(x.data_ptr<float16>(), x.numel()));
     } else {
       RV_UNIMPLEMENTED();
     }
@@ -40,7 +37,7 @@ Tensor reduce_gpu(const Tensor &x, const std::string &mode) {
   }
 }
 
-KernelRegister reduce_reg_gpu("reduce", Device::kCUDA, reduce_gpu);
+KernelRegister reduce_reg_cpu("reduce", Device::kCPU, reduce);
 
 } // namespace cuda
 } // namespace rwkv

@@ -51,7 +51,7 @@ Tensor ModelForwardSeqFallback(Model *model, Device device,
 Tensor ModelForwardSeq(Model *model, Device device, const std::vector<int> &id,
                        bool full_output, States *input_states,
                        bool full_state) {
-  auto &states = input_states == nullptr ? *input_states : model->states();
+  auto &states = input_states != nullptr ? *input_states : model->states();
   RV_CHECK(input_states != nullptr || !full_state);
   Tensor x = [&]() -> Tensor {
 #ifdef FR_ENABLE_ONNX
@@ -175,7 +175,7 @@ Tensor ModelForwardSeq(Model *model, Device device, const std::vector<int> &id,
       }
 
       std::tie(x, state[offset]) = ffn_seq(
-          x, state[offset], params[param_idx], params[param_idx + 1],
+          x, ffn_state, params[param_idx], params[param_idx + 1],
           params[param_idx + 2], params[param_idx + 3], params[param_idx + 4],
           params[param_idx + 5], params[param_idx + 6], full_state);
       if (device == Device::kNCNNMeta || device == Device::kONNXMeta) {

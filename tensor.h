@@ -198,8 +198,9 @@ public:
       return this->data_ptr<T>()[offset];
     } else if (this->device() == Device::kCUDA) {
       T hostElement;
-      cudaMemcpy(&hostElement, this->data_ptr<T>() + offset, sizeof(T),
-                 cudaMemcpyDeviceToHost);
+      cudaMemcpy(&hostElement,
+                 static_cast<const void *>(this->data_ptr<T>() + offset),
+                 sizeof(T), cudaMemcpyDeviceToHost);
       return hostElement;
     } else {
       RV_UNIMPLEMENTED();
@@ -207,7 +208,7 @@ public:
   }
 
   template <typename T>
-  void set_item(const std::vector<LengthType> &indices, T value) const {
+  void set_item(const std::vector<LengthType> &indices, T value) {
     RV_CHECK(indices.size() == this->sizes().size());
     rwkv::LengthType offset = 0;
     rwkv::LengthType base = 1;
@@ -217,10 +218,11 @@ public:
       base *= this->size(i);
     }
     if (this->device() == Device::kCPU) {
-      this->data_ptr<T>()[offset] = value;
+      T *ptr = this->data_ptr<T>();
+      ptr[offset] = value;
     } else if (this->device() == Device::kCUDA) {
-      cudaMemcpy(this->data_ptr<T>() + offset, &value, sizeof(T),
-                 cudaMemcpyHostToDevice);
+      cudaMemcpy(static_cast<void *>(this->data_ptr<T>() + offset), &value,
+                 sizeof(T), cudaMemcpyHostToDevice);
     } else {
       RV_UNIMPLEMENTED();
     }

@@ -16,11 +16,17 @@ struct Model {
   Model(const std::string &path, const std::string &strategy);
   Model(const std::string &path, const std::string &strategy, std::any extra);
   Tensor Run(const std::vector<int> &id, bool full_output = false,
-             States *states = nullptr);
+             States *states = nullptr, bool full_state = false);
   Tensor Run(int id, States *states = nullptr);
+  /*
+   * The return values are {accept_length, output_ids}
+   */
   std::tuple<int, std::vector<int>>
   AssistedRun(int id, Model &assistant_model, int speculative_length,
-              std::function<int(const rwkv::Tensor &)> &sample_func);
+              const std::function<int(rwkv::Tensor &)> &sample_func,
+              const std::function<std::string(int)> &decode_func,
+              const std::vector<std::string> &antiprompts,
+              const std::string &prev_response);
   void LoadStateFile(const std::string &path);
   void LoadStateFile(const std::string &path, void *asset_manager);
   void SaveStateFile(const std::string &path);
@@ -39,10 +45,12 @@ struct Model {
 
   DType weight_dtype() const { return _weight_dtype; }
 
+  void RestrictStates();
+
   // TODO:
   std::vector<Tensor> _embd_weights;
 
-private:
+public:
   // _params is not a map because we know the exact order of the parameters
   std::vector<Tensor> _params;
   Device _act_device;

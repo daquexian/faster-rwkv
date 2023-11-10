@@ -287,9 +287,11 @@ inline Tensor ModelForward(Model *model, Device device, int id,
 inline Tensor ModelForwardSeq(Model *model, Device device,
                               const std::vector<int> &id,
                               bool full_output /*= false*/,
-                              States *states /*= nullptr*/) {
+                              States *states /*= nullptr*/,
+                              bool full_state /*= false*/) {
   return KernelRegistry::Instance().Get<decltype(ModelForwardSeq) *>(
-      "model_forward_seq", device)(model, device, id, full_output, states);
+      "model_forward_seq", device)(model, device, id, full_output, states,
+                                   full_state);
 }
 
 inline Allocator &allocator(Device device) {

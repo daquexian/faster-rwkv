@@ -20,7 +20,7 @@ namespace rwkv {
 namespace def {
 
 Tensor ModelForward(Model *model, Device device, int id, States *input_states) {
-  auto &states = input_states == nullptr ? *input_states : model->states();
+  auto &states = input_states != nullptr ? *input_states : model->states();
   Tensor x = [&]() -> Tensor {
     if (model->_act_device == Device::kNCNNMeta
 #ifdef FR_ENABLE_ONNX

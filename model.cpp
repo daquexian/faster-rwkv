@@ -4,6 +4,7 @@
 #include "kernels/kernels.h"
 #include <memory>
 #include <tensor.h>
+#include <tuple>
 #include <utils.h>
 
 #ifdef FR_ENABLE_CUDA
@@ -195,7 +196,8 @@ static Tensor CopyToCPUIfAvailable(Tensor x) {
   }
 }
 
-Tensor Model::Run(const std::vector<int> &ids, States *states) {
+Tensor Model::Run(const std::vector<int> &ids, bool full_output, States *states,
+                  bool full_state) {
   if (kDebug) {
     std::cout << "[seq mode]Model::Run(";
     for (auto id : ids) {
@@ -207,8 +209,8 @@ Tensor Model::Run(const std::vector<int> &ids, States *states) {
     return CopyToCPUIfAvailable(
         ModelForward(this, this->_act_device, ids[0], states));
   } else {
-    return CopyToCPUIfAvailable(
-        ModelForwardSeq(this, this->_act_device, ids, false, states));
+    return CopyToCPUIfAvailable(ModelForwardSeq(
+        this, this->_act_device, ids, full_output, states, full_state));
   }
 }
 
@@ -217,31 +219,61 @@ Tensor Model::Run(int id, States *states) {
       ModelForward(this, this->_act_device, id, states));
 }
 
+void BackupStates(const States &states, States &backup) {
+  RV_CHECK(backup.empty());
+  for (int i = 0; i < states.size(); i++) {
+    backup.push_back({});
+    for (int j = 0; j < states[i].size(); j++) {
+      backup.back().push_back(Copy(states[i][j], states[i][j].device()));
+    }
+  }
+}
+
 std::tuple<int, std::vector<int>>
 Model::AssistedRun(int id, rwkv::Model &assistant_model, int speculative_length,
-                   std::function<int(const rwkv::Tensor &)> &sample_func) {
+                   const std::function<int(rwkv::Tensor &)> &sample_func,
+                   const std::function<std::string(int)> &decode_func,
+                   const std::vector<std::string> &antiprompts,
+                   const std::string &prev_response) {
   RV_CHECK(this->version() == "5.2" && assistant_model.version() == "5.2");
+  int original_id = id;
   std::vector<rwkv::States> assistant_states_record;
-  auto assistent_states = assistant_model.states();
-  auto main_states = this->states();
+  auto &assistant_states = assistant_model.states();
+  auto &main_states = this->states();
+  States assistant_states_backup, main_states_backup;
+  BackupStates(assistant_states, assistant_states_backup);
+  BackupStates(main_states, main_states_backup);
 
   std::vector<rwkv::Tensor> assistant_probs;
   std::vector<int> speculative_ids;
-  std::vector<int> main_model_input_ids;
+  std::vector<int> main_model_input_ids({id});
+  std::string response = prev_response;
+  bool encounter_antiprompt = false;
   for (int i = 0; i < speculative_length; i++) {
-    auto assistent_logits = assistant_model.Run(id, &assistent_states);
+    auto assistent_logits = assistant_model.Run(id, &assistant_states);
     auto assistant_prob = rwkv::softmax(assistent_logits, 1.0f);
     assistant_probs.push_back(assistant_prob);
-    assistant_states_record.push_back(
-        std::move(rwkv::States(assistent_states))); // copy
-    auto token = sample_func(assistant_prob);
-    speculative_ids.push_back(token);
-    main_model_input_ids.push_back(token);
-    id = token;
+    States assistant_states_copy;
+    BackupStates(assistant_states, assistant_states_copy);
+    assistant_states_record.push_back(std::move(assistant_states_copy)); // copy
+    id = sample_func(assistant_prob);
+    response += decode_func(id);
+    speculative_ids.push_back(id);
+
+    for (auto &antiprompt : antiprompts) {
+      if (response.find(antiprompt) != std::string::npos) {
+        encounter_antiprompt = true;
+        break;
+      }
+    }
+    if (encounter_antiprompt)
+      break;
+
+    main_model_input_ids.push_back(id);
   }
 
-  auto main_logits =
-      this->Run(main_model_input_ids, true, &main_states); // full output
+  auto main_logits = this->Run(main_model_input_ids, true, &main_states,
+                               true); // full output & state
   std::vector<Tensor> main_probs;
   for (int i = 0; i < main_logits.size(0); i++) {
     main_probs.push_back(rwkv::softmax(
@@ -251,64 +283,98 @@ Model::AssistedRun(int id, rwkv::Model &assistant_model, int speculative_length,
   std::random_device rd;
   std::mt19937 gen(rd());
   std::uniform_real_distribution<float> dis(0.0, 1.0);
-  int accepet_length = -1;
-  for (int i = 0; i < speculative_length; i++) {
+  int accepet_length = speculative_length;
+  for (int i = 0; i < speculative_ids.size(); i++) {
     float rand = dis(gen);
     auto candidate_id = speculative_ids[i];
     auto assistant_prob = assistant_probs[i].get_item<float>({candidate_id});
     auto main_prob = main_probs[i].get_item<float>({candidate_id});
     if (rand > main_prob / assistant_prob) { // reject
       accepet_length = i;
+      break;
     }
   }
-  if (accepet_length == -1) {
-    accepet_length = speculative_length;
-    assistant_model.Run(id, &assistent_states);
-    assistant_states_record.push_back(
-        std::move(rwkv::States(assistent_states))); // copy
-  }
-
-  int token;
-  if (accepet_length < speculative_length) { // rejected or partially rejected
-    auto probs = rwkv::relu(main_probs[accepet_length] -
-                            assistant_probs[accepet_length]);
-    probs = rwkv::div(probs, rwkv::reduce(probs, "sum"));
-    token = sample_func(probs);
-  } else {
-    token = sample_func(main_probs[accepet_length]);
-  }
-
-  std::vector<int> new_tokens;
-  new_tokens.insert(new_tokens.begin(), speculative_ids.begin(),
-                    speculative_ids.begin() + accepet_length);
-  new_tokens.push_back(token);
 
   auto reset_states = [&accepet_length](States &states) {
     for (int i = 0; i < states.size(); i++) {
       auto &state = states[i];
       if (state[0].sizes().size() > 1) {
         state[0] = state[0]
-                       .slice({Range(accepet_length - 1, 1, accepet_length),
+                       .slice({Range(accepet_length, 1, accepet_length + 1),
                                Range::All})
                        .squeeze(0);
       }
       if (state[1].sizes().size() > 3) {
         state[1] = state[1]
-                       .slice({Range(accepet_length - 1, 1, accepet_length),
+                       .slice({Range(accepet_length, 1, accepet_length + 1),
                                Range::All, Range::All, Range::All})
                        .squeeze(0);
       }
       if (state[2].sizes().size() > 1) {
-        state[2] = state[0]
-                       .slice({Range(accepet_length - 1, 1, accepet_length),
+        state[2] = state[2]
+                       .slice({Range(accepet_length, 1, accepet_length + 1),
                                Range::All})
                        .squeeze(0);
       }
     }
   };
+
+  int token;
+  if (accepet_length == 0) { // totally rejected
+                             // we should run main model at least once
+    this->states() = main_states_backup;
+    assistant_model.states() = assistant_states_backup;
+    auto logits = this->Run(original_id);
+    auto prob = rwkv::softmax(logits, 1.0f);
+    token = sample_func(prob);
+    assistant_model.Run(original_id);
+    return {0, {token}};
+  } else if (accepet_length < speculative_length) { // partially rejected
+    auto probs = rwkv::relu(main_probs[accepet_length] -
+                            assistant_probs[accepet_length]);
+    probs = rwkv::div(probs, rwkv::reduce(probs, "sum"));
+    token = sample_func(probs);
+  } else {
+    assistant_model.Run(speculative_ids.back(), &assistant_states);
+    States assistant_states_copy;
+    BackupStates(assistant_states, assistant_states_copy);
+    assistant_states_record.push_back(std::move(assistant_states_copy)); // copy
+    token = sample_func(main_probs[accepet_length]);
+  }
+
+  std::vector<int> new_tokens;
+  new_tokens.insert(new_tokens.end(), speculative_ids.begin(),
+                    speculative_ids.begin() + accepet_length);
+  new_tokens.push_back(token);
+
   reset_states(main_states);
-  reset_states(assistent_states);
+  this->states() = main_states;
+  assistant_model.states() = std::move(assistant_states_record[accepet_length]);
   return {accepet_length, new_tokens};
+}
+
+void Model::RestrictStates() {
+  RV_CHECK(this->_version == "5.2");
+  for (int i = 0; i < _states.size(); i++) {
+    auto &state = _states[i];
+    RV_CHECK(state.size() == 3);
+    if (state[0].sizes().size() > 1) {
+      state[0] = state[0]
+                     .slice({Range(-1, 1, state[0].size(0)), Range::All})
+                     .squeeze(0);
+    }
+    if (state[1].sizes().size() > 3) {
+      state[1] = state[1]
+                     .slice({Range(-1, 1, state[1].size(0)), Range::All,
+                             Range::All, Range::All})
+                     .squeeze(0);
+    }
+    if (state[2].sizes().size() > 1) {
+      state[2] = state[2]
+                     .slice({Range(-1, 1, state[2].size(0)), Range::All})
+                     .squeeze(0);
+    }
+  }
 }
 
 } // namespace rwkv

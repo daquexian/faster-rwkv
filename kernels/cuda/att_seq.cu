@@ -300,7 +300,9 @@ rwkv5_2_kernel_forward(const int B, const int T, const int C, const int H,
       const float4 &k_ = (float4 &)(k[j]);
       const float4 &w_ = (float4 &)(w[j]);
       const float4 &u_ = (float4 &)(u[j]);
-      float4 &s = FullState ? (float4 &)(_full_state[j]) : (float4 &)(state[j]);
+      float4 &s = (float4 &)(state[j]);
+      float4 &ts = FullState ? (float4 &)(_full_state[j])
+                             : (float4 &)(state[j]); // target
       float4 x;
 
       x.x = k_.x * v;
@@ -313,19 +315,28 @@ rwkv5_2_kernel_forward(const int B, const int T, const int C, const int H,
       y += r_.z * (u_.z * x.z + s.z);
       y += r_.w * (u_.w * x.w + s.w);
 
-      s.x = s.x * w_.x + x.x;
-      s.y = s.y * w_.y + x.y;
-      s.z = s.z * w_.z + x.z;
-      s.w = s.w * w_.w + x.w;
+      if (FullState) {
+        ts.x = s.x = s.x * w_.x + x.x;
+        ts.y = s.y = s.y * w_.y + x.y;
+        ts.z = s.z = s.z * w_.z + x.z;
+        ts.w = s.w = s.w * w_.w + x.w;
+      } else {
+        ts.x = s.x * w_.x + x.x;
+        ts.y = s.y * w_.y + x.y;
+        ts.z = s.z * w_.z + x.z;
+        ts.w = s.w * w_.w + x.w;
+      }
     }
     if (FullState) {
       _full_state += state_size;
     }
     _y[t] = F(y);
   }
+  if (!FullState) {
 #pragma unroll
-  for (int j = 0; j < N; j++)
-    _state[j] = state[j];
+    for (int j = 0; j < N; j++)
+      _state[j] = state[j];
+  }
 }
 
 template <bool FullState>
