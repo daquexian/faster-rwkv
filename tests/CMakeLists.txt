@@ -47,3 +47,6 @@ set(benchmark_srcs
 
 add_executable(fr_benchmark ${benchmark_srcs})
 target_link_libraries(fr_benchmark faster_rwkv benchmark::benchmark)
+
+add_executable(test_dlpack_tensor test_dlpack_tensor.cpp)
+target_link_libraries(test_dlpack_tensor gtest_main faster_rwkv)

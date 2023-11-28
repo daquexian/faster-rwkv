@@ -162,10 +162,19 @@ FetchContent_Declare(
 option(MSGPACK_USE_BOOST "" OFF)
 FetchContent_MakeAvailable(msgpack)
 
+FetchContent_Declare(
+        dlpack
+        GIT_REPOSITORY https://github.com/dmlc/dlpack
+        GIT_TAG v0.8
+        SYSTEM
+        )
+FetchContent_MakeAvailable(dlpack)
+
 add_library(faster_rwkv_internal
         utils.cpp
         model.cpp 
         tensor.cpp
+        dlpack_tensor.cpp
         tokenizer.cpp
         sampler.cpp
         kernels/shape/shape_inference.cpp
@@ -191,6 +200,9 @@ add_library(faster_rwkv_internal
         ${onnx_kernel_srcs}
         )
 target_link_libraries(faster_rwkv_internal PUBLIC msgpack-cxx)
+target_link_libraries(faster_rwkv_internal PUBLIC dlpack)
+target_include_directories(faster_rwkv_internal PUBLIC
+    ${CMAKE_BINARY_DIR}/_deps/dlpack-src/include/)
 target_link_libraries(faster_rwkv_internal PUBLIC ${ncnn_deps})
 target_include_directories(faster_rwkv_internal PUBLIC ${PROJECT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
 

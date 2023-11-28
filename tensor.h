@@ -151,6 +151,7 @@ public:
   Device device() const { return _storage->device(); }
   const Shape &sizes() const { return _shape; }
   const Shape &shape() const { return _shape; }
+  size_t ndim() const { return _shape.size(); };
   LengthType size(int64_t dim) const { return _shape[dim]; }
   LengthType numel() const { return num_elements(_shape); }
   int32_t elem_size() const { return ::rwkv::elem_size(_dtype); }
