@@ -230,7 +230,7 @@ jobs:
 
     steps:
     - name: Download all the dists
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: rwkv2onnx-wheels
         path: dist/
@@ -253,7 +253,7 @@ jobs:
 
     steps:
     - name: Download all the dists
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: fasterrwkv-wheels
         path: dist/
